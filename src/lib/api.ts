@@ -47,6 +47,9 @@ export const bookingApi = {
 
   getById: (id: string) => api.get<ApiResponse<Booking>>(`/bookings/${id}`),
 
+  update: (id: string, data: Partial<Booking>) =>
+    api.patch<ApiResponse<Booking>>(`/bookings/${id}`, data),
+
   getStats: () => api.get<ApiResponse<BookingStats>>('/bookings/stats'),
 
   create: (data: Partial<Booking>) => api.post<ApiResponse<Booking>>('/bookings', data),
@@ -119,6 +122,8 @@ export const vehicleApi = {
   create: (data: Partial<Vehicle>) => api.post<ApiResponse<Vehicle>>('/vehicles', data),
 
   update: (id: string, data: Partial<Vehicle>) => api.patch<ApiResponse<Vehicle>>(`/vehicles/${id}`, data),
+
+  verify: (id: string) => api.post<ApiResponse<Vehicle>>(`/vehicles/${id}/verify`, {}),
 
   delete: (id: string) => api.delete<ApiResponse<null>>(`/vehicles/${id}`),
 

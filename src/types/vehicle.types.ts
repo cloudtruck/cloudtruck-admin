@@ -14,6 +14,9 @@ export interface Vehicle {
   rcDocument?: string;
   fitnessExpiry?: string;
   permitExpiry?: string;
+  isVerified?: boolean;
+  hasGPS?: boolean;
+  hasFASTag?: boolean;
   owner?: {
     _id: string;
     name: string;
@@ -32,4 +35,5 @@ export interface VehicleFilters {
   truckType?: string;
   bodyType?: string;
   search?: string;
+  isVerified?: boolean;
 }

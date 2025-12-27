@@ -10,6 +10,7 @@ import { RouteMap } from '@/components/bookings/RouteMap';
 import { StatusTimeline } from '@/components/bookings/StatusTimeline';
 import { PaymentInfo } from '@/components/bookings/PaymentInfo';
 import { DocumentsSection } from '@/components/bookings/DocumentsSection';
+import { EditBookingModal } from '@/components/bookings/EditBookingModal';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { bookingApi } from '@/lib/api';
 import { Booking } from '@/types';
@@ -23,6 +24,7 @@ import {
   FileText,
   UserCheck,
   Ban,
+  Edit,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,6 +36,7 @@ export default function BookingDetailPage() {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   useEffect(() => {
     fetchBookingDetails();
@@ -58,6 +61,10 @@ export default function BookingDetailPage() {
   const handleAssignDriver = () => {
     toast.info('Assign driver modal will open here');
     // TODO: Implement assign driver modal
+  };
+
+  const handleEditBooking = () => {
+    setEditModalOpen(true);
   };
 
   const handleUpdateStatus = () => {
@@ -123,6 +130,10 @@ export default function BookingDetailPage() {
             Assign Driver
           </Button>
         )}
+        <Button variant="outline" onClick={handleEditBooking}>
+          <Edit className="h-4 w-4 mr-2" />
+          Edit Booking
+        </Button>
         <Button variant="outline" onClick={handleUpdateStatus}>
           <FileText className="h-4 w-4 mr-2" />
           Update Status
@@ -240,6 +251,14 @@ export default function BookingDetailPage() {
           <PaymentInfo booking={booking} />
         </div>
       </div>
+
+      {/* Edit Booking Modal */}
+      <EditBookingModal
+        booking={booking}
+        open={editModalOpen}
+        onCloseAction={() => setEditModalOpen(false)}
+        onSuccessAction={fetchBookingDetails}
+      />
     </div>
   );
 }

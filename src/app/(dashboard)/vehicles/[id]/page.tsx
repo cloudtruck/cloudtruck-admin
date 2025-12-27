@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/common/PageHeader';
 import { VehicleStatusBadge } from '@/components/vehicles/VehicleStatusBadge';
 import { VehicleDocuments } from '@/components/vehicles/VehicleDocuments';
+import { VehicleActions } from '@/components/vehicles/VehicleActions';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { vehicleApi } from '@/lib/api';
 import { toast } from 'sonner';
@@ -40,7 +41,8 @@ export default function VehicleDetailPage({ params }: VehicleDetailPageProps) {
       setVehicle(response.data.data);
     } catch (error: unknown) {
       console.error('Failed to fetch vehicle:', error);
-      toast.error(error.response?.data?.message || 'Failed to fetch vehicle');
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to fetch vehicle');
     } finally {
       setLoading(false);
     }
@@ -92,6 +94,7 @@ export default function VehicleDetailPage({ params }: VehicleDetailPageProps) {
         description={`Vehicle ID: ${vehicle._id}`}
         actions={
           <div className="flex items-center gap-2">
+            <VehicleActions vehicle={vehicle} onSuccessAction={fetchVehicle} />
             <Button onClick={fetchVehicle} variant="outline" size="sm">
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh

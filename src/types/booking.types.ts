@@ -40,6 +40,9 @@ export interface Booking {
   expectedAmount?: number;
   advanceRequired?: number;
   additionalInstructions?: string;
+  isHazardous?: boolean;
+  isFragile?: boolean;
+  requiresTemperatureControl?: boolean;
   driver?: {
     _id: string;
     name: string;
