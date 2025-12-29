@@ -20,6 +20,11 @@ import {
 import { loginSchema, type LoginFormData } from '@/validators/schemas';
 import { authApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
+import { AxiosError } from 'axios';
+
+interface ErrorResponse {
+  message?: string;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -45,8 +50,38 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (error: unknown) {
       console.error('Login failed:', error);
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Login failed. Please try again.';
-      toast.error(message);
+
+      let errorMessage = 'Login failed. Please try again.';
+
+      const axiosError = error as AxiosError;
+
+      if (axiosError.response) {
+        const { status, data } = axiosError.response;
+
+        switch (status) {
+          case 401:
+            errorMessage = (data as ErrorResponse)?.message || 'Invalid email or password. Please check your credentials.';
+            break;
+          case 423:
+            errorMessage = (data as ErrorResponse)?.message || 'Account locked due to multiple failed login attempts. Please contact support.';
+            break;
+          case 403:
+            errorMessage = (data as ErrorResponse)?.message || 'Account blocked or inactive. Please contact support.';
+            break;
+          case 429:
+            errorMessage = 'Too many login attempts. Please try again later.';
+            break;
+          case 500:
+            errorMessage = 'Server error. Please try again later or contact support.';
+            break;
+          default:
+            errorMessage = (data as ErrorResponse)?.message || errorMessage;
+        }
+      } else if (axiosError.message?.includes('Network Error')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      }
+
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -56,7 +91,7 @@ export default function LoginPage() {
     <div className="space-y-6">
       {/* Logo and Header */}
       <div className="flex flex-col items-center space-y-2 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-900">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-300">
           <Truck className="h-8 w-8 text-white" />
         </div>
         <h1 className="page-title">Cloudtruck Admin</h1>
@@ -108,7 +143,7 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin text-white" />
                   Signing in...
                 </>
               ) : (

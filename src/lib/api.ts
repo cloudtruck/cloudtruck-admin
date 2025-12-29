@@ -86,10 +86,8 @@ export const driverApi = {
   approve: (id: string, data?: { notes?: string }) =>
     api.post<ApiResponse<Driver>>(`/drivers/${id}/verify`, data || {}),
 
-  // Note: Backend doesn't have a reject endpoint, so this returns a rejected promise
-  // In the future, you may want to add a proper reject endpoint in the backend
   reject: (id: string, data: { reason: string }) =>
-    Promise.reject(new Error('Reject functionality not yet implemented in backend. Consider using block instead or contact backend team to add this endpoint.')),
+    api.post<ApiResponse<Driver>>(`/drivers/${id}/reject`, data),
 
   block: (id: string, data: { reason: string }) =>
     api.post<ApiResponse<Driver>>(`/drivers/${id}/blacklist`, data),
