@@ -17,7 +17,13 @@ export const useDashboardStore = create<DashboardState>((set) => ({
     inTransit: 0,
     delivered: 0,
     podPending: 0,
+    cancelled: 0,
     total: 0,
+    newRequestsChange: { value: 0, isPositive: false },
+    assignedChange: { value: 0, isPositive: false },
+    inTransitChange: { value: 0, isPositive: false },
+    deliveredChange: { value: 0, isPositive: false },
+    podPendingChange: { value: 0, isPositive: false }
   },
   loading: false,
 

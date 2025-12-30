@@ -14,7 +14,7 @@ const statusSteps = [
   { key: 'created', label: 'Booking Created' },
   { key: 'under-review', label: 'Under Review' },
   { key: 'assigned', label: 'Driver Assigned' },
-  { key: 'driver-en-route', label: 'Driver En Route' },
+  { key: 'driver-enroute-to-pickup', label: 'Driver En Route' },
   { key: 'reached-pickup', label: 'Reached Pickup' },
   { key: 'loaded', label: 'Loaded' },
   { key: 'in-transit', label: 'In Transit' },
@@ -77,21 +77,40 @@ export function StatusTimeline({ booking }: StatusTimelineProps) {
                   >
                     {step.label}
                   </p>
-                  {isCurrent && (
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(booking.updatedAt)}
-                    </p>
-                  )}
-                  {index === 0 && isCompleted && (
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(booking.createdAt)}
-                    </p>
-                  )}
-                  {step.key === 'assigned' && booking.assignedAt && isCompleted && (
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(booking.assignedAt)}
-                    </p>
-                  )}
+                  {/* Show date only once per step, prioritizing specific milestone dates or history */}
+                  {(() => {
+                    let dateToShow = null;
+                    
+                    // 1. Check status history for this specific step
+                    const historyEntry = booking.statusHistory?.find(h => h.status === step.key);
+                    
+                    if (historyEntry) {
+                      dateToShow = historyEntry.timestamp;
+                    } 
+                    // 2. Fallback to specific milestone fields if history is missing
+                    else if (index === 0 && isCompleted) {
+                      dateToShow = booking.createdAt;
+                    } else if (step.key === 'assigned' && booking.assignedAt && isCompleted) {
+                      dateToShow = booking.assignedAt;
+                    } else if (step.key === 'delivered' && booking.podDetails?.deliveredAt && isCompleted) {
+                      dateToShow = booking.podDetails.deliveredAt;
+                    } else if (step.key === 'cancelled' && booking.cancellationDetails?.cancelledAt && isCompleted) {
+                      dateToShow = booking.cancellationDetails.cancelledAt;
+                    }
+                    // 3. Fallback to updatedAt only if it's the current status and we haven't found a date yet
+                    else if (isCurrent) {
+                      dateToShow = booking.updatedAt;
+                    }
+
+                    if (dateToShow) {
+                      return (
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(dateToShow)}
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
             );

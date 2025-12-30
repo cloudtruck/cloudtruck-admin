@@ -59,79 +59,43 @@ export default function DashboardPage() {
       setLoading(false);
     }
 
-    // Fetch recent activities (mock data for now)
+    // Fetch recent activities
     setLoadingActivities(true);
     try {
-      // TODO: Replace with actual API call when endpoint is ready
-      const mockActivities: Activity[] = [
-        {
-          _id: '1',
-          type: 'booking_created',
-          message: 'New booking created by ABC Logistics',
-          bookingId: 'BK-2024-001',
-          timestamp: new Date().toISOString(),
-        },
-        {
-          _id: '2',
-          type: 'driver_assigned',
-          message: 'Driver Rajesh Kumar assigned to booking',
-          bookingId: 'BK-2024-002',
-          timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-        },
-        {
-          _id: '3',
-          type: 'status_update',
-          message: 'Booking status updated to In Transit',
-          bookingId: 'BK-2024-003',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-        },
-        {
-          _id: '4',
-          type: 'pod_uploaded',
-          message: 'POD uploaded for booking',
-          bookingId: 'BK-2024-004',
-          timestamp: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-        },
-        {
-          _id: '5',
-          type: 'payment_received',
-          message: 'Payment received from XYZ Traders',
-          bookingId: 'BK-2024-005',
-          timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-        },
-      ];
-      setActivities(mockActivities);
-    } catch (error) {
+      const resp = await bookingApi.getActivities({ limit: 20 });
+      setActivities(resp.data.data || []);
+    } catch (error: unknown) {
       console.error('Failed to fetch activities:', error);
+      // fallback to empty
+      setActivities([]);
     } finally {
       setLoadingActivities(false);
     }
 
-    // Fetch chart data (mock data for now)
+    // Fetch chart data
     setLoadingCharts(true);
     try {
-      // TODO: Replace with actual API call when endpoint is ready
-      const mockTrendData: TrendData[] = [
-        { date: 'Mon', bookings: 12, delivered: 8 },
-        { date: 'Tue', bookings: 15, delivered: 10 },
-        { date: 'Wed', bookings: 18, delivered: 14 },
-        { date: 'Thu', bookings: 20, delivered: 16 },
-        { date: 'Fri', bookings: 17, delivered: 15 },
-        { date: 'Sat', bookings: 10, delivered: 8 },
-        { date: 'Sun', bookings: 8, delivered: 6 },
-      ];
-      setTrendData(mockTrendData);
+      const [tResp, sResp] = await Promise.all([
+        bookingApi.getTrends({ days: 7 }),
+        bookingApi.getStatusBreakdown()
+      ]);
 
+      const trendApi = tResp.data.data || [];
+      setTrendData(trendApi);
+
+      const statusObj = sResp.data.data || {};
       const mockStatusData: StatusData[] = [
-        { status: 'created', count: stats.newRequests || 0, color: '#3b82f6' },
-        { status: 'assigned', count: stats.assigned || 0, color: '#eab308' },
-        { status: 'in-transit', count: stats.inTransit || 0, color: '#6366f1' },
-        { status: 'delivered', count: stats.delivered || 0, color: '#22c55e' },
-        { status: 'pod-received', count: stats.podPending || 0, color: '#059669' },
+        { status: 'created', count: statusObj.created || 0, color: '#3b82f6' },
+        { status: 'assigned', count: statusObj.assigned || 0, color: '#eab308' },
+        { status: 'in-transit', count: statusObj['in-transit'] || statusObj['in-transit'] || statusObj['driver-enroute-to-pickup'] || 0, color: '#6366f1' },
+        { status: 'delivered', count: statusObj.delivered || 0, color: '#22c55e' },
+        { status: 'pod-received', count: statusObj['pod-received'] || 0, color: '#059669' },
       ];
       setStatusData(mockStatusData);
     } catch (error) {
       console.error('Failed to fetch chart data:', error);
+      setTrendData([]);
+      setStatusData([]);
     } finally {
       setLoadingCharts(false);
     }
@@ -157,34 +121,35 @@ export default function DashboardPage() {
           value={stats.newRequests}
           icon={Package}
           loading={loading}
-          trend={{ value: 12, isPositive: true }}
+          trend={stats.newRequestsChange || { value: 0, isPositive: false }}
         />
         <StatCard
           title="Assigned Today"
           value={stats.assigned}
           icon={Truck}
           loading={loading}
-          trend={{ value: 8, isPositive: true }}
+          trend={stats.assignedChange || { value: 0, isPositive: false }}
         />
         <StatCard
           title="In Transit"
           value={stats.inTransit}
           icon={TrendingUp}
           loading={loading}
+          trend={stats.inTransitChange || { value: 0, isPositive: false }}
         />
         <StatCard
           title="Delivered Today"
           value={stats.delivered}
           icon={CheckCircle}
           loading={loading}
-          trend={{ value: 15, isPositive: true }}
+          trend={stats.deliveredChange || { value: 0, isPositive: false }}
         />
         <StatCard
           title="POD Pending"
           value={stats.podPending}
           icon={FileText}
           loading={loading}
-          trend={{ value: 5, isPositive: false }}
+          trend={stats.podPendingChange || { value: 0, isPositive: false }}
         />
       </div>
 

@@ -129,20 +129,24 @@ export default function BookingDetailPage() {
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-2">
-        {!booking.driver && (
+        {!booking.driver && booking.status !== 'cancelled' && (
           <Button onClick={handleAssignDriver}>
             <UserCheck className="h-4 w-4 mr-2" />
             Assign Driver
           </Button>
         )}
-        <Button variant="outline" onClick={handleEditBooking}>
-          <Edit className="h-4 w-4 mr-2" />
-          Edit Booking
-        </Button>
-        <Button variant="outline" onClick={handleUpdateStatus}>
-          <FileText className="h-4 w-4 mr-2" />
-          Update Status
-        </Button>
+        {booking.status !== 'cancelled' && (
+          <>
+            <Button variant="outline" onClick={handleEditBooking}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Booking
+            </Button>
+            <Button variant="outline" onClick={handleUpdateStatus}>
+              <FileText className="h-4 w-4 mr-2" />
+              Update Status
+            </Button>
+          </>
+        )}
         <Button variant="outline" onClick={handleAddNote}>
           <FileText className="h-4 w-4 mr-2" />
           Add Note

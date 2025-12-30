@@ -54,6 +54,21 @@ export interface Booking {
     truckType: string;
   };
   assignedAt?: string;
+  podDetails?: {
+    receiverName?: string;
+    receiverPhone?: string;
+    deliveredAt?: string;
+    remarks?: string;
+  };
+  cancellationDetails?: {
+    cancelledAt?: string;
+    reason?: string;
+  };
+  statusHistory?: Array<{
+    status: string;
+    timestamp: string;
+    notes?: string;
+  }>;
   images?: string[];
   createdAt: string;
   updatedAt: string;
@@ -71,11 +86,24 @@ export interface BookingFilters {
   driverId?: string;
 }
 
+export interface ChangeMetric {
+  value: number; // percent value, e.g., 12 for 12%
+  isPositive: boolean;
+}
+
 export interface BookingStats {
   newRequests: number;
   assigned: number;
   inTransit: number;
   delivered: number;
   podPending: number;
+  cancelled: number;
   total: number;
+
+  // Period-over-period change metrics (percent)
+  newRequestsChange?: ChangeMetric;
+  assignedChange?: ChangeMetric;
+  inTransitChange?: ChangeMetric;
+  deliveredChange?: ChangeMetric;
+  podPendingChange?: ChangeMetric;
 }

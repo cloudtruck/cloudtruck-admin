@@ -57,6 +57,8 @@ export default function AllBookingsPage() {
       status = 'in-transit';
     } else if (value === 'delivered') {
       status = 'delivered,pod-received';
+    } else if (value === 'cancelled') {
+      status = 'cancelled';
     }
     
     setFilters({ ...filters, status });
@@ -72,6 +74,7 @@ export default function AllBookingsPage() {
     assigned: stats?.assigned || 0,
     inTransit: stats?.inTransit || 0,
     delivered: stats?.delivered || 0,
+    cancelled: stats?.cancelled || 0,
   };
 
   if (error) {
@@ -99,7 +102,7 @@ export default function AllBookingsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full max-w-2xl grid-cols-5">
+        <TabsList className="grid w-full max-w-3xl grid-cols-6">
           <TabsTrigger value="all">
             All <span className="ml-1 text-xs">({statusCounts.all})</span>
           </TabsTrigger>
@@ -114,6 +117,9 @@ export default function AllBookingsPage() {
           </TabsTrigger>
           <TabsTrigger value="delivered">
             Delivered <span className="ml-1 text-xs">({statusCounts.delivered})</span>
+          </TabsTrigger>
+          <TabsTrigger value="cancelled">
+            Cancelled <span className="ml-1 text-xs">({statusCounts.cancelled})</span>
           </TabsTrigger>
         </TabsList>
 

@@ -52,6 +52,11 @@ export const bookingApi = {
 
   getStats: () => api.get<ApiResponse<BookingStats>>('/bookings/stats'),
 
+  // Dashboard
+  getActivities: (params?: { limit?: number }) => api.get<ApiResponse<any>>('/bookings/dashboard/activities', { params }),
+  getTrends: (params?: { days?: number }) => api.get<ApiResponse<any>>('/bookings/dashboard/trends', { params }),
+  getStatusBreakdown: () => api.get<ApiResponse<Record<string, number>>>('/bookings/dashboard/status'),
+
   create: (data: Partial<Booking>) => api.post<ApiResponse<Booking>>('/bookings', data),
 
   updateStatus: (id: string, data: { status: string; notes?: string }) =>

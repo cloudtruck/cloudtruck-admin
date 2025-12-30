@@ -119,7 +119,7 @@ export function BookingCard({ booking, onAssignDriver }: BookingCardProps) {
               <Eye className="h-4 w-4 mr-1" />
               View Details
             </Button>
-            {!booking.driver && (
+            {!booking.driver && booking.status !== 'cancelled' && (
               <Button size="sm" className="flex-1" onClick={handleAssignDriver}>
                 <UserCheck className="h-4 w-4 mr-1" />
                 Assign Driver
