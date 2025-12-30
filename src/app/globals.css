@@ -50,20 +50,10 @@ body {
 }
 
 /* Global text color defaults */
-* {
-  color: inherit;
-}
-
-
-p, span, div {
-  color: inherit;
-}
-
-
-
 input::placeholder, textarea::placeholder {
   color: #71717a;
 }
+
 
 /* ============================================================================
    GLOBAL UTILITY CLASSES
@@ -245,17 +235,14 @@ input::placeholder, textarea::placeholder {
 
 /* Ensure icons inside buttons inherit the button's color for proper contrast */
 .btn-base svg,
-.btn-base svg *,
 [data-slot="button"] svg,
-[data-slot="button"] svg *,
-button svg,
-button svg * {
-  stroke: currentColor !important;
-  fill: currentColor !important;
-  color: inherit !important;
+button svg {
+  stroke: currentColor;
+  fill: currentColor;
 }
 
 /* Icon-only buttons */
+
 .btn-base.size-9,
 .btn-base.size-8,
 .btn-base.size-10,
@@ -316,13 +303,8 @@ button[data-variant="default"]:focus {
   background-color: color-mix(in oklab, var(--border) 8%, transparent);
 }
 
-/* Ensure any text inside the button uses the same color */
-[data-slot="button"] *,
-button * {
-  color: inherit !important;
-}
-
 /* Accessibility: Ensure sufficient contrast for disabled/active states */
+
 .btn-base[aria-disabled="true"],
 .btn-base:disabled {
   color: var(--muted-foreground) !important;

@@ -91,8 +91,8 @@ export default function LoginPage() {
     <div className="space-y-6">
       {/* Logo and Header */}
       <div className="flex flex-col items-center space-y-2 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-300">
-          <Truck className="h-8 w-8 text-white" />
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-200">
+          <Truck className="h-8 w-8" />
         </div>
         <h1 className="page-title">Cloudtruck Admin</h1>
         <p className="page-subtitle">Sign in to access the dashboard</p>
