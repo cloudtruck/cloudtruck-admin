@@ -100,7 +100,7 @@ export default function VehiclesPage() {
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   className="max-w-md"
                 />
-                <Button onClick={handleSearch} size="icon">
+                <Button onClick={handleSearch} size="icon" variant="outline">
                   <Search className="h-4 w-4" />
                 </Button>
               </div>

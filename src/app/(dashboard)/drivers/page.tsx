@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, RefreshCw } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,13 +15,23 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/common/PageHeader';
 import { DriverTable } from '@/components/drivers/DriverTable';
+import { AddDriverModal } from '@/components/drivers/AddDriverModal';
 import { useDrivers } from '@/hooks/useDrivers';
 import { useDriverStore } from '@/store/driverStore';
 
 export default function DriversPage() {
+  const searchParams = useSearchParams();
   const { drivers, loading, refetch } = useDrivers();
   const { filters, setFilters, clearFilters, pagination } = useDriverStore();
   const [searchInput, setSearchInput] = useState(filters.search || '');
+
+  // Sync URL params with store
+  useEffect(() => {
+    const status = searchParams.get('status');
+    if (filters.status !== (status || undefined)) {
+      setFilters({ ...filters, status: status || undefined });
+    }
+  }, [searchParams, filters, setFilters]);
 
   const handleSearch = () => {
     setFilters({ ...filters, search: searchInput });
@@ -46,10 +57,13 @@ export default function DriversPage() {
         title="Drivers"
         description="Manage and monitor all drivers"
         actions={
-          <Button onClick={refetch} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={refetch} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+            <AddDriverModal onSuccess={refetch} />
+          </div>
         }
       />
 
@@ -65,7 +79,7 @@ export default function DriversPage() {
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   className="max-w-md"
                 />
-                <Button onClick={handleSearch} size="icon">
+                <Button onClick={handleSearch} size="icon" variant="outline">
                   <Search className="h-4 w-4" />
                 </Button>
               </div>

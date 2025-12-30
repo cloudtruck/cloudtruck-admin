@@ -41,13 +41,13 @@ export function PaymentTable({
       cell: (payment: Payment) => (
         <div>
           <Link
-            href={`/bookings/${payment.booking._id}`}
+            href={`/bookings/${payment.booking?._id}`}
             className="font-semibold hover:underline"
           >
-            {payment.booking.bookingId}
+            {payment.booking?.bookingId || 'N/A'}
           </Link>
           <p className="text-xs text-muted-foreground">
-            {payment.booking.customer.companyName}
+            {payment.booking?.customer?.companyName || 'N/A'}
           </p>
         </div>
       ),

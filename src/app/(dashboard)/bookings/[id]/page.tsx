@@ -11,8 +11,13 @@ import { StatusTimeline } from '@/components/bookings/StatusTimeline';
 import { PaymentInfo } from '@/components/bookings/PaymentInfo';
 import { DocumentsSection } from '@/components/bookings/DocumentsSection';
 import { EditBookingModal } from '@/components/bookings/EditBookingModal';
+import { AssignDriverModal } from '@/components/bookings/AssignDriverModal';
+import { UpdateStatusModal } from '@/components/bookings/UpdateStatusModal';
+import { AddNoteModal } from '@/components/bookings/AddNoteModal';
+import { CancelBookingModal } from '@/components/bookings/CancelBookingModal';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { bookingApi } from '@/lib/api';
+import { formatDate } from '@/lib/date-utils';
 import { Booking } from '@/types';
 import { format } from 'date-fns';
 import {
@@ -37,6 +42,10 @@ export default function BookingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
 
   useEffect(() => {
     fetchBookingDetails();
@@ -59,8 +68,7 @@ export default function BookingDetailPage() {
   };
 
   const handleAssignDriver = () => {
-    toast.info('Assign driver modal will open here');
-    // TODO: Implement assign driver modal
+    setAssignModalOpen(true);
   };
 
   const handleEditBooking = () => {
@@ -68,18 +76,15 @@ export default function BookingDetailPage() {
   };
 
   const handleUpdateStatus = () => {
-    toast.info('Update status modal will open here');
-    // TODO: Implement update status modal
+    setStatusModalOpen(true);
   };
 
   const handleCancelBooking = () => {
-    toast.info('Cancel booking confirmation will open here');
-    // TODO: Implement cancel booking confirmation
+    setCancelModalOpen(true);
   };
 
   const handleAddNote = () => {
-    toast.info('Add note modal will open here');
-    // TODO: Implement add note modal
+    setNoteModalOpen(true);
   };
 
   if (loading) {
@@ -93,10 +98,10 @@ export default function BookingDetailPage() {
   if (error || !booking) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => router.back()}>
+        {/* <Button variant="ghost" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
-        </Button>
+        </Button> */}
         <div className="text-center py-12">
           <p className="text-red-600 mb-4">{error || 'Booking not found'}</p>
           <Button onClick={fetchBookingDetails}>Retry</Button>
@@ -110,10 +115,10 @@ export default function BookingDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => router.back()}>
+          {/* <Button variant="ghost" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
-          </Button>
+          </Button> */}
           <div>
             <h1 className="text-3xl font-bold">{booking.bookingId}</h1>
             <p className="text-muted-foreground">View and manage booking details</p>
@@ -188,7 +193,7 @@ export default function BookingDetailPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Load Date/Time</p>
                 <p className="font-medium">
-                  {format(new Date(booking.loadDateTime), 'dd MMM yyyy, hh:mm a')}
+                  {formatDate(booking.loadDateTime)}
                 </p>
               </div>
             </div>
@@ -229,7 +234,7 @@ export default function BookingDetailPage() {
             </div>
             {booking.assignedAt && (
               <p className="text-sm text-muted-foreground mt-4">
-                Assigned on {format(new Date(booking.assignedAt), 'dd MMM yyyy, hh:mm a')}
+                Assigned on {formatDate(booking.assignedAt)}
               </p>
             )}
           </CardContent>
@@ -258,6 +263,38 @@ export default function BookingDetailPage() {
         open={editModalOpen}
         onCloseAction={() => setEditModalOpen(false)}
         onSuccessAction={fetchBookingDetails}
+      />
+
+      {/* Assign Driver Modal */}
+      <AssignDriverModal
+        isOpen={assignModalOpen}
+        onClose={() => setAssignModalOpen(false)}
+        booking={booking}
+        onSuccess={fetchBookingDetails}
+      />
+
+      {/* Update Status Modal */}
+      <UpdateStatusModal
+        isOpen={statusModalOpen}
+        onClose={() => setStatusModalOpen(false)}
+        booking={booking}
+        onSuccess={fetchBookingDetails}
+      />
+
+      {/* Add Note Modal */}
+      <AddNoteModal
+        isOpen={noteModalOpen}
+        onClose={() => setNoteModalOpen(false)}
+        booking={booking}
+        onSuccess={fetchBookingDetails}
+      />
+
+      {/* Cancel Booking Modal */}
+      <CancelBookingModal
+        isOpen={cancelModalOpen}
+        onClose={() => setCancelModalOpen(false)}
+        booking={booking}
+        onSuccess={fetchBookingDetails}
       />
     </div>
   );

@@ -10,7 +10,7 @@ import { exportApi } from '@/lib/api';
 import { downloadBlob } from '@/lib/export';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { CalendarIcon, Download, FileSpreadsheet, TrendingUp } from 'lucide-react';
+import { CalendarIcon, Download, Truck, CreditCard, UserCheck, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ReportsPage() {
@@ -48,29 +48,29 @@ export default function ReportsPage() {
       id: 'bookings',
       title: 'Bookings Report',
       description: 'Export all bookings with details including status, route, material, payment info',
-      icon: FileSpreadsheet,
-      color: 'bg-blue-500',
+      icon: Truck,
+      color: 'bg-indigo-50 text-indigo-600',
     },
     {
       id: 'payments',
       title: 'Payments Report',
       description: 'Export payment records with transaction details, amounts, and status',
-      icon: TrendingUp,
-      color: 'bg-green-500',
+      icon: CreditCard,
+      color: 'bg-emerald-50 text-emerald-600',
     },
     {
       id: 'drivers',
       title: 'Driver Performance Report',
       description: 'Export driver data including trips completed, ratings, and availability',
-      icon: FileSpreadsheet,
-      color: 'bg-purple-500',
+      icon: UserCheck,
+      color: 'bg-orange-50 text-orange-600',
     },
     {
       id: 'customers',
       title: 'Customer Report',
       description: 'Export customer list with company details, booking count, and payment history',
-      icon: FileSpreadsheet,
-      color: 'bg-orange-500',
+      icon: Building2,
+      color: 'bg-rose-50 text-rose-600',
     },
   ];
 
@@ -152,15 +152,15 @@ export default function ReportsPage() {
         {reports.map((report) => {
           const Icon = report.icon;
           return (
-            <Card key={report.id}>
+            <Card key={report.id} className="transition-all hover:shadow-md border-muted/60">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <CardTitle>{report.title}</CardTitle>
                     <CardDescription>{report.description}</CardDescription>
                   </div>
-                  <div className={`h-12 w-12 rounded-full ${report.color} bg-opacity-10 flex items-center justify-center`}>
-                    <Icon className={`h-6 w-6 ${report.color.replace('bg-', 'text-')}`} />
+                  <div className={cn("p-3 rounded-xl flex items-center justify-center", report.color)}>
+                    <Icon className="h-6 w-6" />
                   </div>
                 </div>
               </CardHeader>

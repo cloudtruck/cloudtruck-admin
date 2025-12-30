@@ -80,8 +80,13 @@ export function VehicleTable({ vehicles, loading, pagination, onPageChange }: Ve
     },
     {
       header: 'Status',
-      accessor: 'status',
-      cell: (vehicle: Vehicle) => <VehicleStatusBadge status={vehicle.status} />,
+      accessor: 'availability',
+      cell: (vehicle: Vehicle) => (
+        <div className="flex flex-col gap-1">
+          <VehicleStatusBadge status={vehicle.availability} />
+          <VehicleStatusBadge status={vehicle.verificationStatus} className="text-[10px] px-1 h-4" />
+        </div>
+      ),
     },
     {
       header: 'Actions',

@@ -8,6 +8,7 @@ import { useBookings } from '@/hooks/useBookings';
 import { useBookingStore } from '@/store/bookingStore';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
+import { AssignDriverModal } from '@/components/bookings/AssignDriverModal';
 import { ChevronLeft, ChevronRight, Package } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -25,8 +26,6 @@ export default function NewRequestsPage() {
   const handleAssignDriver = (bookingId: string) => {
     setSelectedBookingId(bookingId);
     setShowAssignModal(true);
-    toast.info('Driver assignment modal will open here');
-    // TODO: Implement assign driver modal
   };
 
   const handlePageChange = (page: number) => {
@@ -135,6 +134,18 @@ export default function NewRequestsPage() {
             </div>
           )}
         </>
+      )}
+
+      {selectedBookingId && (
+        <AssignDriverModal
+          isOpen={showAssignModal}
+          onClose={() => {
+            setShowAssignModal(false);
+            setSelectedBookingId(null);
+          }}
+          booking={bookings.find((b) => b._id === selectedBookingId)!}
+          onSuccess={refetch}
+        />
       )}
     </div>
   );

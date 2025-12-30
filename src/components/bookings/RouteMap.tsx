@@ -12,8 +12,8 @@ export function RouteMap({ booking }: RouteMapProps) {
   // TODO: Implement actual map integration with Leaflet or Google Maps
   // For now, showing a placeholder
 
-  const pickupCoords = booking.pickup.latLng.coordinates;
-  const dropCoords = booking.drop.latLng.coordinates;
+  const pickupCoords = booking.pickup?.latLng?.coordinates;
+  const dropCoords = booking.drop?.latLng?.coordinates;
 
   return (
     <Card>
@@ -35,6 +35,11 @@ export function RouteMap({ booking }: RouteMapProps) {
               <p className="text-sm text-muted-foreground mt-1">
                 Interactive route map will be displayed here
               </p>
+              {(!pickupCoords || !dropCoords) && (
+                <p className="text-xs text-amber-600 mt-2">
+                  Note: Location coordinates are missing for this booking
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -45,11 +50,13 @@ export function RouteMap({ booking }: RouteMapProps) {
             <MapPin className="h-5 w-5 text-green-600 mt-0.5" />
             <div className="flex-1">
               <p className="text-sm font-medium text-green-900">Pickup Location</p>
-              <p className="text-sm text-green-700">{booking.pickup.city}</p>
-              <p className="text-xs text-green-600 mt-1">{booking.pickup.address}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Coordinates: {pickupCoords[1].toFixed(6)}, {pickupCoords[0].toFixed(6)}
-              </p>
+              <p className="text-sm text-green-700">{booking.pickup?.city || 'N/A'}</p>
+              <p className="text-xs text-green-600 mt-1">{booking.pickup?.address || 'N/A'}</p>
+              {pickupCoords && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Coordinates: {pickupCoords[1].toFixed(6)}, {pickupCoords[0].toFixed(6)}
+                </p>
+              )}
             </div>
           </div>
 
@@ -57,11 +64,13 @@ export function RouteMap({ booking }: RouteMapProps) {
             <MapPin className="h-5 w-5 text-red-600 mt-0.5" />
             <div className="flex-1">
               <p className="text-sm font-medium text-red-900">Drop Location</p>
-              <p className="text-sm text-red-700">{booking.drop.city}</p>
-              <p className="text-xs text-red-600 mt-1">{booking.drop.address}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Coordinates: {dropCoords[1].toFixed(6)}, {dropCoords[0].toFixed(6)}
-              </p>
+              <p className="text-sm text-red-700">{booking.drop?.city || 'N/A'}</p>
+              <p className="text-xs text-red-600 mt-1">{booking.drop?.address || 'N/A'}</p>
+              {dropCoords && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Coordinates: {dropCoords[1].toFixed(6)}, {dropCoords[0].toFixed(6)}
+                </p>
+              )}
             </div>
           </div>
 

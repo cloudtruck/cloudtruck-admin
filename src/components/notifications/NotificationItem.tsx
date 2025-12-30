@@ -2,7 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { NotificationIcon } from './NotificationIcon';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
 
 interface Notification {
@@ -34,7 +34,7 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
             {notification.message}
           </p>
           <p className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+            {formatDistanceToNow(notification.createdAt, { addSuffix: true })}
           </p>
         </div>
         {!notification.read && (

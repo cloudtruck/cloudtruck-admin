@@ -77,12 +77,12 @@ export default function VehicleDetailPage({ params }: VehicleDetailPageProps) {
           title="Vehicle Not Found"
           description="The vehicle you are looking for does not exist"
         />
-        <div className="flex justify-center">
+        {/* <div className="flex justify-center">
           <Button onClick={() => router.push('/vehicles')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Vehicles
           </Button>
-        </div>
+        </div> */}
       </div>
     );
   }
@@ -99,10 +99,10 @@ export default function VehicleDetailPage({ params }: VehicleDetailPageProps) {
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
-            <Button onClick={() => router.push('/vehicles')} variant="ghost" size="sm">
+            {/* <Button onClick={() => router.push('/vehicles')} variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
-            </Button>
+            </Button> */}
           </div>
         }
       />

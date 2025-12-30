@@ -46,16 +46,26 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
       setActionDialog(null);
     } catch (error: unknown) {
       console.error('Failed to approve driver:', error);
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to approve driver');
+      const err = error as { 
+        response?: { 
+          data?: { 
+            message?: string; 
+            errors?: Array<{ message: string }> 
+          } 
+        } 
+      };
+      const errorMessage = err.response?.data?.errors?.[0]?.message || 
+                           err.response?.data?.message || 
+                           'Failed to approve driver';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const handleReject = async () => {
-    if (!reason.trim()) {
-      toast.error('Please provide a reason for rejection');
+    if (reason.trim().length < 10) {
+      toast.error('Please provide a reason with at least 10 characters');
       return;
     }
 
@@ -68,16 +78,26 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
       setReason('');
     } catch (error: unknown) {
       console.error('Failed to reject driver:', error);
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to reject driver');
+      const err = error as { 
+        response?: { 
+          data?: { 
+            message?: string; 
+            errors?: Array<{ message: string }> 
+          } 
+        } 
+      };
+      const errorMessage = err.response?.data?.errors?.[0]?.message || 
+                           err.response?.data?.message || 
+                           'Failed to reject driver';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const handleBlock = async () => {
-    if (!reason.trim()) {
-      toast.error('Please provide a reason for blocking');
+    if (reason.trim().length < 10) {
+      toast.error('Please provide a reason with at least 10 characters');
       return;
     }
 
@@ -90,8 +110,18 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
       setReason('');
     } catch (error: unknown) {
       console.error('Failed to block driver:', error);
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to block driver');
+      const err = error as { 
+        response?: { 
+          data?: { 
+            message?: string; 
+            errors?: Array<{ message: string }> 
+          } 
+        } 
+      };
+      const errorMessage = err.response?.data?.errors?.[0]?.message || 
+                           err.response?.data?.message || 
+                           'Failed to block driver';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -106,8 +136,18 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
       setActionDialog(null);
     } catch (error: unknown) {
       console.error('Failed to unblock driver:', error);
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to unblock driver');
+      const err = error as { 
+        response?: { 
+          data?: { 
+            message?: string; 
+            errors?: Array<{ message: string }> 
+          } 
+        } 
+      };
+      const errorMessage = err.response?.data?.errors?.[0]?.message || 
+                           err.response?.data?.message || 
+                           'Failed to unblock driver';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

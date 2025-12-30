@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import type { Booking } from '@/types';
-import { formatDistance } from 'date-fns';
+import { formatDistanceToNow } from '@/lib/date-utils';
 
 interface LiveTripCardProps {
   booking: Booking;
@@ -16,7 +16,7 @@ interface LiveTripCardProps {
 export function LiveTripCard({ booking, onViewDetails }: LiveTripCardProps) {
   return (
     <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="pt-6">
+      <CardContent className="p-8">
         <div className="space-y-4">
           <div className="flex items-start justify-between">
             <div>
@@ -81,7 +81,7 @@ export function LiveTripCard({ booking, onViewDetails }: LiveTripCardProps) {
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
               <span>
-                Updated {formatDistance(new Date(booking.updatedAt), new Date(), { addSuffix: true })}
+                Updated {formatDistanceToNow(booking.updatedAt, { addSuffix: true })}
               </span>
             </div>
             <Button

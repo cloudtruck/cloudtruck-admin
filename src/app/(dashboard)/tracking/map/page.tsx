@@ -38,14 +38,14 @@ export default function MapViewPage() {
       <PageHeader
         title="Map View"
         description={`${bookings?.length || 0} active shipment${(bookings?.length || 0) !== 1 ? 's' : ''} on map`}
-        actions={
-          <Button asChild variant="outline" size="sm">
-            <Link href="/tracking/live-trips">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to List
-            </Link>
-          </Button>
-        }
+        // actions={
+        //   <Button asChild variant="outline" size="sm">
+        //     <Link href="/tracking/live-trips">
+        //       <ArrowLeft className="h-4 w-4 mr-2" />
+        //       Back to List
+        //     </Link>
+        //   </Button>
+        // }
       />
 
       <div className="border rounded-lg bg-muted/50 p-8">

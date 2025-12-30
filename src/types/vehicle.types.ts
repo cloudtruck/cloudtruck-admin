@@ -4,7 +4,7 @@ export interface Vehicle {
   truckType: string;
   length: {
     value: number;
-    unit: 'ft' | 'm';
+    unit: 'ft' | 'meter';
   };
   capacity: {
     value: number;
@@ -12,20 +12,28 @@ export interface Vehicle {
   };
   bodyType: 'open' | 'closed' | 'container';
   rcDocument?: string;
-  fitnessExpiry?: string;
-  permitExpiry?: string;
+  expiryDates?: {
+    insurance?: string;
+    fitness?: string;
+    permit?: string;
+    pollution?: string;
+  };
   isVerified?: boolean;
   hasGPS?: boolean;
   hasFASTag?: boolean;
   owner?: {
     _id: string;
     name: string;
+    phone?: string;
   };
   driver?: {
     _id: string;
     name: string;
+    phone?: string;
   };
-  status: 'available' | 'on-trip' | 'maintenance' | 'inactive';
+  status: 'active' | 'inactive' | 'under-maintenance' | 'retired';
+  availability: 'available' | 'on-trip' | 'maintenance' | 'offline';
+  verificationStatus: 'pending' | 'verified' | 'rejected' | 'expired';
   createdAt: string;
   updatedAt: string;
 }

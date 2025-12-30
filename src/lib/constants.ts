@@ -28,11 +28,17 @@ export const DRIVER_STATUSES = [
 ] as const;
 
 export const TRUCK_TYPES = [
-  { value: '14-ft', label: '14 ft' },
-  { value: '17-ft', label: '17 ft' },
-  { value: '19-ft', label: '19 ft' },
-  { value: 'container', label: 'Container' },
+  { value: '14ft', label: '14 ft' },
+  { value: '17ft', label: '17 ft' },
+  { value: '19ft', label: '19 ft' },
+  { value: '20ft', label: '20 ft' },
+  { value: '22ft', label: '22 ft' },
+  { value: '24ft', label: '24 ft' },
+  { value: '32ft', label: '32 ft' },
+  { value: 'container-20ft', label: '20 ft Container' },
+  { value: 'container-40ft', label: '40 ft Container' },
   { value: 'open-body', label: 'Open Body' },
+  { value: 'closed-body', label: 'Closed Body' },
 ] as const;
 
 export const BODY_TYPES = [

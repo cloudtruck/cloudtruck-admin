@@ -106,12 +106,12 @@ export default function CustomerDetailPage({ params }: CustomerDetailPageProps) 
           title="Customer Not Found"
           description="The customer you are looking for does not exist"
         />
-        <div className="flex justify-center">
+        {/* <div className="flex justify-center">
           <Button onClick={() => router.push('/customers')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Customers
           </Button>
-        </div>
+        </div> */}
       </div>
     );
   }
@@ -157,10 +157,10 @@ export default function CustomerDetailPage({ params }: CustomerDetailPageProps) 
                 Block
               </Button>
             )}
-            <Button onClick={() => router.push('/customers')} variant="ghost" size="sm">
+            {/* <Button onClick={() => router.push('/customers')} variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
-            </Button>
+            </Button> */}
           </div>
         }
       />

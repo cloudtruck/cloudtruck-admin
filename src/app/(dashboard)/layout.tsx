@@ -36,12 +36,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-background transition-transform md:relative md:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-background transition-transform md:relative md:translate-x-0 flex flex-col',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center justify-between border-b px-4">
+        <div className="flex h-16 items-center justify-between border-b px-4 shrink-0">
           <div className="flex items-center gap-2 text-foreground">
             <Truck className="h-6 w-6" />
             <span className="text-xl font-semibold">Cloudtruck</span>
@@ -56,7 +56,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Navigation */}
-        <div className="flex-1 overflow-y-auto py-4">
+        <div className="flex-1 overflow-y-auto">
           <Sidebar />
         </div>
       </aside>
@@ -64,7 +64,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto bg-muted/10 p-4 md:p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-muted/10 p-4 md:p-8">{children}</main>
       </div>
     </div>
   );

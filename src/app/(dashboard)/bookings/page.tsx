@@ -1,27 +1,43 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BookingCard } from '@/components/bookings/BookingCard';
 import { BookingFilters } from '@/components/bookings/BookingFilters';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useBookings } from '@/hooks/useBookings';
 import { useBookingStore } from '@/store/bookingStore';
+import { bookingApi } from '@/lib/api';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
+import { AssignDriverModal } from '@/components/bookings/AssignDriverModal';
 import { ChevronLeft, ChevronRight, Package } from 'lucide-react';
 import { toast } from 'sonner';
+import type { BookingStats } from '@/types';
 
 export default function AllBookingsPage() {
   const { bookings, loading, error, refetch } = useBookings();
   const { filters, pagination, setFilters, clearFilters, setPagination } = useBookingStore();
   const [activeTab, setActiveTab] = useState('all');
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [stats, setStats] = useState<BookingStats | null>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await bookingApi.getStats();
+        setStats(response.data.data);
+      } catch (error) {
+        console.error('Failed to fetch booking stats:', error);
+      }
+    };
+    fetchStats();
+  }, [bookings]); // Refetch stats when bookings change (e.g. after status update)
 
   const handleAssignDriver = (bookingId: string) => {
     setSelectedBookingId(bookingId);
-    toast.info('Driver assignment modal will open here');
-    // TODO: Implement assign driver modal
+    setAssignModalOpen(true);
   };
 
   const handlePageChange = (page: number) => {
@@ -31,45 +47,31 @@ export default function AllBookingsPage() {
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    if (value === 'all') {
-      setFilters({ ...filters, status: undefined });
-    } else {
-      setFilters({ ...filters, status: value });
+    let status: string | undefined = undefined;
+    
+    if (value === 'new') {
+      status = 'created,under-review';
+    } else if (value === 'assigned') {
+      status = 'assigned';
+    } else if (value === 'in-transit') {
+      status = 'in-transit';
+    } else if (value === 'delivered') {
+      status = 'delivered,pod-received';
     }
+    
+    setFilters({ ...filters, status });
   };
 
-  // Filter bookings by tab
-  const getFilteredBookings = () => {
-    if (!bookings || bookings.length === 0) return [];
-    if (activeTab === 'all') return bookings;
-    return bookings.filter((booking) => {
-      if (activeTab === 'new') {
-        return booking.status === 'created' || booking.status === 'under-review';
-      }
-      if (activeTab === 'assigned') {
-        return booking.status === 'assigned';
-      }
-      if (activeTab === 'in-transit') {
-        return booking.status === 'in-transit';
-      }
-      if (activeTab === 'delivered') {
-        return booking.status === 'delivered' || booking.status === 'pod-received';
-      }
-      return true;
-    });
-  };
+  // The bookings are already filtered by the backend based on the status set in handleTabChange
+  const filteredBookings = bookings || [];
 
-  const filteredBookings = getFilteredBookings();
-
-  // Count bookings by status for tabs
+  // Count bookings by status for tabs using the stats from backend
   const statusCounts = {
-    all: bookings?.length || 0,
-    new: bookings?.filter((b) => b.status === 'created' || b.status === 'under-review').length || 0,
-    assigned: bookings?.filter((b) => b.status === 'assigned').length || 0,
-    inTransit: bookings?.filter((b) => b.status === 'in-transit').length || 0,
-    delivered: bookings?.filter(
-      (b) => b.status === 'delivered' || b.status === 'pod-received'
-    ).length || 0,
+    all: stats?.total || 0,
+    new: stats?.newRequests || 0,
+    assigned: stats?.assigned || 0,
+    inTransit: stats?.inTransit || 0,
+    delivered: stats?.delivered || 0,
   };
 
   if (error) {
@@ -191,6 +193,18 @@ export default function AllBookingsPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {selectedBookingId && (
+        <AssignDriverModal
+          isOpen={assignModalOpen}
+          onClose={() => {
+            setAssignModalOpen(false);
+            setSelectedBookingId(null);
+          }}
+          booking={bookings.find((b) => b._id === selectedBookingId)!}
+          onSuccess={refetch}
+        />
+      )}
     </div>
   );
 }

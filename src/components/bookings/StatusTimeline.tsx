@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Booking } from '@/types';
 import { Check, Circle } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
 
 interface StatusTimelineProps {
@@ -79,17 +79,17 @@ export function StatusTimeline({ booking }: StatusTimelineProps) {
                   </p>
                   {isCurrent && (
                     <p className="text-sm text-muted-foreground">
-                      {format(new Date(booking.updatedAt), 'dd MMM yyyy, hh:mm a')}
+                      {formatDate(booking.updatedAt)}
                     </p>
                   )}
                   {index === 0 && isCompleted && (
                     <p className="text-sm text-muted-foreground">
-                      {format(new Date(booking.createdAt), 'dd MMM yyyy, hh:mm a')}
+                      {formatDate(booking.createdAt)}
                     </p>
                   )}
                   {step.key === 'assigned' && booking.assignedAt && isCompleted && (
                     <p className="text-sm text-muted-foreground">
-                      {format(new Date(booking.assignedAt), 'dd MMM yyyy, hh:mm a')}
+                      {formatDate(booking.assignedAt)}
                     </p>
                   )}
                 </div>

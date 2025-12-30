@@ -231,7 +231,7 @@ export function EditBookingModal({ booking, open, onCloseAction, onSuccessAction
                   checked={formData.isHazardous}
                   onCheckedChange={(checked) => handleInputChange('isHazardous', checked)}
                 />
-                <Label htmlFor="isHazardous">Hazardous Material</Label>
+                <Label htmlFor="isHazardous" className="mb-0">Hazardous Material</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -239,7 +239,7 @@ export function EditBookingModal({ booking, open, onCloseAction, onSuccessAction
                   checked={formData.isFragile}
                   onCheckedChange={(checked) => handleInputChange('isFragile', checked)}
                 />
-                <Label htmlFor="isFragile">Fragile</Label>
+                <Label htmlFor="isFragile" className="mb-0">Fragile</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -247,7 +247,7 @@ export function EditBookingModal({ booking, open, onCloseAction, onSuccessAction
                   checked={formData.requiresTemperatureControl}
                   onCheckedChange={(checked) => handleInputChange('requiresTemperatureControl', checked)}
                 />
-                <Label htmlFor="requiresTemperatureControl">Temperature Control</Label>
+                <Label htmlFor="requiresTemperatureControl" className="mb-0">Temperature Control</Label>
               </div>
             </div>
           </div>

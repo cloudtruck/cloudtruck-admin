@@ -80,6 +80,8 @@ export const driverApi = {
 
   getById: (id: string) => api.get<ApiResponse<Driver>>(`/drivers/${id}`),
 
+  create: (data: any) => api.post<ApiResponse<Driver>>('/drivers', data),
+
   getAvailable: (params?: { truckType?: string; city?: string; lat?: number; lng?: number }) =>
     api.get<ApiResponse<Driver[]>>('/drivers/available', { params }),
 

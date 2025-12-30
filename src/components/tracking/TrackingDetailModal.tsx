@@ -15,7 +15,7 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { trackingApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Booking, TrackingLocation } from '@/types';
-import { format, formatDistance } from 'date-fns';
+import { formatDate } from '@/lib/date-utils';
 import Link from 'next/link';
 
 interface TrackingDetailModalProps {
@@ -201,7 +201,7 @@ export function TrackingDetailModal({ booking, open, onClose }: TrackingDetailMo
                 <div>
                   <p className="text-muted-foreground">Created</p>
                   <p className="font-medium">
-                    {format(new Date(booking.createdAt), 'MMM dd, yyyy HH:mm')}
+                    {formatDate(booking.createdAt, 'MMM dd, yyyy HH:mm')}
                   </p>
                 </div>
               </div>

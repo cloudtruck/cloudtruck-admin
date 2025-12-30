@@ -43,7 +43,7 @@ export function LiveTripFilters({
               onKeyDown={(e) => e.key === 'Enter' && onSearch()}
               className="max-w-md"
             />
-            <Button onClick={onSearch} size="icon">
+            <Button onClick={onSearch} size="icon" variant="outline">
               <Search className="h-4 w-4" />
             </Button>
           </div>

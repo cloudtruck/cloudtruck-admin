@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, CalendarIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,9 +30,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { vehicleApi } from '@/lib/api';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { vehicleApi, driverApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { TRUCK_TYPES, BODY_TYPES } from '@/lib/constants';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import type { Driver } from '@/types';
 
 const addVehicleSchema = z.object({
   vehicleNumber: z.string().min(1, 'Vehicle number is required'),
@@ -42,6 +51,10 @@ const addVehicleSchema = z.object({
   capacityValue: z.string().min(1, 'Capacity is required'),
   capacityUnit: z.enum(['kg', 'tons']),
   bodyType: z.enum(['open', 'closed', 'container']),
+  owner: z.string().min(1, 'Owner is required'),
+  insuranceExpiry: z.date({
+    required_error: 'Insurance expiry date is required',
+  }),
 });
 
 type AddVehicleFormData = z.infer<typeof addVehicleSchema>;
@@ -52,6 +65,7 @@ interface AddVehicleModalProps {
 
 export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
   const [open, setOpen] = useState(false);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
 
   const form = useForm<AddVehicleFormData>({
     resolver: zodResolver(addVehicleSchema),
@@ -63,8 +77,23 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
       capacityValue: '',
       capacityUnit: 'tons',
       bodyType: 'closed',
+      owner: '',
     },
   });
+
+  useEffect(() => {
+    if (open) {
+      const fetchDrivers = async () => {
+        try {
+          const response = await driverApi.getAll({ limit: 100 });
+          setDrivers(response.data.data.drivers);
+        } catch (error) {
+          console.error('Failed to fetch drivers:', error);
+        }
+      };
+      fetchDrivers();
+    }
+  }, [open]);
 
   const onSubmit = async (data: AddVehicleFormData) => {
     try {
@@ -73,13 +102,17 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
         truckType: data.truckType,
         length: {
           value: parseFloat(data.lengthValue),
-          unit: data.lengthUnit,
+          unit: data.lengthUnit === 'm' ? 'meter' : 'ft',
         },
         capacity: {
           value: parseFloat(data.capacityValue),
           unit: data.capacityUnit,
         },
         bodyType: data.bodyType,
+        owner: data.owner,
+        expiryDates: {
+          insurance: data.insuranceExpiry.toISOString(),
+        },
         status: 'available',
       });
 
@@ -112,23 +145,50 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="vehicleNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Vehicle Number</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="DL01AB1234"
-                      {...field}
-                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="vehicleNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vehicle Number</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="DL01AB1234"
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="owner"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Owner (Driver)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select owner" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {drivers.map((driver) => (
+                          <SelectItem key={driver._id} value={driver._id}>
+                            {driver.name} ({driver.phone})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
@@ -259,6 +319,48 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
                 </div>
               </div>
             </div>
+
+            <FormField
+              control={form.control}
+              name="insuranceExpiry"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Insurance Expiry Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date < new Date()
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>

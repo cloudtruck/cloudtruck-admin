@@ -74,12 +74,12 @@ export default function PaymentDetailPage({ params }: PaymentDetailPageProps) {
           title="Payment Not Found"
           description="The payment you are looking for does not exist"
         />
-        <div className="flex justify-center">
+        {/* <div className="flex justify-center">
           <Button onClick={() => router.push('/payments')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Payments
           </Button>
-        </div>
+        </div> */}
       </div>
     );
   }
@@ -108,10 +108,10 @@ export default function PaymentDetailPage({ params }: PaymentDetailPageProps) {
               <Download className="h-4 w-4 mr-2" />
               Invoice
             </Button>
-            <Button onClick={() => router.push('/payments')} variant="ghost" size="sm">
+            {/* <Button onClick={() => router.push('/payments')} variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
-            </Button>
+            </Button> */}
           </div>
         }
       />

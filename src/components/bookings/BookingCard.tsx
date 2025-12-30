@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { format } from 'date-fns';
+import { formatDate } from '@/lib/date-utils';
 import { MapPin, Package, Calendar, Truck, Eye, UserCheck } from 'lucide-react';
 import { Booking } from '@/types';
 import { useRouter } from 'next/navigation';
@@ -27,7 +28,7 @@ export function BookingCard({ booking, onAssignDriver }: BookingCardProps) {
 
   return (
     <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={handleViewDetails}>
-      <CardContent className="p-6">
+      <CardContent className="p-8">
         <div className="space-y-4">
           {/* Header - Booking ID and Status */}
           <div className="flex items-start justify-between">
@@ -90,9 +91,7 @@ export function BookingCard({ booking, onAssignDriver }: BookingCardProps) {
             <div>
               <p className="text-xs text-muted-foreground">Load Date</p>
               <p className="text-sm font-medium">
-                {booking.loadDateTime
-                  ? format(new Date(booking.loadDateTime), 'dd MMM yyyy, hh:mm a')
-                  : 'Not scheduled'}
+                {formatDate(booking.loadDateTime, 'dd MMM yyyy, hh:mm a', 'Not scheduled')}
               </p>
             </div>
           </div>

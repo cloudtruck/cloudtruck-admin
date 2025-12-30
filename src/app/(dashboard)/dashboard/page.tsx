@@ -123,11 +123,11 @@ export default function DashboardPage() {
       setTrendData(mockTrendData);
 
       const mockStatusData: StatusData[] = [
-        { status: 'created', count: stats.newRequests || 5, color: '#3b82f6' },
-        { status: 'assigned', count: stats.assigned || 8, color: '#eab308' },
-        { status: 'in-transit', count: stats.inTransit || 12, color: '#6366f1' },
-        { status: 'delivered', count: stats.delivered || 20, color: '#22c55e' },
-        { status: 'pod-received', count: stats.podPending || 3, color: '#059669' },
+        { status: 'created', count: stats.newRequests || 0, color: '#3b82f6' },
+        { status: 'assigned', count: stats.assigned || 0, color: '#eab308' },
+        { status: 'in-transit', count: stats.inTransit || 0, color: '#6366f1' },
+        { status: 'delivered', count: stats.delivered || 0, color: '#22c55e' },
+        { status: 'pod-received', count: stats.podPending || 0, color: '#059669' },
       ];
       setStatusData(mockStatusData);
     } catch (error) {

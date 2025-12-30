@@ -57,12 +57,12 @@ export default function DriverDetailPage({ params }: DriverDetailPageProps) {
           title="Driver Not Found"
           description="The driver you are looking for does not exist"
         />
-        <div className="flex justify-center">
+        {/* <div className="flex justify-center">
           <Button onClick={() => router.push('/drivers')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Drivers
           </Button>
-        </div>
+        </div> */}
       </div>
     );
   }
@@ -79,10 +79,10 @@ export default function DriverDetailPage({ params }: DriverDetailPageProps) {
               Refresh
             </Button>
             <DriverActions driver={driver} onSuccess={fetchDriver} />
-            <Button onClick={() => router.push('/drivers')} variant="ghost" size="sm">
+            {/* <Button onClick={() => router.push('/drivers')} variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
-            </Button>
+            </Button> */}
           </div>
         }
       />
