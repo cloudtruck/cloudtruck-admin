@@ -126,7 +126,7 @@ export default function LiveTripsPage() {
               <LiveTripCard
                 key={booking._id}
                 booking={booking}
-                onViewDetails={handleViewDetails}
+                onViewDetailsAction={handleViewDetails}
               />
             ))}
           </div>
@@ -164,7 +164,8 @@ export default function LiveTripsPage() {
       <TrackingDetailModal
         booking={selectedBooking}
         open={trackingModalOpen}
-        onClose={() => setTrackingModalOpen(false)}
+        onCloseAction={() => setTrackingModalOpen(false)}
+        onBookingUpdate={fetchLiveTrips}
       />
     </div>
   );

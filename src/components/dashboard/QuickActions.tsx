@@ -74,8 +74,8 @@ export function QuickActions() {
 
       <CreateBookingModal
         isOpen={isCreateBookingOpen}
-        onClose={() => setIsCreateBookingOpen(false)}
-        onSuccess={() => {
+        onCloseAction={() => setIsCreateBookingOpen(false)}
+        onSuccessAction={() => {
           // Optionally refresh dashboard data
           window.location.reload();
         }}

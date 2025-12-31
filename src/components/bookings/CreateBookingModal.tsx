@@ -23,19 +23,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { bookingApi, customerApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { TRUCK_TYPES, BODY_TYPES, MATERIAL_TYPES } from '@/lib/constants';
-import type { Customer } from '@/types';
+import type { Customer, Booking } from '@/types';
 import { Loader2 } from 'lucide-react';
 
 interface CreateBookingModalProps {
   isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
+  onCloseAction: () => void;
+  onSuccessAction: () => void;
 }
 
 export function CreateBookingModal({
   isOpen,
-  onClose,
-  onSuccess,
+  onCloseAction,
+  onSuccessAction,
 }: CreateBookingModalProps) {
   const [loading, setLoading] = useState(false);
   const [customersLoading, setCustomersLoading] = useState(false);
@@ -72,7 +72,8 @@ export function CreateBookingModal({
       setCustomersLoading(true);
       const response = await customerApi.getAll({ limit: 100 });
       setCustomers(response.data.data.customers);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      console.error('Failed to fetch customers:', error);
       toast.error('Failed to fetch customers');
     } finally {
       setCustomersLoading(false);
@@ -136,19 +137,21 @@ export function CreateBookingModal({
         requiresTemperatureControl: formData.requiresTemperatureControl,
       };
 
-      await bookingApi.create(bookingData);
+      await bookingApi.create(bookingData as unknown as Partial<Booking>);
       toast.success('Booking created successfully');
-      onSuccess();
-      onClose();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to create booking');
+      onSuccessAction();
+      onCloseAction();
+    } catch (error: unknown) {
+      console.error('Failed to create booking:', error);
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to create booking');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={onCloseAction}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Booking</DialogTitle>
@@ -344,7 +347,7 @@ export function CreateBookingModal({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onCloseAction}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>

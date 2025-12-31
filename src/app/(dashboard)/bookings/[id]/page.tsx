@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -19,9 +19,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { bookingApi } from '@/lib/api';
 import { formatDate } from '@/lib/date-utils';
 import { Booking } from '@/types';
-import { format } from 'date-fns';
 import {
-  ArrowLeft,
   Package,
   Truck,
   Calendar,
@@ -35,7 +33,6 @@ import { toast } from 'sonner';
 
 export default function BookingDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const bookingId = params.id as string;
 
   const [booking, setBooking] = useState<Booking | null>(null);
@@ -47,11 +44,7 @@ export default function BookingDetailPage() {
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
 
-  useEffect(() => {
-    fetchBookingDetails();
-  }, [bookingId]);
-
-  const fetchBookingDetails = async () => {
+  const fetchBookingDetails = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -65,7 +58,11 @@ export default function BookingDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [bookingId]);
+
+  useEffect(() => {
+    fetchBookingDetails();
+  }, [fetchBookingDetails]);
 
   const handleAssignDriver = () => {
     setAssignModalOpen(true);
@@ -272,9 +269,9 @@ export default function BookingDetailPage() {
       {/* Assign Driver Modal */}
       <AssignDriverModal
         isOpen={assignModalOpen}
-        onClose={() => setAssignModalOpen(false)}
+        onCloseAction={() => setAssignModalOpen(false)}
         booking={booking}
-        onSuccess={fetchBookingDetails}
+        onSuccessAction={fetchBookingDetails}
       />
 
       {/* Update Status Modal */}

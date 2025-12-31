@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { MapPin, Clock, Phone, Navigation } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { MapPin, Clock, Phone, Navigation, MessageSquare, Edit } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { AddNoteModal } from '@/components/bookings/AddNoteModal';
+import { UpdateStatusModal } from '@/components/bookings/UpdateStatusModal';
 import { trackingApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Booking, TrackingLocation } from '@/types';
@@ -22,20 +24,17 @@ import Link from 'next/link';
 interface TrackingDetailModalProps {
   booking: Booking | null;
   open: boolean;
-  onClose: () => void;
+  onCloseAction: () => void;
+  onBookingUpdate?: () => void;
 }
 
-export function TrackingDetailModal({ booking, open, onClose }: TrackingDetailModalProps) {
+export function TrackingDetailModal({ booking, open, onCloseAction, onBookingUpdate }: TrackingDetailModalProps) {
   const [latestLocation, setLatestLocation] = useState<TrackingLocation | null>(null);
   const [loading, setLoading] = useState(false);
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (booking && open) {
-      fetchLatestLocation();
-    }
-  }, [booking, open]);
-
-  const fetchLatestLocation = async () => {
+  const fetchLatestLocation = useCallback(async () => {
     if (!booking) return;
 
     setLoading(true);
@@ -48,17 +47,41 @@ export function TrackingDetailModal({ booking, open, onClose }: TrackingDetailMo
     } finally {
       setLoading(false);
     }
-  };
+  }, [booking]);
+
+  useEffect(() => {
+    if (booking && open) {
+      fetchLatestLocation();
+    }
+  }, [booking, open, fetchLatestLocation]);
 
   if (!booking) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onCloseAction}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Track Shipment: {booking.bookingId}</span>
-            <StatusBadge status={booking.status} type="booking" />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setNoteModalOpen(true)}
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Add Note
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setStatusModalOpen(true)}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Update Status
+              </Button>
+              <StatusBadge status={booking.status} type="booking" />
+            </div>
           </DialogTitle>
         </DialogHeader>
 
@@ -212,6 +235,28 @@ export function TrackingDetailModal({ booking, open, onClose }: TrackingDetailMo
           </Card>
         </div>
       </DialogContent>
+
+      {/* Add Note Modal */}
+      <AddNoteModal
+        isOpen={noteModalOpen}
+        onClose={() => setNoteModalOpen(false)}
+        booking={booking}
+        onSuccess={() => {
+          onBookingUpdate?.();
+          fetchLatestLocation(); // Refresh data
+        }}
+      />
+
+      {/* Update Status Modal */}
+      <UpdateStatusModal
+        isOpen={statusModalOpen}
+        onClose={() => setStatusModalOpen(false)}
+        booking={booking}
+        onSuccess={() => {
+          onBookingUpdate?.();
+          fetchLatestLocation(); // Refresh data
+        }}
+      />
     </Dialog>
   );
 }

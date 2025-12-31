@@ -202,13 +202,13 @@ export function AddDriverModal({ onSuccess }: AddDriverModalProps) {
             <div className="flex flex-wrap gap-2">
               {TRUCK_TYPES.map((type) => (
                 <Button
-                  key={type}
+                  key={type.value}
                   type="button"
-                  variant={formData.preferredTruckTypes.includes(type) ? 'default' : 'outline'}
+                  variant={formData.preferredTruckTypes.includes(type.value) ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => handleTruckTypeChange(type)}
+                  onClick={() => handleTruckTypeChange(type.value)}
                 >
-                  {type}
+                  {type.label}
                 </Button>
               ))}
             </div>

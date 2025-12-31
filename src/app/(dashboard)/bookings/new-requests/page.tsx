@@ -139,12 +139,12 @@ export default function NewRequestsPage() {
       {selectedBookingId && (
         <AssignDriverModal
           isOpen={showAssignModal}
-          onClose={() => {
+          onCloseAction={() => {
             setShowAssignModal(false);
             setSelectedBookingId(null);
           }}
           booking={bookings.find((b) => b._id === selectedBookingId)!}
-          onSuccess={refetch}
+          onSuccessAction={refetch}
         />
       )}
     </div>

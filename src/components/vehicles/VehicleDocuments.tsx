@@ -43,23 +43,23 @@ export function VehicleDocuments({ vehicle }: VehicleDocumentsProps) {
           </div>
         )}
 
-        {(vehicle.fitnessExpiry || vehicle.permitExpiry) && (
+        {(vehicle.expiryDates?.fitness || vehicle.expiryDates?.permit) && (
           <div className="p-4 border rounded-lg bg-muted/50">
             <h4 className="font-medium mb-3">Validity Information</h4>
             <div className="space-y-2 text-sm">
-              {vehicle.fitnessExpiry && (
+              {vehicle.expiryDates?.fitness && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Fitness Expires</span>
                   <span className="font-medium">
-                    {format(new Date(vehicle.fitnessExpiry), 'MMM dd, yyyy')}
+                    {format(new Date(vehicle.expiryDates.fitness), 'MMM dd, yyyy')}
                   </span>
                 </div>
               )}
-              {vehicle.permitExpiry && (
+              {vehicle.expiryDates?.permit && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Permit Expires</span>
                   <span className="font-medium">
-                    {format(new Date(vehicle.permitExpiry), 'MMM dd, yyyy')}
+                    {format(new Date(vehicle.expiryDates.permit), 'MMM dd, yyyy')}
                   </span>
                 </div>
               )}
@@ -67,7 +67,7 @@ export function VehicleDocuments({ vehicle }: VehicleDocumentsProps) {
           </div>
         )}
 
-        {!vehicle.rcDocument && !vehicle.fitnessExpiry && !vehicle.permitExpiry && (
+        {!vehicle.rcDocument && !vehicle.expiryDates?.fitness && !vehicle.expiryDates?.permit && (
           <div className="text-center py-8 text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
             <p>No documents uploaded</p>

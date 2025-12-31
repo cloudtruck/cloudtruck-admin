@@ -3,7 +3,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { format } from 'date-fns';
 import { formatDate } from '@/lib/date-utils';
 import { MapPin, Package, Calendar, Truck, Eye, UserCheck } from 'lucide-react';
 import { Booking } from '@/types';

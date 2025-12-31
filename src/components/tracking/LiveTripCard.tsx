@@ -10,10 +10,10 @@ import { formatDistanceToNow } from '@/lib/date-utils';
 
 interface LiveTripCardProps {
   booking: Booking;
-  onViewDetails: (booking: Booking) => void;
+  onViewDetailsAction: (booking: Booking) => void;
 }
 
-export function LiveTripCard({ booking, onViewDetails }: LiveTripCardProps) {
+export function LiveTripCard({ booking, onViewDetailsAction }: LiveTripCardProps) {
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-8">
@@ -87,7 +87,7 @@ export function LiveTripCard({ booking, onViewDetails }: LiveTripCardProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onViewDetails(booking)}
+              onClick={() => onViewDetailsAction(booking)}
             >
               <Eye className="h-4 w-4 mr-1" />
               Track

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -28,21 +28,20 @@ import { driverApi, vehicleApi, bookingApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Driver, Vehicle, Booking } from '@/types';
 import { Check, ChevronsUpDown, Loader2, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 interface AssignDriverModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onCloseAction: () => void;
   booking: Booking;
-  onSuccess: () => void;
+  onSuccessAction: () => void;
 }
 
 export function AssignDriverModal({
   isOpen,
-  onClose,
+  onCloseAction,
   booking,
-  onSuccess,
+  onSuccessAction,
 }: AssignDriverModalProps) {
   const [loading, setLoading] = useState(false);
   const [driversLoading, setDriversLoading] = useState(false);
@@ -54,6 +53,41 @@ export function AssignDriverModal({
   const [notes, setNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [open, setOpen] = useState(false);
+
+  const fetchDrivers = useCallback(async () => {
+    try {
+      setDriversLoading(true);
+      // We can filter by truck type if needed, but for now let's get all available
+      const response = await driverApi.getAvailable({
+        truckType: booking.truckTypeNeeded,
+      });
+      setDrivers(response.data.data);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to fetch available drivers');
+    } finally {
+      setDriversLoading(false);
+    }
+  }, [booking.truckTypeNeeded]);
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const fetchVehicles = useCallback(async (driverId: string) => {
+    try {
+      setVehiclesLoading(true);
+      const response = await vehicleApi.getByDriver(driverId);
+      setVehicles(response.data.data);
+      
+      // Auto-select if only one vehicle
+      if (response.data.data.length === 1) {
+        setSelectedVehicleId(response.data.data[0]._id);
+      }
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to fetch driver vehicles');
+    } finally {
+      setVehiclesLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -67,48 +101,7 @@ export function AssignDriverModal({
       setSearchQuery('');
       setOpen(false);
     }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (selectedDriverId) {
-      fetchVehicles(selectedDriverId);
-    } else {
-      setVehicles([]);
-      setSelectedVehicleId('');
-    }
-  }, [selectedDriverId]);
-
-  const fetchDrivers = async () => {
-    try {
-      setDriversLoading(true);
-      // We can filter by truck type if needed, but for now let's get all available
-      const response = await driverApi.getAvailable({
-        truckType: booking.truckTypeNeeded,
-      });
-      setDrivers(response.data.data);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to fetch available drivers');
-    } finally {
-      setDriversLoading(false);
-    }
-  };
-
-  const fetchVehicles = async (driverId: string) => {
-    try {
-      setVehiclesLoading(true);
-      const response = await vehicleApi.getByDriver(driverId);
-      setVehicles(response.data.data);
-      
-      // Auto-select if only one vehicle
-      if (response.data.data.length === 1) {
-        setSelectedVehicleId(response.data.data[0]._id);
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to fetch driver vehicles');
-    } finally {
-      setVehiclesLoading(false);
-    }
-  };
+  }, [isOpen, fetchDrivers]);
 
   const handleAssign = async () => {
     if (!selectedDriverId || !selectedVehicleId) {
@@ -124,10 +117,11 @@ export function AssignDriverModal({
         notes,
       });
       toast.success('Driver assigned successfully');
-      onSuccess();
-      onClose();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to assign driver');
+      onSuccessAction();
+      onCloseAction();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to assign driver');
     } finally {
       setLoading(false);
     }
@@ -139,7 +133,7 @@ export function AssignDriverModal({
   );
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={onCloseAction}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Assign Driver & Vehicle</DialogTitle>
@@ -165,7 +159,7 @@ export function AssignDriverModal({
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+              <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
                 <div className="flex items-center border-b px-3">
                   <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                   <input
@@ -186,7 +180,7 @@ export function AssignDriverModal({
                         <div
                           key={driver._id}
                           className={cn(
-                            "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                            "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
                             selectedDriverId === driver._id && "bg-accent text-accent-foreground"
                           )}
                           onClick={() => {
@@ -257,7 +251,7 @@ export function AssignDriverModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
+          <Button variant="outline" onClick={onCloseAction} disabled={loading}>
             Cancel
           </Button>
           <Button onClick={handleAssign} disabled={loading || !selectedDriverId || !selectedVehicleId}>

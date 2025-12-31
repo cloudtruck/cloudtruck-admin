@@ -75,14 +75,14 @@ export function DriverVehicles({ driverId }: DriverVehiclesProps) {
                   <Badge
                     variant="outline"
                     className={
-                      vehicle.status === 'available'
+                      vehicle.availability === 'available'
                         ? 'bg-green-100 text-green-800 border-green-200'
-                        : vehicle.status === 'on-trip'
+                        : vehicle.availability === 'on-trip'
                         ? 'bg-blue-100 text-blue-800 border-blue-200'
                         : 'bg-gray-100 text-gray-800 border-gray-200'
                     }
                   >
-                    {vehicle.status}
+                    {vehicle.availability}
                   </Badge>
                 </div>
                 <div className="flex gap-4 text-sm text-muted-foreground">

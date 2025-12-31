@@ -52,9 +52,7 @@ const addVehicleSchema = z.object({
   capacityUnit: z.enum(['kg', 'tons']),
   bodyType: z.enum(['open', 'closed', 'container']),
   owner: z.string().min(1, 'Owner is required'),
-  insuranceExpiry: z.date({
-    required_error: 'Insurance expiry date is required',
-  }),
+  insuranceExpiry: z.date(),
 });
 
 type AddVehicleFormData = z.infer<typeof addVehicleSchema>;
@@ -109,11 +107,12 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
           unit: data.capacityUnit,
         },
         bodyType: data.bodyType,
-        owner: data.owner,
+        owner: drivers.find(d => d._id === data.owner) || { _id: data.owner, name: 'Unknown', phone: undefined },
         expiryDates: {
           insurance: data.insuranceExpiry.toISOString(),
         },
-        status: 'available',
+        status: 'active',
+        availability: 'available',
       });
 
       toast.success('Vehicle added successfully');
