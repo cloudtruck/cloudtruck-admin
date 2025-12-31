@@ -49,7 +49,7 @@ export function QuickActions() {
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {actions.map((action) => (
               <Button
                 key={action.label}
@@ -57,13 +57,13 @@ export function QuickActions() {
                 className="h-auto py-4 justify-start"
                 onClick={action.onClick}
               >
-                <div className="flex items-start gap-3 w-full">
-                  <div className={`p-2 rounded-lg ${action.color}`}>
-                    <action.icon className="h-5 w-5 text-white" />
+                <div className="flex items-start gap-1 w-full">
+                  <div className={`p-1 rounded-lg ${action.color}`}>
+                    <action.icon className="h-3 w-3 text-white" />
                   </div>
                   <div className="text-left">
                     <p className="font-medium">{action.label}</p>
-                    <p className="text-xs text-muted-foreground">{action.description}</p>
+                    {/* <p className="text-xs text-muted-foreground">{action.description}</p> */}
                   </div>
                 </div>
               </Button>

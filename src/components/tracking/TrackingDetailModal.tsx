@@ -16,6 +16,7 @@ import { trackingApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Booking, TrackingLocation } from '@/types';
 import { formatDate } from '@/lib/date-utils';
+import { formatDistance } from 'date-fns';
 import Link from 'next/link';
 
 interface TrackingDetailModalProps {
@@ -137,9 +138,9 @@ export function TrackingDetailModal({ booking, open, onClose }: TrackingDetailMo
                     </h3>
                     <Badge variant="outline">
                       <Clock className="h-3 w-3 mr-1" />
-                      {formatDistance(new Date(latestLocation.timestamp), new Date(), {
+                      {latestLocation.timestamp ? formatDistance(new Date(latestLocation.timestamp), new Date(), {
                         addSuffix: true,
-                      })}
+                      }) : 'N/A'}
                     </Badge>
                   </div>
                   {latestLocation.city && (
@@ -147,14 +148,16 @@ export function TrackingDetailModal({ booking, open, onClose }: TrackingDetailMo
                       <span className="font-medium">City:</span> {latestLocation.city}
                     </p>
                   )}
-                  <p className="text-sm text-muted-foreground">
-                    Coordinates: {latestLocation.location.coordinates[1].toFixed(6)},{' '}
-                    {latestLocation.location.coordinates[0].toFixed(6)}
-                  </p>
+                  {latestLocation.location?.coordinates && (
+                    <p className="text-sm text-muted-foreground">
+                      Coordinates: {latestLocation.location.coordinates[1].toFixed(6)},{' '}
+                      {latestLocation.location.coordinates[0].toFixed(6)}
+                    </p>
+                  )}
                   <div className="flex gap-2 pt-2">
                     <Button variant="outline" size="sm" asChild>
                       <a
-                        href={`https://www.google.com/maps?q=${latestLocation.location.coordinates[1]},${latestLocation.location.coordinates[0]}`}
+                        href={latestLocation.location?.coordinates ? `https://www.google.com/maps?q=${latestLocation.location.coordinates[1]},${latestLocation.location.coordinates[0]}` : '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                       >

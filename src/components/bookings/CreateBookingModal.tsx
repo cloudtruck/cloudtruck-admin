@@ -166,7 +166,7 @@ export function CreateBookingModal({
                   <SelectValue placeholder={customersLoading ? 'Loading customers...' : 'Select customer'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {customers.map((customer) => (
+                  {customers?.map((customer) => (
                     <SelectItem key={customer._id} value={customer._id}>
                       {customer.companyName} ({customer.phone})
                     </SelectItem>
@@ -226,8 +226,8 @@ export function CreateBookingModal({
                 </SelectTrigger>
                 <SelectContent>
                   {MATERIAL_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -257,8 +257,8 @@ export function CreateBookingModal({
                 </SelectTrigger>
                 <SelectContent>
                   {TRUCK_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -276,8 +276,8 @@ export function CreateBookingModal({
                 </SelectTrigger>
                 <SelectContent>
                   {BODY_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

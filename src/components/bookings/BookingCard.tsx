@@ -46,7 +46,7 @@ export function BookingCard({ booking, onAssignDriver }: BookingCardProps) {
           </div>
 
           {/* Route */}
-          <div className="space-y-2">
+          <div className="flex items-start gap-22">
             <div className="flex items-start gap-2">
               <MapPin className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
               <div className="flex-1 min-w-0">

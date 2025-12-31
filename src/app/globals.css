@@ -552,3 +552,30 @@ button[data-variant="default"]:focus {
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+  background-clip: content-box;
+}
+
+/* Hide scrollbar buttons (edge triangles) */
+::-webkit-scrollbar-button {
+  display: none;
+}

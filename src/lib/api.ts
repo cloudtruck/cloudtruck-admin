@@ -205,10 +205,10 @@ export const customerApi = {
 
 export const trackingApi = {
   getLatest: (bookingId: string) =>
-    api.get<ApiResponse<TrackingLocation>>(`/tracking/booking/${bookingId}/latest`),
+    api.get<ApiResponse<TrackingLocation>>(`/tracking/${bookingId}/last-location`),
 
   getHistory: (bookingId: string, params?: { page?: number; limit?: number; startDate?: string; endDate?: string }) =>
-    api.get<ApiResponse<TrackingHistory>>(`/tracking/booking/${bookingId}/history`, { params }),
+    api.get<ApiResponse<TrackingHistory>>(`/tracking/${bookingId}/history`, { params }),
 
   getLiveTrips: () => api.get<ApiResponse<Array<Booking & { lastLocation: TrackingLocation }>>>('/tracking/live-trips'),
 };

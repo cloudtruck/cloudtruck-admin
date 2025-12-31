@@ -151,6 +151,9 @@ export default function DashboardPage() {
           loading={loading}
           trend={stats.podPendingChange || { value: 0, isPositive: false }}
         />
+        <div>
+          <QuickActions />
+        </div>
       </div>
 
       {/* Charts Row */}
@@ -164,9 +167,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2">
           <RecentActivity activities={activities} loading={loadingActivities} />
         </div>
-        <div>
-          <QuickActions />
-        </div>
+        
       </div>
     </div>
   );
