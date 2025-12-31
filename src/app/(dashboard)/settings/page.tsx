@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,17 +9,25 @@ import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
 import { staffApi } from '@/lib/api';
 import { toast } from 'sonner';
-import { User, Mail, Shield, Key } from 'lucide-react';
+import { User, Mail, Shield, Key, Pencil } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 
 export default function SettingsPage() {
   const { user } = useAuthStore();
+  const [editOpen, setEditOpen] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editData, setEditData] = useState({ name: user?.name || '', email: user?.email || '' });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setEditData({ name: user?.name || '', email: user?.email || '' });
+  }, [user, editOpen]);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +63,24 @@ export default function SettingsPage() {
     }
   };
 
+  const handleEditProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?._id) return;
+    
+    setEditLoading(true);
+    try {
+      await staffApi.update(user._id, { name: editData.name, email: editData.email });
+      toast.success('Profile updated successfully');
+      setEditOpen(false);
+      // Optionally, refresh user info here
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -66,14 +92,57 @@ export default function SettingsPage() {
         <div className="lg:col-span-1">
           <Card>
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
-              <CardDescription>Your account details</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Profile Information</CardTitle>
+                  <CardDescription>Your account details</CardDescription>
+                </div>
+                <Button size="icon" variant="ghost" aria-label="Edit Profile" onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <User className="h-5 w-5 text-primary" />
                 </div>
+                <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                  <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                      <DialogTitle>Edit Profile</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleEditProfile} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="editName">Name</Label>
+                        <Input
+                          id="editName"
+                          value={editData.name}
+                          onChange={e => setEditData({ ...editData, name: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="editEmail">Email</Label>
+                        <Input
+                          id="editEmail"
+                          type="email"
+                          value={editData.email}
+                          onChange={e => setEditData({ ...editData, email: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setEditOpen(false)} disabled={editLoading}>
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={editLoading}>
+                          {editLoading ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
                 <div>
                   <p className="text-sm text-muted-foreground">Name</p>
                   <p className="font-medium">{user?.name || 'N/A'}</p>
