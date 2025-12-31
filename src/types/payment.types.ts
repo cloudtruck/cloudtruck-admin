@@ -6,6 +6,11 @@ export interface Payment {
     customer: {
       _id: string;
       companyName: string;
+      contactPerson?: {
+        name: string;
+        phone: string;
+        email?: string;
+      };
     };
     pickup?: {
       city: string;
@@ -16,6 +21,7 @@ export interface Payment {
     materialType?: string;
     truckTypeNeeded?: string;
   };
+  
   amount: number;
   advanceAmount?: number;
   balanceAmount?: number;

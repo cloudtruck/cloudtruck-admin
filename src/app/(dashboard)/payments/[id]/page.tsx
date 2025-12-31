@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, RefreshCw, Download, CreditCard, Calendar, FileText } from 'lucide-react';
+import { RefreshCw, Download, CreditCard, Calendar, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -134,22 +134,24 @@ export default function PaymentDetailPage({ params }: PaymentDetailPageProps) {
               </div>
 
               <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                
+                <div>
+                <p className="text-sm text-muted-foreground mb-1">Advance Paid</p>
                 {payment.advanceAmount && payment.advanceAmount > 0 && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Advance Paid</p>
                     <p className="text-xl font-semibold">
                       ₹{payment.advanceAmount.toLocaleString('en-IN')}
                     </p>
-                  </div>
                 )}
-                {payment.balanceAmount && payment.balanceAmount > 0 && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Balance Due</p>
+                </div>
+                
+                <div>
+                <p className="text-sm text-muted-foreground mb-1">Balance Due</p>
+                {payment.balanceAmount && payment.balanceAmount > 0 && (                    
                     <p className="text-xl font-semibold text-red-600">
                       ₹{payment.balanceAmount.toLocaleString('en-IN')}
                     </p>
-                  </div>
                 )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
@@ -259,13 +261,24 @@ export default function PaymentDetailPage({ params }: PaymentDetailPageProps) {
               <div className="space-y-3 text-sm">
                 <div>
                   <p className="text-muted-foreground">Company Name</p>
-                  <Link
-                    href={`/customers/${payment.booking.customer._id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {payment.booking.customer.companyName}
-                  </Link>
+                  <p className="font-medium">{payment.booking.customer.companyName}</p>
                 </div>
+                <div>
+                  <p className="text-muted-foreground">Contact Person</p>
+                  <p className="font-medium">{payment.booking.customer.contactPerson?.name || 'N/A'}</p>
+                </div>
+                {payment.booking.customer.contactPerson?.phone && (
+                  <div>
+                    <p className="text-muted-foreground">Phone</p>
+                    <p className="font-medium">{payment.booking.customer.contactPerson.phone}</p>
+                  </div>
+                )}
+                {payment.booking.customer.contactPerson?.email && (
+                  <div>
+                    <p className="text-muted-foreground">Email</p>
+                    <p className="font-medium">{payment.booking.customer.contactPerson.email}</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
