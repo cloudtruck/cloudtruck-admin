@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -57,9 +58,10 @@ export function AssignDriverModal({
   const fetchDrivers = useCallback(async () => {
     try {
       setDriversLoading(true);
-      // We can filter by truck type if needed, but for now let's get all available
+      // We can filter by truck type and prioritize return trip candidates
       const response = await driverApi.getAvailable({
         truckType: booking.truckTypeNeeded,
+        matchPickupCity: booking.pickup.city,
       });
       setDrivers(response.data.data);
     } catch (error: unknown) {
@@ -70,7 +72,6 @@ export function AssignDriverModal({
     }
   }, [booking.truckTypeNeeded]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const fetchVehicles = useCallback(async (driverId: string) => {
     try {
       setVehiclesLoading(true);
@@ -102,6 +103,15 @@ export function AssignDriverModal({
       setOpen(false);
     }
   }, [isOpen, fetchDrivers]);
+
+  useEffect(() => {
+    if (selectedDriverId) {
+      fetchVehicles(selectedDriverId);
+    } else {
+      setVehicles([]);
+      setSelectedVehicleId('');
+    }
+  }, [selectedDriverId, fetchVehicles]);
 
   const handleAssign = async () => {
     if (!selectedDriverId || !selectedVehicleId) {
@@ -180,7 +190,7 @@ export function AssignDriverModal({
                         <div
                           key={driver._id}
                           className={cn(
-                            "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
+                            "relative flex cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
                             selectedDriverId === driver._id && "bg-accent text-accent-foreground"
                           )}
                           onClick={() => {
@@ -188,16 +198,23 @@ export function AssignDriverModal({
                             setOpen(false);
                           }}
                         >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedDriverId === driver._id ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <div className="flex flex-col">
-                            <span>{driver.name}</span>
-                            <span className="text-xs text-muted-foreground">{driver.phone}</span>
+                          <div className="flex items-center">
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedDriverId === driver._id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span>{driver.name}</span>
+                              <span className="text-xs text-muted-foreground">{driver.phone}</span>
+                            </div>
                           </div>
+                          {driver.isReturnTrip && (
+                            <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200">
+                              Return
+                            </Badge>
+                          )}
                         </div>
                       ))
                     )}

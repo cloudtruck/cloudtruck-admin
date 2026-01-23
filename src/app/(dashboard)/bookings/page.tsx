@@ -11,7 +11,8 @@ import { bookingApi } from '@/lib/api';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
 import { AssignDriverModal } from '@/components/bookings/AssignDriverModal';
-import { ChevronLeft, ChevronRight, Package } from 'lucide-react';
+import { CreateBookingModal } from '@/components/bookings/CreateBookingModal';
+import { ChevronLeft, ChevronRight, Package, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BookingStats } from '@/types';
 
@@ -21,6 +22,7 @@ export default function AllBookingsPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [stats, setStats] = useState<BookingStats | null>(null);
 
   useEffect(() => {
@@ -95,9 +97,15 @@ export default function AllBookingsPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold">All Bookings</h1>
-        <p className="text-muted-foreground">Manage all shipment bookings</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">All Bookings</h1>
+          <p className="text-muted-foreground">Manage all shipment bookings</p>
+        </div>
+        <Button onClick={() => setCreateModalOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Booking
+        </Button>
       </div>
 
       {/* Tabs */}
@@ -211,6 +219,15 @@ export default function AllBookingsPage() {
           onSuccessAction={refetch}
         />
       )}
+
+      <CreateBookingModal
+        isOpen={createModalOpen}
+        onCloseAction={() => setCreateModalOpen(false)}
+        onSuccessAction={() => {
+          setCreateModalOpen(false);
+          refetch();
+        }}
+      />
     </div>
   );
 }

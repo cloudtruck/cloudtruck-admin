@@ -14,7 +14,7 @@ const statusSteps = [
   { key: 'created', label: 'Booking Created' },
   { key: 'under-review', label: 'Under Review' },
   { key: 'assigned', label: 'Driver Assigned' },
-  { key: 'driver-enroute-to-pickup', label: 'Driver En Route' },
+  { key: 'driver-en-route', label: 'Driver En Route' },
   { key: 'reached-pickup', label: 'Reached Pickup' },
   { key: 'loaded', label: 'Loaded' },
   { key: 'in-transit', label: 'In Transit' },

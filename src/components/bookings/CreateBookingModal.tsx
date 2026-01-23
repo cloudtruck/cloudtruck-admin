@@ -112,32 +112,30 @@ export function CreateBookingModal({
     setLoading(true);
     try {
       const bookingData = {
-        customer: formData.customerId,
-        pickup: {
-          city: formData.pickupCity,
-          address: formData.pickupAddress,
-        },
-        drop: {
-          city: formData.dropCity,
-          address: formData.dropAddress,
-        },
+        customerId: formData.customerId,
+        pickupCity: formData.pickupCity,
+        pickupLat: 0, // Mocked for now
+        pickupLng: 0, // Mocked for now
+        pickupAddress: formData.pickupAddress,
+        dropCity: formData.dropCity,
+        dropLat: 0, // Mocked for now
+        dropLng: 0, // Mocked for now
+        dropAddress: formData.dropAddress,
         materialType: formData.materialType,
-        weight: {
-          value: parseFloat(formData.weight),
-          unit: 'tons' as const,
-        },
-        truckTypeNeeded: formData.truckType,
-        bodyType: formData.bodyType,
-        loadDateTime: new Date(formData.loadDateTime).toISOString(),
+        weight: parseFloat(formData.weight),
+        truckType: formData.truckType,
+        bodyType: formData.bodyType || 'open',
+        loadDate: new Date(formData.loadDateTime).toISOString(),
         expectedAmount: formData.expectedAmount ? parseFloat(formData.expectedAmount) : undefined,
-        advanceRequired: formData.advanceRequired ? parseFloat(formData.advanceRequired) : undefined,
+        advanceRequired: formData.advanceRequired ? parseFloat(formData.advanceRequired) : 0,
         additionalInstructions: formData.additionalInstructions,
         isHazardous: formData.isHazardous,
         isFragile: formData.isFragile,
         requiresTemperatureControl: formData.requiresTemperatureControl,
+        priority: 'medium',
       };
 
-      await bookingApi.create(bookingData as unknown as Partial<Booking>);
+      await bookingApi.create(bookingData as any);
       toast.success('Booking created successfully');
       onSuccessAction();
       onCloseAction();
@@ -171,7 +169,7 @@ export function CreateBookingModal({
                 <SelectContent>
                   {customers?.map((customer) => (
                     <SelectItem key={customer._id} value={customer._id}>
-                      {customer.companyName} ({customer.phone})
+                      {customer.companyName} ({customer.contactPerson?.phone || 'No phone'})
                     </SelectItem>
                   ))}
                 </SelectContent>

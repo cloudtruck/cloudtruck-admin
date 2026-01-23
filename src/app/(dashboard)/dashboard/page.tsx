@@ -87,7 +87,7 @@ export default function DashboardPage() {
       const mockStatusData: StatusData[] = [
         { status: 'created', count: statusObj.created || 0, color: '#3b82f6' },
         { status: 'assigned', count: statusObj.assigned || 0, color: '#eab308' },
-        { status: 'in-transit', count: statusObj['in-transit'] || statusObj['in-transit'] || statusObj['driver-enroute-to-pickup'] || 0, color: '#6366f1' },
+        { status: 'in-transit', count: statusObj['in-transit'] || statusObj['in-transit'] || statusObj['driver-en-route'] || 0, color: '#6366f1' },
         { status: 'delivered', count: statusObj.delivered || 0, color: '#22c55e' },
         { status: 'pod-received', count: statusObj['pod-received'] || 0, color: '#059669' },
       ];
