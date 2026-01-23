@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { employeeApi } from '@/lib/api';
 import { useEmployeeStore } from '@/store/employeeStore';
 import { toast } from 'sonner';
-import type { Staff } from '@/types';
+import type { ApiErrorResponse } from '@/types';
 
 export function useEmployees() {
   const [loading, setLoading] = useState(false);
@@ -21,8 +21,9 @@ export function useEmployees() {
         setEmployees(response.data.data.staff);
         setPagination(response.data.data.pagination);
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to fetch employees');
+    } catch (error: unknown) {
+      const err = error as ApiErrorResponse;
+      toast.error(err.response?.data?.message || 'Failed to fetch employees');
       console.error('Error fetching employees:', error);
     } finally {
       setLoading(false);

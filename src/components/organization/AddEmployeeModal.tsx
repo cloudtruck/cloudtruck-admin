@@ -23,7 +23,7 @@ import { employeeApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { DEPARTMENTS } from '@/lib/constants';
-import type { CreateStaffData } from '@/types';
+import type { CreateStaffData, ApiErrorResponse } from '@/types';
 
 interface AddEmployeeModalProps {
   onSuccess: () => void;
@@ -67,7 +67,7 @@ export function AddEmployeeModal({ onSuccess }: AddEmployeeModalProps) {
         onSuccess();
       }
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
+      const err = error as ApiErrorResponse;
       toast.error(err.response?.data?.message || 'Failed to add employee');
       console.error('Error adding employee:', error);
     } finally {

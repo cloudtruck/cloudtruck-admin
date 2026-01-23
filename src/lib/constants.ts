@@ -166,7 +166,7 @@ export const DEFAULT_ROLE_TEMPLATES = [
   },
 ];
 
-// Top 100 Indian cities for autocomplete
+// Top 91 Indian cities for autocomplete
 export const INDIAN_CITIES = [
   'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Ahmedabad',
   'Chennai', 'Kolkata', 'Pune', 'Jaipur', 'Surat',

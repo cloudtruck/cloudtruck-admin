@@ -22,7 +22,7 @@ import { employeeApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { DEPARTMENTS } from '@/lib/constants';
-import type { Staff, UpdateStaffData } from '@/types';
+import type { Staff, UpdateStaffData, ApiErrorResponse } from '@/types';
 
 interface EditEmployeeModalProps {
   isOpen: boolean;
@@ -71,7 +71,7 @@ export function EditEmployeeModal({
         onSuccess();
       }
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
+      const err = error as ApiErrorResponse;
       toast.error(err.response?.data?.message || 'Failed to update employee');
       console.error('Error updating employee:', error);
     } finally {
