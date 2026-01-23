@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { INDIAN_CITIES } from '@/lib/constants';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,7 +25,7 @@ export function CityAutocomplete({
   disabled = false,
 }: CityAutocompleteProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredCities, setFilteredCities] = useState<string[]>([]);
+  const [filteredCities, setFilteredCities] = useState<string[]>(INDIAN_CITIES.slice(0, 20));
   const [showDropdown, setShowDropdown] = useState(false);
 
   // Filter cities based on search query
@@ -40,11 +39,6 @@ export function CityAutocomplete({
       setFilteredCities(INDIAN_CITIES.slice(0, 20)); // Show top 20 by default
     }
   }, [searchQuery]);
-
-  // Initialize with top cities
-  useEffect(() => {
-    setFilteredCities(INDIAN_CITIES.slice(0, 20));
-  }, []);
 
   const handleSelect = (city: string) => {
     onChange(city);
