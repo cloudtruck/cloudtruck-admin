@@ -21,12 +21,12 @@ export interface Vehicle {
   isVerified?: boolean;
   hasGPS?: boolean;
   hasFASTag?: boolean;
-  owner?: {
+  owner?: string | {
     _id: string;
     name: string;
     phone?: string;
   };
-  driver?: {
+  driver?: string | {
     _id: string;
     name: string;
     phone?: string;

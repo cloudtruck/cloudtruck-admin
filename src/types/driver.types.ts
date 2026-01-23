@@ -6,9 +6,10 @@ export interface Driver {
   email?: string;
   profilePhoto?: string;
   licenseNumber?: string;
+  licenseExpiry?: string;
   licensePhoto?: string;
-  aadharNumber?: string;
-  aadharPhoto?: string;
+  aadhaarNumber?: string;
+  aadhaarPhoto?: string;
   panNumber?: string;
   panPhoto?: string;
   bankDetails?: {
@@ -29,6 +30,8 @@ export interface Driver {
   lastActive?: string;
   totalTrips?: number;
   rating?: number;
+  lastDropCity?: string;
+  isReturnTrip?: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -44,7 +44,7 @@ import { cn } from '@/lib/utils';
 import type { Driver } from '@/types';
 
 const addVehicleSchema = z.object({
-  vehicleNumber: z.string().min(1, 'Vehicle number is required'),
+  vehicleNumber: z.string().min(5, 'Vehicle number must be at least 5 characters'),
   truckType: z.string().min(1, 'Truck type is required'),
   lengthValue: z.string().min(1, 'Length is required'),
   lengthUnit: z.enum(['ft', 'm']),
@@ -107,7 +107,7 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
           unit: data.capacityUnit,
         },
         bodyType: data.bodyType,
-        owner: drivers.find(d => d._id === data.owner) || { _id: data.owner, name: 'Unknown', phone: undefined },
+        owner: data.owner,
         expiryDates: {
           insurance: data.insuranceExpiry.toISOString(),
         },

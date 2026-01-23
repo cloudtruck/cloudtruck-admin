@@ -67,8 +67,10 @@ export function AddDriverModal({ onSuccess }: AddDriverModalProps) {
       setIsOpen(false);
       onSuccess();
       resetForm();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to create driver');
+    } catch (error: unknown) {
+      console.error('Failed to create driver:', error);
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to create driver');
     } finally {
       setLoading(false);
     }
