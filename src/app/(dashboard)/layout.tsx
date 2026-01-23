@@ -8,10 +8,10 @@ import { Truck, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth(true);
+  const { user, isHydrated } = useAuth(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  if (!user) {
+  if (!isHydrated || (isHydrated && !user)) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="flex items-center gap-2">

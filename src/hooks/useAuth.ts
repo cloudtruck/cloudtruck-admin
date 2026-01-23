@@ -5,21 +5,21 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export function useAuth(requireAuth = true) {
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, _hasHydrated } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (requireAuth && !isAuthenticated) {
+    if (_hasHydrated && requireAuth && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isAuthenticated, requireAuth, router]);
+  }, [isAuthenticated, requireAuth, router, _hasHydrated]);
 
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
 
-  return { user, isAuthenticated, logout: handleLogout };
+  return { user, isAuthenticated, logout: handleLogout, isHydrated: _hasHydrated };
 }
 
 export function useRequireRole(allowedRoles: string[]) {

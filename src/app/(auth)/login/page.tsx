@@ -21,6 +21,7 @@ import { loginSchema, type LoginFormData } from '@/validators/schemas';
 import { authApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { AxiosError } from 'axios';
+import { useEffect } from 'react';
 
 interface ErrorResponse {
   message?: string;
@@ -28,8 +29,14 @@ interface ErrorResponse {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setAuth } = useAuthStore();
+  const { setAuth, isAuthenticated, _hasHydrated } = useAuthStore();
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (_hasHydrated && isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [isAuthenticated, _hasHydrated, router]);
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
