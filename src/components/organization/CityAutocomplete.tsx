@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { INDIAN_CITIES } from '@/lib/constants';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -25,19 +25,17 @@ export function CityAutocomplete({
   disabled = false,
 }: CityAutocompleteProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredCities, setFilteredCities] = useState<string[]>(INDIAN_CITIES.slice(0, 20));
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Filter cities based on search query
-  useEffect(() => {
+  // Filter cities based on search query using useMemo
+  const filteredCities = useMemo(() => {
     if (searchQuery) {
       const filtered = INDIAN_CITIES.filter((city) =>
         city.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      setFilteredCities(filtered.slice(0, 50)); // Limit to 50 results
-    } else {
-      setFilteredCities(INDIAN_CITIES.slice(0, 20)); // Show top 20 by default
+      return filtered.slice(0, 50); // Limit to 50 results
     }
+    return INDIAN_CITIES.slice(0, 20); // Show top 20 by default
   }, [searchQuery]);
 
   const handleSelect = (city: string) => {

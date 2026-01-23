@@ -70,8 +70,9 @@ export function EditEmployeeModal({
         onClose();
         onSuccess();
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to update employee');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to update employee');
       console.error('Error updating employee:', error);
     } finally {
       setLoading(false);
@@ -167,7 +168,7 @@ export function EditEmployeeModal({
               <Label htmlFor="status">Status</Label>
               <Select
                 value={formData.status}
-                onValueChange={(value) => setFormData({ ...formData, status: value as any })}
+                onValueChange={(value) => setFormData({ ...formData, status: value as 'active' | 'inactive' | 'blocked' })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />

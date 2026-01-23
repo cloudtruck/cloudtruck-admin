@@ -35,7 +35,7 @@ export default function MasterDataPage() {
                 </Button>
               </div>
               <div className="space-y-2">
-                {['14 ft', '17 ft', '19 ft', '20 ft', '22 ft', '24 ft', '32 ft'].map((type, idx) => (
+                {['14 ft', '17 ft', '19 ft', '20 ft', '22 ft', '24 ft', '32 ft'].map((type) => (
                   <div
                     key={type}
                     className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50"

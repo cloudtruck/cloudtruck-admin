@@ -33,7 +33,7 @@ export interface MasterData {
   key: string;
   displayName: string;
   description?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   displayOrder: number;
   isActive: boolean;
   usageCount: number;
@@ -151,7 +151,7 @@ export interface CreateMasterDataData {
   key: string;
   displayName: string;
   description?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface CreateAccountData {
