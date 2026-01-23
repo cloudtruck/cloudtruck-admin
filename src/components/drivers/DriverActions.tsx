@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MoreVertical, CheckCircle, XCircle, Ban, Unlock } from 'lucide-react';
+import { MoreVertical, CheckCircle, XCircle, Ban, Unlock, Pencil } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +26,7 @@ import { Label } from '@/components/ui/label';
 import { driverApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Driver } from '@/types';
+import { EditDriverModal } from './EditDriverModal';
 
 interface DriverActionsProps {
   driver: Driver;
@@ -35,6 +36,7 @@ interface DriverActionsProps {
 export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
   const [loading, setLoading] = useState(false);
   const [actionDialog, setActionDialog] = useState<'approve' | 'reject' | 'block' | 'unblock' | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [reason, setReason] = useState('');
 
   const handleApprove = async () => {
@@ -191,8 +193,21 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
               Unblock Driver
             </DropdownMenuItem>
           )}
+
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setIsEditModalOpen(true)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit Details
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <EditDriverModal
+        isOpen={isEditModalOpen}
+        onCloseAction={() => setIsEditModalOpen(false)}
+        onSuccessAction={onSuccess}
+        driver={driver}
+      />
 
       <AlertDialog open={actionDialog === 'approve'} onOpenChange={(open) => !open && setActionDialog(null)}>
         <AlertDialogContent>

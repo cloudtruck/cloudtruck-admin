@@ -87,7 +87,9 @@ export const driverApi = {
 
   create: (data: any) => api.post<ApiResponse<Driver>>('/drivers', data),
 
-  getAvailable: (params?: { truckType?: string; city?: string; lat?: number; lng?: number }) =>
+  update: (id: string, data: Partial<Driver>) => api.patch<ApiResponse<Driver>>(`/drivers/${id}`, data),
+
+  getAvailable: (params?: { truckType?: string; city?: string; lat?: number; lng?: number; matchPickupCity?: string }) =>
     api.get<ApiResponse<Driver[]>>('/drivers/available', { params }),
 
   approve: (id: string, data?: { notes?: string }) =>

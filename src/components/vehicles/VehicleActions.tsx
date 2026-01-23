@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MoreVertical, CheckCircle } from 'lucide-react';
+import { MoreVertical, CheckCircle, Pencil } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +24,7 @@ import {
 import { vehicleApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Vehicle } from '@/types';
+import { EditVehicleModal } from './EditVehicleModal';
 
 interface VehicleActionsProps {
   vehicle: Vehicle;
@@ -33,6 +34,7 @@ interface VehicleActionsProps {
 export function VehicleActions({ vehicle, onSuccessAction }: VehicleActionsProps) {
   const [loading, setLoading] = useState(false);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const handleApprove = async () => {
     setLoading(true);
@@ -50,10 +52,6 @@ export function VehicleActions({ vehicle, onSuccessAction }: VehicleActionsProps
     }
   };
 
-  if (vehicle.isVerified) {
-    return null; // No actions needed for already verified vehicles
-  }
-
   return (
     <>
       <DropdownMenu>
@@ -65,12 +63,27 @@ export function VehicleActions({ vehicle, onSuccessAction }: VehicleActionsProps
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setApproveDialogOpen(true)}>
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Approve Vehicle
+          
+          {!vehicle.isVerified && (
+            <DropdownMenuItem onClick={() => setApproveDialogOpen(true)}>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Approve Vehicle
+            </DropdownMenuItem>
+          )}
+
+          <DropdownMenuItem onClick={() => setIsEditModalOpen(true)}>
+            <Pencil className="h-4 w-4 mr-2" />
+            Edit Details
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <EditVehicleModal
+        vehicle={vehicle}
+        isOpen={isEditModalOpen}
+        onCloseAction={() => setIsEditModalOpen(false)}
+        onSuccessAction={onSuccessAction || (() => {})}
+      />
 
       <AlertDialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
         <AlertDialogContent>
