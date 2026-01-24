@@ -10,6 +10,7 @@ import { RouteMap } from '@/components/bookings/RouteMap';
 import { StatusTimeline } from '@/components/bookings/StatusTimeline';
 import { PaymentInfo } from '@/components/bookings/PaymentInfo';
 import { DocumentsSection } from '@/components/bookings/DocumentsSection';
+import EwayBillSection from '@/components/ewayBills/EwayBillSection';
 import { EditBookingModal } from '@/components/bookings/EditBookingModal';
 import { AssignDriverModal } from '@/components/bookings/AssignDriverModal';
 import { UpdateStatusModal } from '@/components/bookings/UpdateStatusModal';
@@ -248,6 +249,7 @@ export default function BookingDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           <CustomerInfo booking={booking} />
           <RouteMap booking={booking} />
+          <EwayBillSection bookingId={booking._id} />
           <DocumentsSection booking={booking} />
         </div>
 
