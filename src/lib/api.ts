@@ -18,6 +18,11 @@ import type {
   Pagination,
   LoginCredentials,
   AuthResponse,
+  EwayBill,
+  EwayBillFilters,
+  CreateEwayBillRequest,
+  UpdatePartBRequest,
+  GSTVerificationResponse,
 } from '@/types';
 
 // ============================================================================
@@ -285,3 +290,47 @@ export const exportApi = {
   customers: (params?: CustomerFilters) =>
     api.get('/exports/customers', { params, responseType: 'blob' }),
 };
+
+// ============================================================================
+// E-way Bill APIs
+// ============================================================================
+
+export const ewayBillApi = {
+  create: (data: any) =>
+    api.post<ApiResponse<any>>('/eway-bills', data),
+
+  getAll: (params?: {
+    status?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    partBStatus?: string;
+    search?: string;
+    bookingId?: string;
+    page?: number;
+    limit?: number;
+  }) =>
+    api.get<ApiResponse<{ ewayBills: any[]; pagination: Pagination }>>('/eway-bills', {
+      params,
+    }),
+
+  getById: (id: string) =>
+    api.get<ApiResponse<any>>(`/eway-bills/${id}`),
+
+  getHistory: (id: string) =>
+    api.get<ApiResponse<{ history: any[] }>>(`/eway-bills/${id}/history`),
+
+  updatePartB: (id: string, data: { vehicleNumber: string; reason: string; notes?: string }) =>
+    api.put<ApiResponse<any>>(`/eway-bills/${id}/part-b`, data),
+
+  cancel: (id: string, data: { reason: string }) =>
+    api.patch<ApiResponse<any>>(`/eway-bills/${id}/cancel`, data),
+
+  verifyGSTIN: (gstin: string) =>
+    api.post<ApiResponse<{
+      legalName: string;
+      tradeName?: string;
+      address: string;
+      state: string;
+    }>>('/eway-bills/verify-gstin', { gstin }),
+};
+

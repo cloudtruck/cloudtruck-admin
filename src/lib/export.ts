@@ -7,6 +7,13 @@ export function exportToExcel(data: unknown[], filename: string) {
   XLSX.writeFile(workbook, `${filename}.xlsx`);
 }
 
+export function exportToCSV(data: unknown[], filename: string) {
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const csv = XLSX.utils.sheet_to_csv(worksheet);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  downloadBlob(blob, `${filename}.csv`);
+}
+
 export function downloadBlob(blob: Blob, filename: string) {
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
