@@ -24,3 +24,4 @@ export * from './vehicle.types';
 export * from './payment.types';
 export * from './customer.types';
 export * from './tracking.types';
+export * from './ewayBill.types';
