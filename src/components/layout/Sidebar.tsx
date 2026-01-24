@@ -12,9 +12,10 @@ import {
   MapPin,
   DollarSign,
   FileText,
+  FileCheck,
   Settings,
   ChevronDown,
-  FileCheck,
+  Building2,
 } from 'lucide-react';
 
 interface NavItem {
@@ -73,6 +74,18 @@ const navigationItems: NavItem[] = [
     label: 'Reports',
     href: '/reports',
     icon: FileText,
+  },
+  {
+    label: 'Organization',
+    href: '/organization',
+    icon: Building2,
+    children: [
+      { label: 'Employees', href: '/organization/employees', icon: Users },
+      { label: 'Master Data', href: '/organization/master', icon: FileText },
+      { label: 'Accounts', href: '/organization/accounts', icon: DollarSign },
+      { label: 'Settings', href: '/organization/settings', icon: Settings },
+      { label: 'Branches', href: '/organization/branches', icon: Building2 },
+    ],
   },
 ];
 

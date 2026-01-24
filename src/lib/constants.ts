@@ -78,3 +78,114 @@ export const ITEMS_PER_PAGE = 20;
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 export const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:5000';
+
+// Organization constants
+export const ROLE_TEMPLATE_CATEGORIES = [
+  { value: 'operations', label: 'Operations' },
+  { value: 'finance', label: 'Finance' },
+  { value: 'support', label: 'Customer Support' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'custom', label: 'Custom' },
+] as const;
+
+export const MASTER_DATA_CATEGORIES = [
+  { value: 'truck-type', label: 'Truck Type' },
+  { value: 'material-type', label: 'Material Type' },
+  { value: 'charge-type', label: 'Charge Type' },
+  { value: 'body-type', label: 'Body Type' },
+  { value: 'document-type', label: 'Document Type' },
+] as const;
+
+export const DEPARTMENTS = [
+  { value: 'operations', label: 'Operations' },
+  { value: 'finance', label: 'Finance' },
+  { value: 'customer-support', label: 'Customer Support' },
+  { value: 'sales', label: 'Sales' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'it', label: 'IT' },
+] as const;
+
+export const ACCOUNT_TYPES = [
+  { value: 'savings', label: 'Savings' },
+  { value: 'current', label: 'Current' },
+] as const;
+
+export const REGIONS = [
+  { value: 'north', label: 'North' },
+  { value: 'south', label: 'South' },
+  { value: 'east', label: 'East' },
+  { value: 'west', label: 'West' },
+  { value: 'central', label: 'Central' },
+] as const;
+
+// Default role templates (to be seeded)
+export const DEFAULT_ROLE_TEMPLATES = [
+  {
+    templateName: 'Operations Manager',
+    description: 'Full access to booking operations, driver assignment, and tracking',
+    permissions: [
+      'booking.read',
+      'booking.create',
+      'booking.update',
+      'booking.assign',
+      'booking.cancel',
+      'driver.read',
+      'driver.update',
+      'vehicle.read',
+      'tracking.read',
+    ],
+    category: 'operations',
+  },
+  {
+    templateName: 'Finance User',
+    description: 'Access to payments, invoices, and financial reports',
+    permissions: [
+      'booking.read',
+      'booking.update.price',
+      'payment.read',
+      'payment.update',
+      'payment.refund',
+      'customer.read',
+      'customer.update.creditLimit',
+      'reports.finance',
+    ],
+    category: 'finance',
+  },
+  {
+    templateName: 'Customer Support',
+    description: 'Customer queries, booking status updates, and basic operations',
+    permissions: [
+      'booking.read',
+      'booking.update.status',
+      'customer.read',
+      'driver.read',
+      'vehicle.read',
+      'tracking.read',
+    ],
+    category: 'support',
+  },
+];
+
+// Top 91 Indian cities for autocomplete
+export const INDIAN_CITIES = [
+  'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Ahmedabad',
+  'Chennai', 'Kolkata', 'Pune', 'Jaipur', 'Surat',
+  'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane',
+  'Bhopal', 'Visakhapatnam', 'Pimpri-Chinchwad', 'Patna', 'Vadodara',
+  'Ghaziabad', 'Ludhiana', 'Agra', 'Nashik', 'Faridabad',
+  'Meerut', 'Rajkot', 'Kalyan-Dombivli', 'Vasai-Virar', 'Varanasi',
+  'Srinagar', 'Aurangabad', 'Dhanbad', 'Amritsar', 'Navi Mumbai',
+  'Allahabad', 'Ranchi', 'Howrah', 'Coimbatore', 'Jabalpur',
+  'Gwalior', 'Vijayawada', 'Jodhpur', 'Madurai', 'Raipur',
+  'Kota', 'Chandigarh', 'Guwahati', 'Solapur', 'Hubballi-Dharwad',
+  'Tiruchirappalli', 'Bareilly', 'Mysore', 'Tiruppur', 'Gurgaon',
+  'Aligarh', 'Jalandhar', 'Bhubaneswar', 'Salem', 'Mira-Bhayandar',
+  'Warangal', 'Thiruvananthapuram', 'Guntur', 'Bhiwandi', 'Saharanpur',
+  'Gorakhpur', 'Bikaner', 'Amravati', 'Noida', 'Jamshedpur',
+  'Bhilai', 'Cuttack', 'Firozabad', 'Kochi', 'Nellore',
+  'Bhavnagar', 'Dehradun', 'Durgapur', 'Asansol', 'Rourkela',
+  'Nanded', 'Kolhapur', 'Ajmer', 'Akola', 'Gulbarga',
+  'Jamnagar', 'Ujjain', 'Loni', 'Siliguri', 'Jhansi',
+  'Ulhasnagar', 'Jammu', 'Sangli-Miraj-Kupwad', 'Mangalore', 'Erode',
+  'Belgaum', 'Ambattur', 'Tirunelveli', 'Malegaon', 'Gaya',
+] as const;

@@ -17,6 +17,15 @@ export interface ApiError {
   errors?: Array<{ field: string; message: string }>;
 }
 
+export interface ApiErrorResponse {
+  response?: {
+    data?: {
+      message?: string;
+      errors?: Array<{ field: string; message: string }>;
+    };
+  };
+}
+
 export * from './auth.types';
 export * from './booking.types';
 export * from './driver.types';
@@ -25,3 +34,4 @@ export * from './payment.types';
 export * from './customer.types';
 export * from './tracking.types';
 export * from './ewayBill.types';
+export * from './organization.types';

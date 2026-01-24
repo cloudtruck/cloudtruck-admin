@@ -23,6 +23,12 @@ import type {
   CreateEwayBillRequest,
   UpdatePartBRequest,
   GSTVerificationResponse,
+  Staff,
+  RoleTemplate,
+  MasterData,
+  Account,
+  OrganizationSettings,
+  Branch,
 } from '@/types';
 
 // ============================================================================
@@ -249,16 +255,6 @@ export const notificationApi = {
 // Staff APIs
 // ============================================================================
 
-interface Staff {
-  _id: string;
-  name: string;
-  email: string;
-  role: string;
-  status: string;
-  phone?: string;
-  createdAt: string;
-}
-
 export const staffApi = {
   getAll: (params?: { page?: number; limit?: number; role?: string; status?: string }) =>
     api.get<ApiResponse<{ staff: Staff[]; pagination: Pagination }>>('/staff', { params }),
@@ -296,41 +292,127 @@ export const exportApi = {
 // ============================================================================
 
 export const ewayBillApi = {
-  create: (data: any) =>
-    api.post<ApiResponse<any>>('/eway-bills', data),
+  create: (data: CreateEwayBillRequest) =>
+    api.post<ApiResponse<EwayBill>>('/eway-bills', data),
 
-  getAll: (params?: {
-    status?: string;
-    dateFrom?: string;
-    dateTo?: string;
-    partBStatus?: string;
-    search?: string;
-    bookingId?: string;
-    page?: number;
-    limit?: number;
-  }) =>
-    api.get<ApiResponse<{ ewayBills: any[]; pagination: Pagination }>>('/eway-bills', {
+  getAll: (params?: EwayBillFilters & { page?: number; limit?: number }) =>
+    api.get<ApiResponse<{ ewayBills: EwayBill[]; pagination: Pagination }>>('/eway-bills', {
       params,
     }),
 
   getById: (id: string) =>
-    api.get<ApiResponse<any>>(`/eway-bills/${id}`),
+    api.get<ApiResponse<EwayBill>>(`/eway-bills/${id}`),
 
   getHistory: (id: string) =>
     api.get<ApiResponse<{ history: any[] }>>(`/eway-bills/${id}/history`),
 
-  updatePartB: (id: string, data: { vehicleNumber: string; reason: string; notes?: string }) =>
-    api.put<ApiResponse<any>>(`/eway-bills/${id}/part-b`, data),
+  updatePartB: (id: string, data: UpdatePartBRequest) =>
+    api.put<ApiResponse<EwayBill>>(`/eway-bills/${id}/part-b`, data),
 
   cancel: (id: string, data: { reason: string }) =>
-    api.patch<ApiResponse<any>>(`/eway-bills/${id}/cancel`, data),
+    api.patch<ApiResponse<EwayBill>>(`/eway-bills/${id}/cancel`, data),
 
   verifyGSTIN: (gstin: string) =>
-    api.post<ApiResponse<{
-      legalName: string;
-      tradeName?: string;
-      address: string;
-      state: string;
-    }>>('/eway-bills/verify-gstin', { gstin }),
+    api.post<ApiResponse<GSTVerificationResponse>>('/eway-bills/verify-gstin', { gstin }),
 };
 
+// ============================================================================
+// Organization APIs
+// ============================================================================
+
+// Role Template APIs
+export const roleTemplateApi = {
+  getAll: (params?: { page?: number; limit?: number; category?: string; isActive?: boolean }) =>
+    api.get<ApiResponse<{ roleTemplates: RoleTemplate[]; pagination: Pagination }>>('/role-templates', { params }),
+  
+  getById: (id: string) => api.get<ApiResponse<RoleTemplate>>(`/role-templates/${id}`),
+  
+  create: (data: Partial<RoleTemplate>) => api.post<ApiResponse<RoleTemplate>>('/role-templates', data),
+  
+  update: (id: string, data: Partial<RoleTemplate>) => api.patch<ApiResponse<RoleTemplate>>(`/role-templates/${id}`, data),
+  
+  delete: (id: string) => api.delete<ApiResponse<null>>(`/role-templates/${id}`),
+};
+
+// Staff/Employee APIs (extended)
+export const employeeApi = {
+  getAll: (params?: { page?: number; limit?: number; department?: string; roleTemplate?: string; status?: string; search?: string }) =>
+    api.get<ApiResponse<{ staff: Staff[]; pagination: Pagination }>>('/staff', { params }),
+  
+  getById: (id: string) => api.get<ApiResponse<Staff>>(`/staff/${id}`),
+  
+  create: (data: Partial<Staff>) => api.post<ApiResponse<Staff>>('/staff', data),
+  
+  update: (id: string, data: Partial<Staff>) => api.patch<ApiResponse<Staff>>(`/staff/${id}`, data),
+  
+  delete: (id: string) => api.delete<ApiResponse<null>>(`/staff/${id}`),
+  
+  updateRoleTemplate: (id: string, roleTemplateId: string) =>
+    api.patch<ApiResponse<Staff>>(`/staff/${id}/role-template`, { roleTemplateId }),
+};
+
+// Master Data APIs
+export const masterDataApi = {
+  getAll: (params?: { category?: string; isActive?: boolean; search?: string }) =>
+    api.get<ApiResponse<{ masterData: MasterData[] }>>('/master-data', { params }),
+  
+  getById: (id: string) => api.get<ApiResponse<MasterData>>(`/master-data/${id}`),
+  
+  create: (data: Partial<MasterData>) => api.post<ApiResponse<MasterData>>('/master-data', data),
+  
+  update: (id: string, data: Partial<MasterData>) => api.patch<ApiResponse<MasterData>>(`/master-data/${id}`, data),
+  
+  updateOrder: (updates: Array<{ id: string; displayOrder: number }>) =>
+    api.patch<ApiResponse<null>>('/master-data/reorder', { updates }),
+  
+  toggleActive: (id: string) => api.patch<ApiResponse<MasterData>>(`/master-data/${id}/toggle-active`),
+  
+  delete: (id: string) => api.delete<ApiResponse<null>>(`/master-data/${id}`),
+};
+
+// Account APIs
+export const accountApi = {
+  getAll: () => api.get<ApiResponse<{ accounts: Account[] }>>('/accounts'),
+  
+  getById: (id: string) => api.get<ApiResponse<Account>>(`/accounts/${id}`),
+  
+  create: (data: Partial<Account>) => api.post<ApiResponse<Account>>('/accounts', data),
+  
+  update: (id: string, data: Partial<Account>) => api.patch<ApiResponse<Account>>(`/accounts/${id}`, data),
+  
+  setPrimary: (id: string) => api.patch<ApiResponse<Account>>(`/accounts/${id}/set-primary`),
+  
+  delete: (id: string) => api.delete<ApiResponse<null>>(`/accounts/${id}`),
+};
+
+// Organization Settings APIs
+export const organizationSettingsApi = {
+  get: () => api.get<ApiResponse<OrganizationSettings>>('/organization-settings'),
+  
+  update: (data: Partial<OrganizationSettings>) => api.patch<ApiResponse<OrganizationSettings>>('/organization-settings', data),
+};
+
+// Branch APIs
+export const branchApi = {
+  getAll: (params?: { region?: string; isActive?: boolean; search?: string }) =>
+    api.get<ApiResponse<{ branches: Branch[] }>>('/branches', { params }),
+  
+  getById: (id: string) => api.get<ApiResponse<Branch>>(`/branches/${id}`),
+  
+  create: (data: Partial<Branch>) => api.post<ApiResponse<Branch>>('/branches', data),
+  
+  update: (id: string, data: Partial<Branch>) => api.patch<ApiResponse<Branch>>(`/branches/${id}`, data),
+  
+  delete: (id: string) => api.delete<ApiResponse<null>>(`/branches/${id}`),
+  
+  assignEmployee: (id: string, employeeId: string) =>
+    api.post<ApiResponse<Branch>>(`/branches/${id}/assign-employee`, { employeeId }),
+  
+  removeEmployee: (id: string, employeeId: string) =>
+    api.post<ApiResponse<Branch>>(`/branches/${id}/remove-employee`, { employeeId }),
+};
+
+// City Search API
+export const cityApi = {
+  search: (query: string) => api.get<ApiResponse<string[]>>('/cities/search', { params: { q: query } }),
+};
