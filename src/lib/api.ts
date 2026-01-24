@@ -283,3 +283,104 @@ export const exportApi = {
   customers: (params?: CustomerFilters) =>
     api.get('/exports/customers', { params, responseType: 'blob' }),
 };
+
+// ============================================================================
+// Organization APIs
+// ============================================================================
+
+// Role Template APIs
+export const roleTemplateApi = {
+  getAll: (params?: { page?: number; limit?: number; category?: string; isActive?: boolean }) =>
+    api.get<ApiResponse<{ roleTemplates: any[]; pagination: Pagination }>>('/role-templates', { params }),
+  
+  getById: (id: string) => api.get<ApiResponse<any>>(`/role-templates/${id}`),
+  
+  create: (data: any) => api.post<ApiResponse<any>>('/role-templates', data),
+  
+  update: (id: string, data: any) => api.patch<ApiResponse<any>>(`/role-templates/${id}`, data),
+  
+  delete: (id: string) => api.delete<ApiResponse<null>>(`/role-templates/${id}`),
+};
+
+// Staff/Employee APIs (extended)
+export const employeeApi = {
+  getAll: (params?: { page?: number; limit?: number; department?: string; roleTemplate?: string; status?: string; search?: string }) =>
+    api.get<ApiResponse<{ staff: any[]; pagination: Pagination }>>('/staff', { params }),
+  
+  getById: (id: string) => api.get<ApiResponse<any>>(`/staff/${id}`),
+  
+  create: (data: any) => api.post<ApiResponse<any>>('/staff', data),
+  
+  update: (id: string, data: any) => api.patch<ApiResponse<any>>(`/staff/${id}`, data),
+  
+  delete: (id: string) => api.delete<ApiResponse<null>>(`/staff/${id}`),
+  
+  updateRoleTemplate: (id: string, roleTemplateId: string) =>
+    api.patch<ApiResponse<any>>(`/staff/${id}/role-template`, { roleTemplateId }),
+};
+
+// Master Data APIs
+export const masterDataApi = {
+  getAll: (params?: { category?: string; isActive?: boolean; search?: string }) =>
+    api.get<ApiResponse<{ masterData: any[] }>>('/master-data', { params }),
+  
+  getById: (id: string) => api.get<ApiResponse<any>>(`/master-data/${id}`),
+  
+  create: (data: any) => api.post<ApiResponse<any>>('/master-data', data),
+  
+  update: (id: string, data: any) => api.patch<ApiResponse<any>>(`/master-data/${id}`, data),
+  
+  updateOrder: (updates: Array<{ id: string; displayOrder: number }>) =>
+    api.patch<ApiResponse<null>>('/master-data/reorder', { updates }),
+  
+  toggleActive: (id: string) => api.patch<ApiResponse<any>>(`/master-data/${id}/toggle-active`),
+  
+  delete: (id: string) => api.delete<ApiResponse<null>>(`/master-data/${id}`),
+};
+
+// Account APIs
+export const accountApi = {
+  getAll: () => api.get<ApiResponse<{ accounts: any[] }>>('/accounts'),
+  
+  getById: (id: string) => api.get<ApiResponse<any>>(`/accounts/${id}`),
+  
+  create: (data: any) => api.post<ApiResponse<any>>('/accounts', data),
+  
+  update: (id: string, data: any) => api.patch<ApiResponse<any>>(`/accounts/${id}`, data),
+  
+  setPrimary: (id: string) => api.patch<ApiResponse<any>>(`/accounts/${id}/set-primary`),
+  
+  delete: (id: string) => api.delete<ApiResponse<null>>(`/accounts/${id}`),
+};
+
+// Organization Settings APIs
+export const organizationSettingsApi = {
+  get: () => api.get<ApiResponse<any>>('/organization-settings'),
+  
+  update: (data: any) => api.patch<ApiResponse<any>>('/organization-settings', data),
+};
+
+// Branch APIs
+export const branchApi = {
+  getAll: (params?: { region?: string; isActive?: boolean; search?: string }) =>
+    api.get<ApiResponse<{ branches: any[] }>>('/branches', { params }),
+  
+  getById: (id: string) => api.get<ApiResponse<any>>(`/branches/${id}`),
+  
+  create: (data: any) => api.post<ApiResponse<any>>('/branches', data),
+  
+  update: (id: string, data: any) => api.patch<ApiResponse<any>>(`/branches/${id}`, data),
+  
+  delete: (id: string) => api.delete<ApiResponse<null>>(`/branches/${id}`),
+  
+  assignEmployee: (id: string, employeeId: string) =>
+    api.post<ApiResponse<any>>(`/branches/${id}/assign-employee`, { employeeId }),
+  
+  removeEmployee: (id: string, employeeId: string) =>
+    api.post<ApiResponse<any>>(`/branches/${id}/remove-employee`, { employeeId }),
+};
+
+// City Search API
+export const cityApi = {
+  search: (query: string) => api.get<ApiResponse<string[]>>('/cities/search', { params: { q: query } }),
+};
