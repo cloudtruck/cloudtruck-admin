@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import api from './axios';
 import type {
   ApiResponse,
@@ -18,11 +17,14 @@ import type {
   Pagination,
   LoginCredentials,
   AuthResponse,
+  Activity,
+  TrendData,
   EwayBill,
   EwayBillFilters,
   CreateEwayBillRequest,
   UpdatePartBRequest,
   GSTVerificationResponse,
+  PartBHistoryEntry,
   Staff,
   RoleTemplate,
   MasterData,
@@ -64,8 +66,8 @@ export const bookingApi = {
   getStats: () => api.get<ApiResponse<BookingStats>>('/bookings/stats'),
 
   // Dashboard
-  getActivities: (params?: { limit?: number }) => api.get<ApiResponse<any>>('/bookings/dashboard/activities', { params }),
-  getTrends: (params?: { days?: number }) => api.get<ApiResponse<any>>('/bookings/dashboard/trends', { params }),
+  getActivities: (params?: { limit?: number }) => api.get<ApiResponse<Activity[]>>('/bookings/dashboard/activities', { params }),
+  getTrends: (params?: { days?: number }) => api.get<ApiResponse<TrendData[]>>('/bookings/dashboard/trends', { params }),
   getStatusBreakdown: () => api.get<ApiResponse<Record<string, number>>>('/bookings/dashboard/status'),
 
   create: (data: Partial<Booking>) => api.post<ApiResponse<Booking>>('/bookings', data),
@@ -96,7 +98,7 @@ export const driverApi = {
 
   getById: (id: string) => api.get<ApiResponse<Driver>>(`/drivers/${id}`),
 
-  create: (data: any) => api.post<ApiResponse<Driver>>('/drivers', data),
+  create: (data: Partial<Driver>) => api.post<ApiResponse<Driver>>('/drivers', data),
 
   update: (id: string, data: Partial<Driver>) => api.patch<ApiResponse<Driver>>(`/drivers/${id}`, data),
 
@@ -304,7 +306,7 @@ export const ewayBillApi = {
     api.get<ApiResponse<EwayBill>>(`/eway-bills/${id}`),
 
   getHistory: (id: string) =>
-    api.get<ApiResponse<{ history: any[] }>>(`/eway-bills/${id}/history`),
+    api.get<ApiResponse<{ history: PartBHistoryEntry[] }>>(`/eway-bills/${id}/history`),
 
   updatePartB: (id: string, data: UpdatePartBRequest) =>
     api.put<ApiResponse<EwayBill>>(`/eway-bills/${id}/part-b`, data),

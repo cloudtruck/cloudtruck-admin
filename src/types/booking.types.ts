@@ -107,3 +107,18 @@ export interface BookingStats {
   deliveredChange?: ChangeMetric;
   podPendingChange?: ChangeMetric;
 }
+
+export interface Activity {
+  _id: string;
+  type: 'booking_created' | 'driver_assigned' | 'status_update' | 'pod_uploaded' | 'payment_received';
+  message: string;
+  bookingId?: string;
+  timestamp: string;
+  metadata?: Record<string, string>;
+}
+
+export interface TrendData {
+  date: string;
+  bookings: number;
+  delivered: number;
+}

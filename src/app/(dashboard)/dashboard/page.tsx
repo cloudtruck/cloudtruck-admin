@@ -16,21 +16,7 @@ import { StatusDistributionChart } from '@/components/dashboard/StatusDistributi
 import { bookingApi } from '@/lib/api';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { toast } from 'sonner';
-
-interface Activity {
-  _id: string;
-  type: 'booking_created' | 'driver_assigned' | 'status_update' | 'pod_uploaded' | 'payment_received';
-  message: string;
-  bookingId?: string;
-  timestamp: string;
-  metadata?: Record<string, string>;
-}
-
-interface TrendData {
-  date: string;
-  bookings: number;
-  delivered: number;
-}
+import { Activity, TrendData } from '@/types';
 
 interface StatusData {
   status: string;
