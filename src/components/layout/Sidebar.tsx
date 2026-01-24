@@ -14,6 +14,7 @@ import {
   FileText,
   Settings,
   ChevronDown,
+  FileCheck,
 } from 'lucide-react';
 
 interface NavItem {
@@ -36,6 +37,7 @@ const navigationItems: NavItem[] = [
     children: [
       { label: 'All Bookings', href: '/bookings', icon: Package },
       { label: 'New Requests', href: '/bookings/new-requests', icon: Package },
+      { label: 'E-way Bills', href: '/eway-bills', icon: FileCheck },
     ],
   },
   {
