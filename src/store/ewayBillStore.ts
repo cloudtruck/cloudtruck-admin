@@ -11,6 +11,7 @@ interface EwayBillState {
   createModalOpen: boolean;
   updateModalOpen: boolean;
   detailsModalOpen: boolean;
+  findModalOpen: boolean;
   loading: boolean;
   error: string | null;
   prefilledBookingId?: string;
@@ -30,9 +31,11 @@ interface EwayBillState {
   openCreateModal: (prefilledBookingId?: string) => void;
   openUpdateModal: (bill: EwayBill) => void;
   openDetailsModal: (bill: EwayBill) => void;
+  openFindModal: () => void;
   closeCreateModal: () => void;
   closeUpdateModal: () => void;
   closeDetailsModal: () => void;
+  closeFindModal: () => void;
   closeAllModals: () => void;
 }
 
@@ -49,6 +52,7 @@ export const useEwayBillStore = create<EwayBillState>((set) => ({
   createModalOpen: false,
   updateModalOpen: false,
   detailsModalOpen: false,
+  findModalOpen: false,
   loading: false,
   error: null,
   prefilledBookingId: undefined,
@@ -102,6 +106,8 @@ export const useEwayBillStore = create<EwayBillState>((set) => ({
       selectedBill: bill,
     }),
 
+  openFindModal: () => set({ findModalOpen: true }),
+
   closeCreateModal: () =>
     set({
       createModalOpen: false,
@@ -118,11 +124,17 @@ export const useEwayBillStore = create<EwayBillState>((set) => ({
       detailsModalOpen: false,
     }),
 
+  closeFindModal: () =>
+    set({
+      findModalOpen: false,
+    }),
+
   closeAllModals: () =>
     set({
       createModalOpen: false,
       updateModalOpen: false,
       detailsModalOpen: false,
+      findModalOpen: false,
       selectedBill: null,
       prefilledBookingId: undefined,
     }),
