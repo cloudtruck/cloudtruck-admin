@@ -22,3 +22,10 @@ export interface TrackingHistory {
     totalItems: number;
   };
 }
+
+export interface PlannedRoute {
+  polyline: string;
+  distance: number;
+  duration: number;
+  calculatedAt: string;
+}
