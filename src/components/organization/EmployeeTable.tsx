@@ -44,7 +44,8 @@ export function EmployeeTable({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status?: string) => {
+    if (!status) return <Badge variant="secondary">N/A</Badge>;
     const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
       active: 'default',
       inactive: 'secondary',
@@ -57,7 +58,8 @@ export function EmployeeTable({
     );
   };
 
-  const getRoleBadge = (role: string) => {
+  const getRoleBadge = (role?: string) => {
+    if (!role) return <Badge variant="outline">N/A</Badge>;
     const colors: Record<string, string> = {
       'super-admin': 'bg-purple-100 text-purple-800',
       admin: 'bg-blue-100 text-blue-800',
@@ -65,7 +67,9 @@ export function EmployeeTable({
       staff: 'bg-gray-100 text-gray-800',
     };
     return (
-      <Badge className={colors[role] || 'bg-gray-100 text-gray-800'}>{role}</Badge>
+      <Badge className={colors[role] || 'bg-gray-100 text-gray-800'}>
+        {role.charAt(0).toUpperCase() + role.slice(1)}
+      </Badge>
     );
   };
 
@@ -77,7 +81,7 @@ export function EmployeeTable({
     );
   }
 
-  if (employees.length === 0) {
+  if (!employees || employees.length === 0) {
     return (
       <EmptyState
         title="No employees found"
@@ -103,8 +107,9 @@ export function EmployeeTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {employees.map((employee) => (
-              <TableRow key={employee._id}>
+            {employees && Array.isArray(employees) ? (
+              employees.map((employee) => (
+                <TableRow key={employee._id}>
                 <TableCell className="font-medium">{employee.name}</TableCell>
                 <TableCell>{employee.email}</TableCell>
                 <TableCell>{employee.phone || 'N/A'}</TableCell>
@@ -115,7 +120,11 @@ export function EmployeeTable({
                 </TableCell>
                 <TableCell>{getRoleBadge(employee.role)}</TableCell>
                 <TableCell>{getStatusBadge(employee.status)}</TableCell>
-                <TableCell>{format(new Date(employee.createdAt), 'MMM d, yyyy')}</TableCell>
+                <TableCell>
+                  {employee.createdAt
+                    ? format(new Date(employee.createdAt), 'MMM d, yyyy')
+                    : 'N/A'}
+                </TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -150,8 +159,15 @@ export function EmployeeTable({
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
-          </TableBody>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                No employees found or failed to load.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
         </Table>
       </div>
 

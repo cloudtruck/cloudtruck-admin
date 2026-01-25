@@ -15,7 +15,8 @@ interface EmployeeDetailDrawerProps {
 }
 
 export function EmployeeDetailDrawer({ isOpen, onClose, employee }: EmployeeDetailDrawerProps) {
-  const getRoleBadge = (role: string) => {
+  const getRoleBadge = (role?: string) => {
+    if (!role) return <Badge variant="outline">N/A</Badge>;
     const colors: Record<string, string> = {
       'super-admin': 'bg-purple-100 text-purple-800',
       admin: 'bg-blue-100 text-blue-800',
@@ -23,11 +24,14 @@ export function EmployeeDetailDrawer({ isOpen, onClose, employee }: EmployeeDeta
       staff: 'bg-gray-100 text-gray-800',
     };
     return (
-      <Badge className={colors[role] || 'bg-gray-100 text-gray-800'}>{role}</Badge>
+      <Badge className={colors[role] || 'bg-gray-100 text-gray-800'}>
+        {role.charAt(0).toUpperCase() + role.slice(1)}
+      </Badge>
     );
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status?: string) => {
+    if (!status) return <Badge variant="secondary">N/A</Badge>;
     const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
       active: 'default',
       inactive: 'secondary',
@@ -116,7 +120,9 @@ export function EmployeeDetailDrawer({ isOpen, onClose, employee }: EmployeeDeta
                   <Calendar className="h-4 w-4" /> Joined
                 </span>
                 <span className="text-sm text-gray-600">
-                  {format(new Date(employee.createdAt), 'MMM d, yyyy')}
+                  {employee.createdAt
+                    ? format(new Date(employee.createdAt), 'MMM d, yyyy')
+                    : 'N/A'}
                 </span>
               </div>
             </CardContent>
