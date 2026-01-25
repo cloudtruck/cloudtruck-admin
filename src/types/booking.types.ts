@@ -70,6 +70,11 @@ export interface Booking {
     notes?: string;
   }>;
   images?: string[];
+  lastKnownLocation?: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
+  lastLocationUpdate?: string;
   createdAt: string;
   updatedAt: string;
 }
