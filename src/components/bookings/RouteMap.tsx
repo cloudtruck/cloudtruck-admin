@@ -3,15 +3,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Booking } from '@/types';
 import { MapPin, Navigation } from 'lucide-react';
+import { ShipmentRouteMap } from '@/components/tracking/ShipmentRouteMap';
 
 interface RouteMapProps {
   booking: Booking;
 }
 
 export function RouteMap({ booking }: RouteMapProps) {
-  // TODO: Implement actual map integration with Leaflet or Google Maps
-  // For now, showing a placeholder
-
   const pickupCoords = booking.pickup?.latLng?.coordinates;
   const dropCoords = booking.drop?.latLng?.coordinates;
 
@@ -24,24 +22,20 @@ export function RouteMap({ booking }: RouteMapProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Map Placeholder */}
-        <div className="relative w-full h-[400px] bg-gray-100 rounded-lg flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <Navigation className="h-16 w-16 text-muted-foreground mx-auto" />
-            <div>
-              <p className="text-lg font-medium text-muted-foreground">
-                Map View (Coming Soon)
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Interactive route map will be displayed here
-              </p>
-              {(!pickupCoords || !dropCoords) && (
-                <p className="text-xs text-amber-600 mt-2">
+        {/* Map View */}
+        <div className="relative w-full h-[400px] overflow-hidden rounded-lg border">
+          {(!pickupCoords || !dropCoords) ? (
+            <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+              <div className="text-center space-y-4">
+                <Navigation className="h-16 w-16 text-muted-foreground mx-auto" />
+                <p className="text-sm text-amber-600 mt-2">
                   Note: Location coordinates are missing for this booking
                 </p>
-              )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <ShipmentRouteMap booking={booking} height="400px" />
+          )}
         </div>
 
         {/* Route Details */}

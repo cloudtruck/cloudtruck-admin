@@ -81,7 +81,7 @@ export function LiveTripCard({ booking, onViewDetailsAction }: LiveTripCardProps
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
               <span>
-                Updated {formatDistanceToNow(booking.updatedAt, { addSuffix: true })}
+                Updated {formatDistanceToNow(booking.lastLocationUpdate || booking.updatedAt, { addSuffix: true })}
               </span>
             </div>
             <Button

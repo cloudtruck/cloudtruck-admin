@@ -15,11 +15,12 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { AddNoteModal } from '@/components/bookings/AddNoteModal';
 import { UpdateStatusModal } from '@/components/bookings/UpdateStatusModal';
 import { trackingApi } from '@/lib/api';
-import { toast } from 'sonner';
 import type { Booking, TrackingLocation } from '@/types';
 import { formatDate } from '@/lib/date-utils';
 import { formatDistance } from 'date-fns';
 import Link from 'next/link';
+import { ShipmentRouteMap } from './ShipmentRouteMap';
+import { useTrackingWebSocket } from '@/hooks/useWebSocket';
 
 interface TrackingDetailModalProps {
   booking: Booking | null;
@@ -34,6 +35,8 @@ export function TrackingDetailModal({ booking, open, onCloseAction, onBookingUpd
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
 
+  const { subscribeToBooking, unsubscribeFromBooking, onLocationUpdate } = useTrackingWebSocket();
+
   const fetchLatestLocation = useCallback(async () => {
     if (!booking) return;
 
@@ -43,7 +46,7 @@ export function TrackingDetailModal({ booking, open, onCloseAction, onBookingUpd
       setLatestLocation(response.data.data);
     } catch (error) {
       console.error('Failed to fetch location:', error);
-      toast.error('Failed to fetch latest location');
+      // toast.error('Failed to fetch latest location');
     } finally {
       setLoading(false);
     }
@@ -52,8 +55,21 @@ export function TrackingDetailModal({ booking, open, onCloseAction, onBookingUpd
   useEffect(() => {
     if (booking && open) {
       fetchLatestLocation();
+      subscribeToBooking(booking._id);
+
+      const unsubscribe = onLocationUpdate((data: unknown) => {
+        const update = data as TrackingLocation;
+        if (update.booking === booking._id) {
+          setLatestLocation(update);
+        }
+      });
+
+      return () => {
+        unsubscribeFromBooking(booking._id);
+        if (unsubscribe) unsubscribe();
+      };
     }
-  }, [booking, open, fetchLatestLocation]);
+  }, [booking, open, fetchLatestLocation, subscribeToBooking, unsubscribeFromBooking, onLocationUpdate]);
 
   if (!booking) return null;
 
@@ -86,6 +102,15 @@ export function TrackingDetailModal({ booking, open, onCloseAction, onBookingUpd
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Map Visualization */}
+          <div className="rounded-lg overflow-hidden border bg-muted/20">
+            <ShipmentRouteMap 
+              booking={booking} 
+              currentLocation={latestLocation || undefined} 
+              height="300px" 
+            />
+          </div>
+
           {/* Route Info */}
           <Card>
             <CardContent className="pt-6">
@@ -221,7 +246,7 @@ export function TrackingDetailModal({ booking, open, onCloseAction, onBookingUpd
                 <div>
                   <p className="text-muted-foreground">Weight</p>
                   <p className="font-medium">
-                    {booking.weight.value} {booking.weight.unit}
+                    {booking.weight?.value || 'N/A'} {booking.weight?.unit || ''}
                   </p>
                 </div>
                 <div>
