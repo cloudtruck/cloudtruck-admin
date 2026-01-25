@@ -1,27 +1,114 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Building, FileText, Settings as SettingsIcon, Save } from 'lucide-react';
-import { toast } from 'sonner';
+import { Building, FileText, Settings as SettingsIcon, Save, Loader2 } from 'lucide-react';
+import { useOrganizationSettings } from '@/hooks/useOrganizationSettings';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function OrganizationSettingsPage() {
-  const [settings, setSettings] = useState({
-    companyName: 'Cloudtruck Logistics Pvt Ltd',
-    gstNumber: '27AABCT1332L1Z5',
-    bookingSeriesPrefix: 'CT',
-    podMandatory: true,
-    advancePaymentPercentage: 20,
+  const { 
+    settings, 
+    loading, 
+    updateCompanyInfo, 
+    updateBookingConfig, 
+    updateOperationalSettings 
+  } = useOrganizationSettings();
+
+  const [saving, setSaving] = useState({
+    companyInfo: false,
+    bookingConfig: false,
+    operational: false,
+  });
+  const [localSettings, setLocalSettings] = useState({
+    companyName: '',
+    gstNumber: '',
+    bookingSeriesPrefix: '',
+    advancePaymentPercentage: 30,
+    podMandatory: false,
   });
 
-  const handleSave = () => {
-    toast.success('Settings updated successfully');
+  // Update local settings when API data loads
+  useEffect(() => {
+    if (settings) {
+      setLocalSettings({
+        companyName: settings.companyName || '',
+        gstNumber: settings.gstNumber || '',
+        bookingSeriesPrefix: settings.bookingSeriesPrefix || '',
+        advancePaymentPercentage: settings.advancePaymentPercentage || 30,
+        podMandatory: settings.podMandatory || false,
+      });
+    }
+  }, [settings]);
+
+  const handleSaveCompanyInfo = async () => {
+    setSaving({ ...saving, companyInfo: true });
+    await updateCompanyInfo({
+      companyName: localSettings.companyName,
+      gstNumber: localSettings.gstNumber,
+    });
+    setSaving({ ...saving, companyInfo: false });
   };
+
+  const handleSaveBookingConfig = async () => {
+    setSaving({ ...saving, bookingConfig: true });
+    await updateBookingConfig({
+      bookingSeriesPrefix: localSettings.bookingSeriesPrefix,
+      advancePaymentPercentage: localSettings.advancePaymentPercentage,
+    });
+    setSaving({ ...saving, bookingConfig: false });
+  };
+
+  const handleSaveOperational = async () => {
+    setSaving({ ...saving, operational: true });
+    await updateOperationalSettings({
+      podMandatory: localSettings.podMandatory,
+    });
+    setSaving({ ...saving, operational: false });
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Organization Settings"
+          description="Configure system-wide settings and preferences"
+        />
+        <div className="grid grid-cols-1 gap-6">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!settings) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Organization Settings"
+          description="Configure system-wide settings and preferences"
+        />
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-gray-500">No settings found</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -45,9 +132,9 @@ export default function OrganizationSettingsPage() {
                 <Label htmlFor="companyName">Company Name</Label>
                 <Input
                   id="companyName"
-                  value={settings.companyName}
+                  value={localSettings.companyName}
                   onChange={(e) =>
-                    setSettings({ ...settings, companyName: e.target.value })
+                    setLocalSettings({ ...localSettings, companyName: e.target.value })
                   }
                 />
               </div>
@@ -56,10 +143,19 @@ export default function OrganizationSettingsPage() {
                 <Label htmlFor="gstNumber">GST Number</Label>
                 <Input
                   id="gstNumber"
-                  value={settings.gstNumber}
-                  onChange={(e) => setSettings({ ...settings, gstNumber: e.target.value })}
+                  value={localSettings.gstNumber}
+                  onChange={(e) => 
+                    setLocalSettings({ ...localSettings, gstNumber: e.target.value })
+                  }
                 />
               </div>
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={handleSaveCompanyInfo} disabled={saving.companyInfo}>
+                {saving.companyInfo && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <Save className="h-4 w-4 mr-2" />
+                Save Company Info
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -77,14 +173,14 @@ export default function OrganizationSettingsPage() {
               <Label htmlFor="bookingSeriesPrefix">Booking Series Prefix</Label>
               <Input
                 id="bookingSeriesPrefix"
-                value={settings.bookingSeriesPrefix}
+                value={localSettings.bookingSeriesPrefix}
                 onChange={(e) =>
-                  setSettings({ ...settings, bookingSeriesPrefix: e.target.value })
+                  setLocalSettings({ ...localSettings, bookingSeriesPrefix: e.target.value })
                 }
                 className="max-w-xs"
               />
               <p className="text-sm text-gray-500">
-                Booking IDs will be generated as {settings.bookingSeriesPrefix}-XXXX
+                Booking IDs will be generated as {localSettings.bookingSeriesPrefix || 'BK'}-XXXXXX
               </p>
             </div>
 
@@ -98,16 +194,23 @@ export default function OrganizationSettingsPage() {
                   type="number"
                   min="0"
                   max="100"
-                  value={settings.advancePaymentPercentage}
+                  value={localSettings.advancePaymentPercentage}
                   onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      advancePaymentPercentage: parseInt(e.target.value),
+                    setLocalSettings({ 
+                      ...localSettings,
+                      advancePaymentPercentage: parseInt(e.target.value) || 0
                     })
                   }
                 />
                 <span className="text-gray-600">%</span>
               </div>
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={handleSaveBookingConfig} disabled={saving.bookingConfig}>
+                {saving.bookingConfig && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <Save className="h-4 w-4 mr-2" />
+                Save Booking Config
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -124,25 +227,24 @@ export default function OrganizationSettingsPage() {
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="podMandatory"
-                checked={settings.podMandatory}
+                checked={localSettings.podMandatory}
                 onCheckedChange={(checked) =>
-                  setSettings({ ...settings, podMandatory: checked as boolean })
+                  setLocalSettings({ ...localSettings, podMandatory: checked as boolean })
                 }
               />
               <Label htmlFor="podMandatory" className="cursor-pointer">
                 POD (Proof of Delivery) is mandatory for booking completion
               </Label>
             </div>
+            <div className="flex justify-end">
+              <Button onClick={handleSaveOperational} disabled={saving.operational}>
+                {saving.operational && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <Save className="h-4 w-4 mr-2" />
+                Save Operational Settings
+              </Button>
+            </div>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <Button onClick={handleSave}>
-          <Save className="h-4 w-4 mr-2" />
-          Save Settings
-        </Button>
       </div>
     </div>
   );

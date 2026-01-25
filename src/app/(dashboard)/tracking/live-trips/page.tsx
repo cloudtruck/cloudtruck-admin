@@ -7,54 +7,65 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { LiveTripCard } from '@/components/tracking/LiveTripCard';
 import { LiveTripFilters } from '@/components/tracking/LiveTripFilters';
 import { TrackingDetailModal } from '@/components/tracking/TrackingDetailModal';
-import { bookingApi } from '@/lib/api';
+import { trackingApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Booking, Pagination } from '@/types';
 import Link from 'next/link';
 
 export default function LiveTripsPage() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<(Booking & { lastLocation?: any })[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [trackingModalOpen, setTrackingModalOpen] = useState(false);
   const [pagination, setPagination] = useState<Pagination>({
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
-    itemsPerPage: 20,
+    itemsPerPage: 10,
   });
 
   const fetchLiveTrips = useCallback(async () => {
     setLoading(true);
     try {
-      const filters: Record<string, string | number> = {
-        page: pagination.currentPage,
-        limit: 20,
-      };
-
-      // Filter by active statuses
-      if (statusFilter === 'all') {
-        filters.status = 'assigned,driver-en-route,reached-pickup,loaded,in-transit,reached-destination';
-      } else {
-        filters.status = statusFilter;
+      const response = await trackingApi.getLiveTrips();
+      let data = response.data?.data || [];
+      
+      // Client-side filtering as this endpoint currently returns all live trips
+      if (statusFilter !== 'all') {
+        data = data.filter(b => b.status === statusFilter);
       }
-
+      
       if (searchQuery) {
-        filters.search = searchQuery;
+        const q = searchQuery.toLowerCase();
+        data = data.filter(b => 
+          b.bookingId.toLowerCase().includes(q) || 
+          b.customer?.companyName?.toLowerCase().includes(q) ||
+          b.driver?.name?.toLowerCase().includes(q)
+        );
       }
 
-      const response = await bookingApi.getAll(filters);
-      setBookings(response.data.data.bookings);
-      setPagination(response.data.data.pagination);
+      setBookings(data);
+      // Update pagination
+      setPagination(prev => {
+        const totalItems = data.length;
+        const totalPages = Math.max(1, Math.ceil(totalItems / prev.itemsPerPage));
+        return {
+          ...prev,
+          totalItems,
+          totalPages,
+          currentPage: prev.currentPage > totalPages ? totalPages : prev.currentPage
+        };
+      });
     } catch (error) {
       console.error('Failed to fetch live trips:', error);
       toast.error('Failed to fetch live trips');
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, searchQuery, pagination.currentPage]);
+  }, [statusFilter, searchQuery]);
 
   useEffect(() => {
     fetchLiveTrips();
@@ -122,13 +133,18 @@ export default function LiveTripsPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {bookings.map((booking) => (
-              <LiveTripCard
-                key={booking._id}
-                booking={booking}
-                onViewDetailsAction={handleViewDetails}
-              />
-            ))}
+            {bookings
+              .slice(
+                (pagination.currentPage - 1) * pagination.itemsPerPage,
+                pagination.currentPage * pagination.itemsPerPage
+              )
+              .map((booking) => (
+                <LiveTripCard
+                  key={booking._id}
+                  booking={booking}
+                  onViewDetailsAction={handleViewDetails}
+                />
+              ))}
           </div>
 
           {pagination.totalPages > 1 && (

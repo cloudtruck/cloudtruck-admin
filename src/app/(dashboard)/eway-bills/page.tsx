@@ -12,6 +12,7 @@ import EwayBillFilters from '@/components/ewayBills/EwayBillFilters';
 import CreateEwayBillModal from '@/components/ewayBills/CreateEwayBillModal';
 import UpdatePartBModal from '@/components/ewayBills/UpdatePartBModal';
 import EwayBillDetailsModal from '@/components/ewayBills/EwayBillDetailsModal';
+import FindEwayBillModal from '@/components/ewayBills/FindEwayBillModal';
 import { toast } from 'sonner';
 
 type TabValue = 'part-b-pending' | 'active' | 'expiring' | 'expired' | 'manual-override';
@@ -27,6 +28,7 @@ export default function EwayBillsPage() {
     filters,
     pagination,
     openCreateModal,
+    openFindModal,
   } = useEwayBillStore();
 
   const canCreateEwayBill = user?.role === 'admin' || user?.role === 'super-admin';
@@ -111,13 +113,24 @@ export default function EwayBillsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="part-b-pending">Part-B Pending</TabsTrigger>
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="expiring">Expiring (48h)</TabsTrigger>
-          <TabsTrigger value="expired">Expired</TabsTrigger>
-          <TabsTrigger value="manual-override">Manual Override</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="part-b-pending">Part-B Pending</TabsTrigger>
+            <TabsTrigger value="active">Active</TabsTrigger>
+            <TabsTrigger value="expiring">Expiring</TabsTrigger>
+            <TabsTrigger value="expired">Expired</TabsTrigger>
+            <TabsTrigger value="manual-override">Manual</TabsTrigger>
+          </TabsList>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="text-blue-600 border-blue-600 hover:bg-blue-50"
+            onClick={() => openFindModal()}
+          >
+            Find Eway-bill
+          </Button>
+        </div>
 
         <TabsContent value="part-b-pending" className="space-y-4">
           <EwayBillsTable />
@@ -144,6 +157,7 @@ export default function EwayBillsPage() {
       <CreateEwayBillModal onSuccessAction={handleRefresh} />
       <UpdatePartBModal onSuccessAction={handleRefresh} />
       <EwayBillDetailsModal />
+      <FindEwayBillModal onSuccessAction={handleRefresh} />
     </div>
   );
 }

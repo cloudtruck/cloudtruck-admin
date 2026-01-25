@@ -1,33 +1,36 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common/PageHeader';
-import { bookingApi } from '@/lib/api';
+import { trackingApi } from '@/lib/api';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 import type { Booking } from '@/types';
+import type { TrackingLocation } from '@/types/tracking.types';
 import Link from 'next/link';
+import { GoogleMapWrapper } from '@/components/tracking/GoogleMapWrapper';
+import { LiveTrackingMap } from '@/components/tracking/LiveTrackingMap';
 
 export default function MapViewPage() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [trips, setTrips] = useState<(Booking & { lastLocation?: TrackingLocation })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchActiveTrips();
+    fetchLiveTrips();
   }, []);
 
-  const fetchActiveTrips = async () => {
+  const fetchLiveTrips = async () => {
     setLoading(true);
     try {
-      const response = await bookingApi.getAll({
-        status: 'assigned,driver-en-route,reached-pickup,loaded,in-transit,reached-destination',
-        limit: 100,
-      });
-      setBookings(response.data?.data?.bookings || []);
+      const response = await trackingApi.getLiveTrips();
+      // Adjust according to API response structure
+      const data = response.data?.data || [];
+      setTrips(data);
     } catch (error) {
-      console.error('Failed to fetch trips:', error);
-      toast.error('Failed to fetch trips');
+      console.error('Failed to fetch live trips:', error);
+      toast.error('Failed to fetch live trips');
     } finally {
       setLoading(false);
     }
@@ -37,58 +40,53 @@ export default function MapViewPage() {
     <div className="space-y-6">
       <PageHeader
         title="Map View"
-        description={`${bookings?.length || 0} active shipment${(bookings?.length || 0) !== 1 ? 's' : ''} on map`}
-        // actions={
-        //   <Button asChild variant="outline" size="sm">
-        //     <Link href="/tracking/live-trips">
-        //       <ArrowLeft className="h-4 w-4 mr-2" />
-        //       Back to List
-        //     </Link>
-        //   </Button>
-        // }
+        description={`${trips?.length || 0} active shipment${(trips?.length || 0) !== 1 ? 's' : ''} on map`}
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={fetchLiveTrips} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/tracking/live-trips">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to List
+              </Link>
+            </Button>
+          </div>
+        }
       />
 
-      <div className="border rounded-lg bg-muted/50 p-8">
-        <div className="text-center text-muted-foreground">
-          <p className="text-lg font-medium mb-2">Map Integration Coming Soon</p>
-          <p className="text-sm">
-            Leaflet/Google Maps integration will be implemented here
-          </p>
-          <p className="text-xs mt-4">
-            Features:
-            <br />
-            • Real-time truck locations with markers
-            <br />
-            • Route polylines from pickup to drop
-            <br />
-            • Click markers for trip details
-            <br />
-            • Auto-refresh every 30 seconds
-          </p>
-        </div>
+      <div className="border rounded-lg bg-card overflow-hidden shadow-sm">
+        <GoogleMapWrapper>
+          <LiveTrackingMap trips={trips} />
+        </GoogleMapWrapper>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {bookings.map((booking) => (
-            <div key={booking._id} className="border rounded-lg p-4 bg-card">
-              <p className="font-semibold">{booking.bookingId}</p>
-              <p className="text-sm text-muted-foreground">
-                {booking.pickup.city} → {booking.drop.city}
-              </p>
-              {booking.driver && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Driver: {booking.driver.name}
-                </p>
-              )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {trips.map((trip) => (
+          <div key={trip._id} className="border rounded-lg p-4 bg-card hover:bg-accent/5 transition-colors cursor-pointer">
+            <div className="flex justify-between items-start mb-1">
+              <p className="font-semibold text-primary">{trip.bookingId}</p>
+              <div className={`h-2 w-2 rounded-full ${trip.lastLocation ? 'bg-green-500' : 'bg-gray-300'}`} title={trip.lastLocation ? 'Live' : 'Offline'} />
             </div>
-          ))}
-        </div>
-      )}
+            <p className="text-sm font-medium">
+              {trip.pickup.city} → {trip.drop.city}
+            </p>
+            {trip.driver && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Driver: {trip.driver.name}
+              </p>
+            )}
+            {trip.lastLocation && (
+              <div className="mt-2 text-[10px] text-muted-foreground">
+                Last seen: {format(new Date(trip.lastLocation.timestamp || trip.lastLocation.createdAt), 'HH:mm')}
+                {trip.lastLocation.speed ? ` • ${Math.round(trip.lastLocation.speed)} km/h` : ''}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
