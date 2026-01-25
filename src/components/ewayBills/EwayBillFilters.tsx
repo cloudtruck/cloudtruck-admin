@@ -87,14 +87,14 @@ export default function EwayBillFilters({ onRefreshAction }: EwayBillFiltersProp
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
             <Select
-              value={localFilters.status || ''}
-              onValueChange={(value) => handleFilterChange('status', value)}
+              value={localFilters.status || 'all'}
+              onValueChange={(value) => handleFilterChange('status', value === 'all' ? '' : value)}
             >
               <SelectTrigger id="status">
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All statuses</SelectItem>
+                <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="expiring">Expiring</SelectItem>
                 <SelectItem value="expired">Expired</SelectItem>
@@ -107,14 +107,14 @@ export default function EwayBillFilters({ onRefreshAction }: EwayBillFiltersProp
           <div className="space-y-2">
             <Label htmlFor="partBStatus">Part-B Status</Label>
             <Select
-              value={localFilters.partBStatus || ''}
-              onValueChange={(value) => handleFilterChange('partBStatus', value)}
+              value={localFilters.partBStatus || 'all'}
+              onValueChange={(value) => handleFilterChange('partBStatus', value === 'all' ? '' : value)}
             >
               <SelectTrigger id="partBStatus">
                 <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All</SelectItem>
+                <SelectItem value="all">All</SelectItem>
                 <SelectItem value="auto-synced">Auto-Synced</SelectItem>
                 <SelectItem value="pending">Pending Manual Update</SelectItem>
                 <SelectItem value="manual-override">Manual Override</SelectItem>
