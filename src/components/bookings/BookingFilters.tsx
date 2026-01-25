@@ -21,7 +21,8 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, X } from 'lucide-react';
 import { BookingFilters as BookingFiltersType } from '@/types';
-import { BOOKING_STATUSES, TRUCK_TYPES, PAYMENT_STATUSES } from '@/lib/constants';
+import { BOOKING_STATUSES, PAYMENT_STATUSES } from '@/lib/constants';
+import { useMasterData } from '@/hooks/useMasterData';
 
 interface BookingFiltersProps {
   filters: BookingFiltersType;
@@ -30,6 +31,9 @@ interface BookingFiltersProps {
 }
 
 export function BookingFilters({ filters, onFiltersChange, onClearFilters }: BookingFiltersProps) {
+  // Fetch master data
+  const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
+  
   const [dateFrom, setDateFrom] = useState<Date | undefined>(
     filters.dateFrom ? new Date(filters.dateFrom) : undefined
   );
@@ -147,17 +151,20 @@ export function BookingFilters({ filters, onFiltersChange, onClearFilters }: Boo
           <Select
             value={filters.truckType || 'all'}
             onValueChange={(value) => handleFilterChange('truckType', value === 'all' ? '' : value)}
+            disabled={truckTypesLoading}
           >
             <SelectTrigger>
-              <SelectValue placeholder="All truck types" />
+              <SelectValue placeholder={truckTypesLoading ? "Loading..." : "All truck types"} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Truck Types</SelectItem>
-              {TRUCK_TYPES.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
+              {truckTypes
+                .filter(type => type.isActive)
+                .map((type) => (
+                  <SelectItem key={type._id} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>

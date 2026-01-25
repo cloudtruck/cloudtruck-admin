@@ -31,6 +31,7 @@ import type {
   Account,
   OrganizationSettings,
   Branch,
+  PlannedRoute,
 } from '@/types';
 
 // ============================================================================
@@ -225,6 +226,9 @@ export const trackingApi = {
   getHistory: (bookingId: string, params?: { page?: number; limit?: number; startDate?: string; endDate?: string }) =>
     api.get<ApiResponse<TrackingHistory>>(`/tracking/${bookingId}/history`, { params }),
 
+  getPlannedRoute: (bookingId: string) =>
+    api.get<ApiResponse<PlannedRoute>>(`/tracking/${bookingId}/planned-route`),
+
   getLiveTrips: () => api.get<ApiResponse<Array<Booking & { lastLocation: TrackingLocation }>>>('/tracking/live-trips'),
 };
 
@@ -314,6 +318,9 @@ export const ewayBillApi = {
   cancel: (id: string, data: { reason: string }) =>
     api.patch<ApiResponse<EwayBill>>(`/eway-bills/${id}/cancel`, data),
 
+  sync: (ewayBillNumber: string) =>
+    api.post<ApiResponse<EwayBill>>('/eway-bills/sync', { ewayBillNumber }),
+
   verifyGSTIN: (gstin: string) =>
     api.post<ApiResponse<GSTVerificationResponse>>('/eway-bills/verify-gstin', { gstin }),
 };
@@ -324,21 +331,24 @@ export const ewayBillApi = {
 
 // Role Template APIs
 export const roleTemplateApi = {
-  getAll: (params?: { page?: number; limit?: number; category?: string; isActive?: boolean }) =>
-    api.get<ApiResponse<{ roleTemplates: RoleTemplate[]; pagination: Pagination }>>('/role-templates', { params }),
+  list: (params?: { category?: string; isActive?: boolean }) =>
+    api.get<ApiResponse<RoleTemplate[]>>('/role-templates', { params }),
   
   getById: (id: string) => api.get<ApiResponse<RoleTemplate>>(`/role-templates/${id}`),
   
   create: (data: Partial<RoleTemplate>) => api.post<ApiResponse<RoleTemplate>>('/role-templates', data),
   
-  update: (id: string, data: Partial<RoleTemplate>) => api.patch<ApiResponse<RoleTemplate>>(`/role-templates/${id}`, data),
+  update: (id: string, data: Partial<RoleTemplate>) => 
+    api.patch<ApiResponse<{ template: RoleTemplate; affectedEmployees: number }>>(`/role-templates/${id}`, data),
   
   delete: (id: string) => api.delete<ApiResponse<null>>(`/role-templates/${id}`),
+  
+  getCategories: () => api.get<ApiResponse<Array<{ value: string; label: string }>>>('/role-templates/categories'),
 };
 
 // Staff/Employee APIs (extended)
 export const employeeApi = {
-  getAll: (params?: { page?: number; limit?: number; department?: string; roleTemplate?: string; status?: string; search?: string }) =>
+  list: (params?: { department?: string; roleTemplate?: string; isActive?: boolean; search?: string; page?: number; limit?: number }) =>
     api.get<ApiResponse<{ staff: Staff[]; pagination: Pagination }>>('/staff', { params }),
   
   getById: (id: string) => api.get<ApiResponse<Staff>>(`/staff/${id}`),
@@ -350,13 +360,16 @@ export const employeeApi = {
   delete: (id: string) => api.delete<ApiResponse<null>>(`/staff/${id}`),
   
   updateRoleTemplate: (id: string, roleTemplateId: string) =>
-    api.patch<ApiResponse<Staff>>(`/staff/${id}/role-template`, { roleTemplateId }),
+    api.patch<ApiResponse<Staff>>(`/staff/${id}`, { roleTemplate: roleTemplateId }),
 };
 
 // Master Data APIs
 export const masterDataApi = {
-  getAll: (params?: { category?: string; isActive?: boolean; search?: string }) =>
-    api.get<ApiResponse<{ masterData: MasterData[] }>>('/master-data', { params }),
+  list: (params?: { category?: string; isActive?: boolean }) =>
+    api.get<ApiResponse<MasterData[]>>('/master-data', { params }),
+  
+  getByCategory: (category: string, includeInactive = true) =>
+    api.get<ApiResponse<MasterData[]>>(`/master-data/category/${category}?includeInactive=${includeInactive}`),
   
   getById: (id: string) => api.get<ApiResponse<MasterData>>(`/master-data/${id}`),
   
@@ -364,40 +377,61 @@ export const masterDataApi = {
   
   update: (id: string, data: Partial<MasterData>) => api.patch<ApiResponse<MasterData>>(`/master-data/${id}`, data),
   
-  updateOrder: (updates: Array<{ id: string; displayOrder: number }>) =>
-    api.patch<ApiResponse<null>>('/master-data/reorder', { updates }),
-  
-  toggleActive: (id: string) => api.patch<ApiResponse<MasterData>>(`/master-data/${id}/toggle-active`),
+  reorder: (items: Array<{ id: string; displayOrder: number }>) =>
+    api.patch<ApiResponse<null>>('/master-data/reorder', { items }),
   
   delete: (id: string) => api.delete<ApiResponse<null>>(`/master-data/${id}`),
+  
+  getCategories: () => api.get<ApiResponse<Array<{ value: string; label: string; icon: string }>>>('/master-data/categories'),
 };
 
 // Account APIs
 export const accountApi = {
-  getAll: () => api.get<ApiResponse<{ accounts: Account[] }>>('/accounts'),
+  list: () => api.get<ApiResponse<Account[]>>('/accounts'),
   
   getById: (id: string) => api.get<ApiResponse<Account>>(`/accounts/${id}`),
+  
+  getPrimary: () => api.get<ApiResponse<Account>>('/accounts/primary'),
   
   create: (data: Partial<Account>) => api.post<ApiResponse<Account>>('/accounts', data),
   
   update: (id: string, data: Partial<Account>) => api.patch<ApiResponse<Account>>(`/accounts/${id}`, data),
   
-  setPrimary: (id: string) => api.patch<ApiResponse<Account>>(`/accounts/${id}/set-primary`),
+  setPrimary: (id: string) => api.patch<ApiResponse<Account>>(`/accounts/${id}/primary`, {}),
   
   delete: (id: string) => api.delete<ApiResponse<null>>(`/accounts/${id}`),
 };
 
 // Organization Settings APIs
 export const organizationSettingsApi = {
-  get: () => api.get<ApiResponse<OrganizationSettings>>('/organization-settings'),
+  getSettings: () => api.get<ApiResponse<OrganizationSettings>>('/organization/settings'),
   
-  update: (data: Partial<OrganizationSettings>) => api.patch<ApiResponse<OrganizationSettings>>('/organization-settings', data),
+  updateSettings: (data: Partial<OrganizationSettings>) => 
+    api.patch<ApiResponse<OrganizationSettings>>('/organization/settings', data),
+  
+  updateCompanyInfo: (data: Partial<OrganizationSettings>) =>
+    api.patch<ApiResponse<OrganizationSettings>>('/organization/settings/company', data),
+  
+  updateBookingConfig: (data: Partial<OrganizationSettings>) =>
+    api.patch<ApiResponse<OrganizationSettings>>('/organization/settings/booking-config', data),
+  
+  updateOperationalSettings: (data: Partial<OrganizationSettings>) =>
+    api.patch<ApiResponse<OrganizationSettings>>('/organization/settings/operational', data),
+  
+  updateNotificationSettings: (data: Partial<OrganizationSettings>) =>
+    api.patch<ApiResponse<OrganizationSettings>>('/organization/settings/notifications', data),
+  
+  updateTaxSettings: (data: Partial<OrganizationSettings>) =>
+    api.patch<ApiResponse<OrganizationSettings>>('/organization/settings/tax', data),
+  
+  getNextBookingNumber: () =>
+    api.get<ApiResponse<{ bookingNumber: string }>>('/organization/settings/next-booking-number'),
 };
 
 // Branch APIs
 export const branchApi = {
-  getAll: (params?: { region?: string; isActive?: boolean; search?: string }) =>
-    api.get<ApiResponse<{ branches: Branch[] }>>('/branches', { params }),
+  list: (params?: { region?: string; isActive?: boolean }) =>
+    api.get<ApiResponse<Branch[]>>('/branches', { params }),
   
   getById: (id: string) => api.get<ApiResponse<Branch>>(`/branches/${id}`),
   
@@ -407,11 +441,14 @@ export const branchApi = {
   
   delete: (id: string) => api.delete<ApiResponse<null>>(`/branches/${id}`),
   
-  assignEmployee: (id: string, employeeId: string) =>
-    api.post<ApiResponse<Branch>>(`/branches/${id}/assign-employee`, { employeeId }),
+  assignEmployee: (branchId: string, staffId: string) =>
+    api.patch<ApiResponse<Branch>>(`/branches/${branchId}/employees/${staffId}`, {}),
   
-  removeEmployee: (id: string, employeeId: string) =>
-    api.post<ApiResponse<Branch>>(`/branches/${id}/remove-employee`, { employeeId }),
+  removeEmployee: (branchId: string, staffId: string) =>
+    api.delete<ApiResponse<Branch>>(`/branches/${branchId}/employees/${staffId}`),
+  
+  getMetrics: (id: string) =>
+    api.get<ApiResponse<unknown>>(`/branches/${id}/metrics`),
 };
 
 // City Search API

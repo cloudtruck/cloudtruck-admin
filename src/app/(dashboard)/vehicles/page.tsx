@@ -18,12 +18,16 @@ import { AddVehicleModal } from '@/components/vehicles/AddVehicleModal';
 import { vehicleApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Vehicle, Pagination, VehicleFilters } from '@/types';
-import { TRUCK_TYPES, BODY_TYPES } from '@/lib/constants';
+import { useMasterData } from '@/hooks/useMasterData';
 
 export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
+  
+  // Fetch master data
+  const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
+  const { data: bodyTypes, loading: bodyTypesLoading } = useMasterData('body-type');
   const [filters, setFilters] = useState<VehicleFilters>({});
   const [pagination, setPagination] = useState<Pagination>({
     currentPage: 1,
@@ -129,17 +133,20 @@ export default function VehiclesPage() {
                   onValueChange={(value) =>
                     setFilters({ ...filters, truckType: value === 'all' ? undefined : value })
                   }
+                  disabled={truckTypesLoading}
                 >
                   <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Truck Type" />
+                    <SelectValue placeholder={truckTypesLoading ? "Loading..." : "Truck Type"} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    {TRUCK_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
+                    {truckTypes
+                      .filter(type => type.isActive)
+                      .map((type) => (
+                        <SelectItem key={type._id} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
 
@@ -148,17 +155,20 @@ export default function VehiclesPage() {
                   onValueChange={(value) =>
                     setFilters({ ...filters, bodyType: value === 'all' ? undefined : value })
                   }
+                  disabled={bodyTypesLoading}
                 >
                   <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Body Type" />
+                    <SelectValue placeholder={bodyTypesLoading ? "Loading..." : "Body Type"} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Body Types</SelectItem>
-                    {BODY_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
+                    {bodyTypes
+                      .filter(type => type.isActive)
+                      .map((type) => (
+                        <SelectItem key={type._id} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
 

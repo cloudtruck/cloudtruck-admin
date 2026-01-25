@@ -13,9 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { driverApi } from '@/lib/api';
 import { toast } from 'sonner';
-import { TRUCK_TYPES } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
 import type { Driver } from '@/types';
+import { useMasterData } from '@/hooks/useMasterData';
 
 interface EditDriverModalProps {
   isOpen: boolean;
@@ -26,6 +26,9 @@ interface EditDriverModalProps {
 
 export function EditDriverModal({ isOpen, onCloseAction, onSuccessAction, driver }: EditDriverModalProps) {
   const [loading, setLoading] = useState(false);
+  
+  // Fetch master data
+  const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
   const [formData, setFormData] = useState({
     name: '',
     licenseNumber: '',
@@ -149,19 +152,25 @@ export function EditDriverModal({ isOpen, onCloseAction, onSuccessAction, driver
 
           <div className="space-y-2">
             <Label>Preferred Truck Types</Label>
-            <div className="flex flex-wrap gap-2">
-              {TRUCK_TYPES.map((type) => (
-                <Button
-                  key={type.value}
-                  type="button"
-                  variant={formData.preferredTruckTypes.includes(type.value) ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleTruckTypeChange(type.value)}
-                >
-                  {type.label}
-                </Button>
-              ))}
-            </div>
+            {truckTypesLoading ? (
+              <p className="text-sm text-muted-foreground">Loading truck types...</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {truckTypes
+                  .filter(type => type.isActive)
+                  .map((type) => (
+                    <Button
+                      key={type._id}
+                      type="button"
+                      variant={formData.preferredTruckTypes.includes(type.value) ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleTruckTypeChange(type.value)}
+                    >
+                      {type.label}
+                    </Button>
+                  ))}
+              </div>
+            )}
           </div>
 
           <DialogFooter>

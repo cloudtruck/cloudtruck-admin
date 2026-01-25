@@ -38,8 +38,8 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { vehicleApi, driverApi } from '@/lib/api';
 import { toast } from 'sonner';
-import { TRUCK_TYPES, BODY_TYPES } from '@/lib/constants';
 import { format } from 'date-fns';
+import { useMasterData } from '@/hooks/useMasterData';
 import { cn } from '@/lib/utils';
 import type { Driver } from '@/types';
 
@@ -64,6 +64,10 @@ interface AddVehicleModalProps {
 export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
   const [open, setOpen] = useState(false);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  
+  // Fetch master data
+  const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
+  const { data: bodyTypes, loading: bodyTypesLoading } = useMasterData('body-type');
 
   const form = useForm<AddVehicleFormData>({
     resolver: zodResolver(addVehicleSchema),
@@ -196,18 +200,20 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Truck Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={truckTypesLoading}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select truck type" />
+                          <SelectValue placeholder={truckTypesLoading ? "Loading..." : "Select truck type"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {TRUCK_TYPES.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
+                        {truckTypes
+                          .filter(type => type.isActive)
+                          .map((type) => (
+                            <SelectItem key={type._id} value={type.value}>
+                              {type.label}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -228,11 +234,13 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {BODY_TYPES.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
+                        {bodyTypes
+                          .filter(type => type.isActive)
+                          .map((type) => (
+                            <SelectItem key={type._id} value={type.value}>
+                              {type.label}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />

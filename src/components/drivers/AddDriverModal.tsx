@@ -21,8 +21,8 @@ import {
 } from '@/components/ui/select';
 import { driverApi } from '@/lib/api';
 import { toast } from 'sonner';
-import { TRUCK_TYPES } from '@/lib/constants';
 import { Loader2, Plus } from 'lucide-react';
+import { useMasterData } from '@/hooks/useMasterData';
 
 interface AddDriverModalProps {
   onSuccess: () => void;
@@ -31,6 +31,9 @@ interface AddDriverModalProps {
 export function AddDriverModal({ onSuccess }: AddDriverModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Fetch master data
+  const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -201,19 +204,25 @@ export function AddDriverModal({ onSuccess }: AddDriverModalProps) {
 
           <div className="space-y-2">
             <Label>Preferred Truck Types</Label>
-            <div className="flex flex-wrap gap-2">
-              {TRUCK_TYPES.map((type) => (
-                <Button
-                  key={type.value}
-                  type="button"
-                  variant={formData.preferredTruckTypes.includes(type.value) ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleTruckTypeChange(type.value)}
-                >
-                  {type.label}
-                </Button>
-              ))}
-            </div>
+            {truckTypesLoading ? (
+              <p className="text-sm text-muted-foreground">Loading truck types...</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {truckTypes
+                  .filter(type => type.isActive)
+                  .map((type) => (
+                    <Button
+                      key={type._id}
+                      type="button"
+                      variant={formData.preferredTruckTypes.includes(type.value) ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleTruckTypeChange(type.value)}
+                    >
+                      {type.label}
+                    </Button>
+                  ))}
+              </div>
+            )}
           </div>
 
           <DialogFooter>

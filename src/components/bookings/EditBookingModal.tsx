@@ -23,7 +23,7 @@ import {
 import { bookingApi } from '@/lib/api';
 import { Booking } from '@/types';
 import { toast } from 'sonner';
-import { TRUCK_TYPES, BODY_TYPES, MATERIAL_TYPES } from '@/lib/constants';
+import { useMasterData } from '@/hooks/useMasterData';
 
 interface EditBookingModalProps {
   booking: Booking | null;
@@ -34,6 +34,11 @@ interface EditBookingModalProps {
 
 export function EditBookingModal({ booking, open, onCloseAction, onSuccessAction }: EditBookingModalProps) {
   const [loading, setLoading] = useState(false);
+  
+  // Fetch master data
+  const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
+  const { data: bodyTypes, loading: bodyTypesLoading } = useMasterData('body-type');
+  const { data: materialTypes, loading: materialTypesLoading } = useMasterData('material-type');
   const [formData, setFormData] = useState({
     pickupCity: '',
     pickupAddress: '',
@@ -161,16 +166,22 @@ export function EditBookingModal({ booking, open, onCloseAction, onSuccessAction
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="materialType">Material Type</Label>
-              <Select value={formData.materialType} onValueChange={(value) => handleInputChange('materialType', value)}>
+              <Select 
+                value={formData.materialType} 
+                onValueChange={(value) => handleInputChange('materialType', value)}
+                disabled={materialTypesLoading}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select material type" />
+                  <SelectValue placeholder={materialTypesLoading ? "Loading..." : "Select material type"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {MATERIAL_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
+                  {materialTypes
+                    .filter(type => type.isActive)
+                    .map((type) => (
+                      <SelectItem key={type._id} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -191,31 +202,43 @@ export function EditBookingModal({ booking, open, onCloseAction, onSuccessAction
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="truckType">Truck Type</Label>
-              <Select value={formData.truckType} onValueChange={(value) => handleInputChange('truckType', value)}>
+              <Select 
+                value={formData.truckType} 
+                onValueChange={(value) => handleInputChange('truckType', value)}
+                disabled={truckTypesLoading}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select truck type" />
+                  <SelectValue placeholder={truckTypesLoading ? "Loading..." : "Select truck type"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {TRUCK_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
+                  {truckTypes
+                    .filter(type => type.isActive)
+                    .map((type) => (
+                      <SelectItem key={type._id} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label htmlFor="bodyType">Body Type</Label>
-              <Select value={formData.bodyType} onValueChange={(value) => handleInputChange('bodyType', value)}>
+              <Select 
+                value={formData.bodyType} 
+                onValueChange={(value) => handleInputChange('bodyType', value)}
+                disabled={bodyTypesLoading}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select body type" />
+                  <SelectValue placeholder={bodyTypesLoading ? "Loading..." : "Select body type"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {BODY_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
+                  {bodyTypes
+                    .filter(type => type.isActive)
+                    .map((type) => (
+                      <SelectItem key={type._id} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
