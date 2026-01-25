@@ -143,8 +143,8 @@ export default function VehiclesPage() {
                     {truckTypes
                       .filter(type => type.isActive)
                       .map((type) => (
-                        <SelectItem key={type._id} value={type.value}>
-                          {type.label}
+                        <SelectItem key={type._id} value={type.key}>
+                          {type.displayName}
                         </SelectItem>
                       ))}
                   </SelectContent>
@@ -165,8 +165,8 @@ export default function VehiclesPage() {
                     {bodyTypes
                       .filter(type => type.isActive)
                       .map((type) => (
-                        <SelectItem key={type._id} value={type.value}>
-                          {type.label}
+                        <SelectItem key={type._id} value={type.key}>
+                          {type.displayName}
                         </SelectItem>
                       ))}
                   </SelectContent>

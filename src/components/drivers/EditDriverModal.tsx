@@ -162,11 +162,11 @@ export function EditDriverModal({ isOpen, onCloseAction, onSuccessAction, driver
                     <Button
                       key={type._id}
                       type="button"
-                      variant={formData.preferredTruckTypes.includes(type.value) ? 'default' : 'outline'}
+                      variant={formData.preferredTruckTypes.includes(type.key) ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => handleTruckTypeChange(type.value)}
+                      onClick={() => handleTruckTypeChange(type.key)}
                     >
-                      {type.label}
+                      {type.displayName}
                     </Button>
                   ))}
               </div>

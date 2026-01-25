@@ -56,7 +56,7 @@ export function VehicleTable({ vehicles, loading, pagination, onPageChange }: Ve
       accessor: 'owner',
       cell: (vehicle: Vehicle) => (
         <div className="text-sm">
-          {vehicle.owner && (
+          {vehicle.owner && typeof vehicle.owner === 'object' && (
             <p>
               Owner:{' '}
               <Link href={`/drivers/${vehicle.owner._id}`} className="hover:underline">
@@ -64,7 +64,7 @@ export function VehicleTable({ vehicles, loading, pagination, onPageChange }: Ve
               </Link>
             </p>
           )}
-          {vehicle.driver && (
+          {vehicle.driver && typeof vehicle.driver === 'object' && (
             <p className="text-muted-foreground">
               Driver:{' '}
               <Link href={`/drivers/${vehicle.driver._id}`} className="hover:underline">
@@ -72,7 +72,7 @@ export function VehicleTable({ vehicles, loading, pagination, onPageChange }: Ve
               </Link>
             </p>
           )}
-          {!vehicle.owner && !vehicle.driver && (
+          {(!vehicle.owner || typeof vehicle.owner === 'string') && (!vehicle.driver || typeof vehicle.driver === 'string') && (
             <span className="text-muted-foreground">-</span>
           )}
         </div>

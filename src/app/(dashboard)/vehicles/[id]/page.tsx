@@ -185,10 +185,10 @@ export default function VehicleDetailPage({ params }: VehicleDetailPageProps) {
                     <div>
                       <p className="text-sm text-muted-foreground">Driver</p>
                       <Link
-                        href={`/drivers/${vehicle.driver._id}`}
+                        href={`/drivers/${typeof vehicle.driver === 'string' ? vehicle.driver : vehicle.driver._id}`}
                         className="font-medium hover:underline"
                       >
-                        {vehicle.driver.name}
+                        {typeof vehicle.driver === 'string' ? 'Driver' : vehicle.driver.name}
                       </Link>
                     </div>
                   </div>

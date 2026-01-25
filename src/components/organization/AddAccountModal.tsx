@@ -23,7 +23,7 @@ export function AddAccountModal({ onSuccess }: AddAccountModalProps) {
     ifscCode: '',
     bankName: '',
     branchName: '',
-    accountType: 'current' as 'savings' | 'current' | 'od',
+    accountType: 'current' as 'savings' | 'current',
     isPrimary: false,
   });
 
@@ -125,7 +125,7 @@ export function AddAccountModal({ onSuccess }: AddAccountModalProps) {
               <Label htmlFor="accountType">Account Type *</Label>
               <Select
                 value={formData.accountType}
-                onValueChange={(value: any) => setFormData({ ...formData, accountType: value })}
+                onValueChange={(value: 'savings' | 'current') => setFormData({ ...formData, accountType: value })}
               >
                 <SelectTrigger id="accountType">
                   <SelectValue />
@@ -133,7 +133,6 @@ export function AddAccountModal({ onSuccess }: AddAccountModalProps) {
                 <SelectContent>
                   <SelectItem value="savings">Savings</SelectItem>
                   <SelectItem value="current">Current</SelectItem>
-                  <SelectItem value="od">Overdraft (OD)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

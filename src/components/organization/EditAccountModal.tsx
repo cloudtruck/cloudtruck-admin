@@ -20,17 +20,24 @@ interface EditAccountModalProps {
 export function EditAccountModal({ account, open, onClose, onSuccess }: EditAccountModalProps) {
   const [saving, setSaving] = useState(false);
   const { updateAccount } = useAccounts();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    accountHolderName: string;
+    accountNumber: string;
+    ifscCode: string;
+    bankName: string;
+    branchName: string;
+    accountType: 'savings' | 'current';
+  }>({
     accountHolderName: '',
     accountNumber: '',
     ifscCode: '',
     bankName: '',
     branchName: '',
-    accountType: 'current' as 'savings' | 'current' | 'od',
+    accountType: 'current',
   });
 
   useEffect(() => {
-    if (account) {
+    if (open && account) {
       setFormData({
         accountHolderName: account.accountHolderName || '',
         accountNumber: account.accountNumber || '',
@@ -40,7 +47,7 @@ export function EditAccountModal({ account, open, onClose, onSuccess }: EditAcco
         accountType: account.accountType || 'current',
       });
     }
-  }, [account]);
+  }, [open, account]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,7 +124,7 @@ export function EditAccountModal({ account, open, onClose, onSuccess }: EditAcco
               <Label htmlFor="accountType">Account Type *</Label>
               <Select
                 value={formData.accountType}
-                onValueChange={(value: any) => setFormData({ ...formData, accountType: value })}
+                onValueChange={(value: 'savings' | 'current') => setFormData({ ...formData, accountType: value })}
               >
                 <SelectTrigger id="accountType">
                   <SelectValue />
@@ -125,7 +132,6 @@ export function EditAccountModal({ account, open, onClose, onSuccess }: EditAcco
                 <SelectContent>
                   <SelectItem value="savings">Savings</SelectItem>
                   <SelectItem value="current">Current</SelectItem>
-                  <SelectItem value="od">Overdraft (OD)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

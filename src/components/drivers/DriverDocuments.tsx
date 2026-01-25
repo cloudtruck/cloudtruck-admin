@@ -19,7 +19,7 @@ export function DriverDocuments({ driver }: DriverDocumentsProps) {
     },
     {
       label: 'Aadhar Photo',
-      value: driver.aadharPhoto,
+      value: driver.aadhaarPhoto,
       icon: CreditCard,
       type: 'image',
     },

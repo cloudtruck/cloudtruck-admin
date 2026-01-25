@@ -22,9 +22,43 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { bookingApi, customerApi } from '@/lib/api';
 import { toast } from 'sonner';
-import type { Customer, Booking } from '@/types';
+import type { Customer } from '@/types';
 import { Loader2 } from 'lucide-react';
 import { useMasterData } from '@/hooks/useMasterData';
+
+interface CreateBookingPayload {
+  customerId: string;
+  pickup: {
+    city: string;
+    address: string;
+    latLng: {
+      type: 'Point';
+      coordinates: [number, number];
+    };
+  };
+  drop: {
+    city: string;
+    address: string;
+    latLng: {
+      type: 'Point';
+      coordinates: [number, number];
+    };
+  };
+  materialType: string;
+  weight: {
+    value: number;
+    unit: 'kg' | 'tons';
+  };
+  truckTypeNeeded: string;
+  bodyType?: string;
+  loadDateTime: string;
+  expectedAmount?: number;
+  advanceRequired?: number;
+  additionalInstructions?: string;
+  isHazardous?: boolean;
+  isFragile?: boolean;
+  requiresTemperatureControl?: boolean;
+}
 
 interface CreateBookingModalProps {
   isOpen: boolean;
@@ -116,31 +150,41 @@ export function CreateBookingModal({
 
     setLoading(true);
     try {
-      const bookingData = {
+      const bookingData: CreateBookingPayload = {
         customerId: formData.customerId,
-        pickupCity: formData.pickupCity,
-        pickupLat: 0, // Mocked for now
-        pickupLng: 0, // Mocked for now
-        pickupAddress: formData.pickupAddress,
-        dropCity: formData.dropCity,
-        dropLat: 0, // Mocked for now
-        dropLng: 0, // Mocked for now
-        dropAddress: formData.dropAddress,
+        pickup: {
+          city: formData.pickupCity,
+          address: formData.pickupAddress,
+          latLng: {
+            type: 'Point',
+            coordinates: [0, 0], // Mocked for now - [lng, lat]
+          },
+        },
+        drop: {
+          city: formData.dropCity,
+          address: formData.dropAddress,
+          latLng: {
+            type: 'Point',
+            coordinates: [0, 0], // Mocked for now - [lng, lat]
+          },
+        },
         materialType: formData.materialType,
-        weight: parseFloat(formData.weight),
-        truckType: formData.truckType,
+        weight: {
+          value: parseFloat(formData.weight),
+          unit: 'tons',
+        },
+        truckTypeNeeded: formData.truckType,
         bodyType: formData.bodyType || 'open',
-        loadDate: new Date(formData.loadDateTime).toISOString(),
+        loadDateTime: new Date(formData.loadDateTime).toISOString(),
         expectedAmount: formData.expectedAmount ? parseFloat(formData.expectedAmount) : undefined,
         advanceRequired: formData.advanceRequired ? parseFloat(formData.advanceRequired) : 0,
         additionalInstructions: formData.additionalInstructions,
         isHazardous: formData.isHazardous,
         isFragile: formData.isFragile,
         requiresTemperatureControl: formData.requiresTemperatureControl,
-        priority: 'medium',
       };
 
-      await bookingApi.create(bookingData as any);
+      await bookingApi.create(bookingData);
       toast.success('Booking created successfully');
       onSuccessAction();
       onCloseAction();
@@ -235,8 +279,8 @@ export function CreateBookingModal({
                   {materialTypes
                     .filter(type => type.isActive)
                     .map((type) => (
-                      <SelectItem key={type._id} value={type.value}>
-                        {type.label}
+                      <SelectItem key={type._id} value={type.key}>
+                        {type.displayName}
                       </SelectItem>
                     ))}
                 </SelectContent>
@@ -269,8 +313,8 @@ export function CreateBookingModal({
                   {truckTypes
                     .filter(type => type.isActive)
                     .map((type) => (
-                      <SelectItem key={type._id} value={type.value}>
-                        {type.label}
+                      <SelectItem key={type._id} value={type.key}>
+                        {type.displayName}
                       </SelectItem>
                     ))}
                 </SelectContent>
@@ -291,8 +335,8 @@ export function CreateBookingModal({
                   {bodyTypes
                     .filter(type => type.isActive)
                     .map((type) => (
-                      <SelectItem key={type._id} value={type.value}>
-                        {type.label}
+                      <SelectItem key={type._id} value={type.key}>
+                        {type.displayName}
                       </SelectItem>
                     ))}
                 </SelectContent>

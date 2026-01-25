@@ -135,7 +135,7 @@ export interface UpdateStaffData {
   department?: string;
   roleTemplate?: string;
   permissions?: string[];
-  status?: string;
+  status?: 'active' | 'inactive' | 'blocked';
   branch?: string;
 }
 

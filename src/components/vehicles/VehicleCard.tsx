@@ -26,7 +26,7 @@ export function VehicleCard({ vehicle, onSuccess }: VehicleCardProps) {
             <h3 className="font-semibold text-base">{vehicle.vehicleNumber}</h3>
             <p className="text-sm text-muted-foreground flex items-center gap-1">
               <User className="h-3 w-3" />
-              {vehicle.owner?.name || 'No owner'}
+              {typeof vehicle.owner === 'object' && vehicle.owner?.name ? vehicle.owner.name : 'No owner'}
             </p>
           </div>
         </div>

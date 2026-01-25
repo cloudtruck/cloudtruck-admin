@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { employeeApi } from '@/lib/api';
 import { useEmployeeStore } from '@/store/employeeStore';
 import { toast } from 'sonner';
-import type { ApiErrorResponse } from '@/types';
+import type { ApiErrorResponse, Pagination, Staff } from '@/types';
 
 export function useEmployees() {
   const [loading, setLoading] = useState(false);
@@ -20,20 +20,24 @@ export function useEmployees() {
 
       if (response.data.success && response.data.data) {
         // Handle new response format with pagination
-        const data = response.data.data as unknown as { staff: any[]; pagination: Pagination };
+        const data = response.data.data as unknown as { staff: Staff[]; pagination: Pagination };
         if (data.staff && Array.isArray(data.staff)) {
           // Normalize data from backend (flatten nested user object)
-          const normalizedStaff = data.staff.map((s) => ({
-            ...s,
-            email: s.user?.email || s.email,
-            phone: s.user?.phone || s.phone,
-            status: s.user?.status || s.status,
-            role:
+          const normalizedStaff = data.staff.map((s: Staff & { user?: Partial<Staff> }) => {
+            const role =
               s.user?.role ||
               (typeof s.roleTemplate === 'object' ? s.roleTemplate?.templateName : s.roleTemplate) ||
               s.role ||
-              'staff',
-          }));
+              'staff';
+            
+            return {
+              ...s,
+              email: s.user?.email || s.email,
+              phone: s.user?.phone || s.phone,
+              status: s.user?.status || s.status,
+              role: role as Staff['role'],
+            } as Staff;
+          });
 
           setEmployees(normalizedStaff);
           if (data.pagination) {
@@ -41,17 +45,21 @@ export function useEmployees() {
           }
         } else if (Array.isArray(response.data.data)) {
           // Fallback for old format
-          const normalizedStaff = (response.data.data as any[]).map((s) => ({
-            ...s,
-            email: s.user?.email || s.email,
-            phone: s.user?.phone || s.phone,
-            status: s.user?.status || s.status,
-            role:
+          const normalizedStaff = (response.data.data as (Staff & { user?: Partial<Staff> })[]).map((s: Staff & { user?: Partial<Staff> }) => {
+            const role =
               s.user?.role ||
               (typeof s.roleTemplate === 'object' ? s.roleTemplate?.templateName : s.roleTemplate) ||
               s.role ||
-              'staff',
-          }));
+              'staff';
+            
+            return {
+              ...s,
+              email: s.user?.email || s.email,
+              phone: s.user?.phone || s.phone,
+              status: s.user?.status || s.status,
+              role: role as Staff['role'],
+            } as Staff;
+          });
           setEmployees(normalizedStaff);
         }
       }
