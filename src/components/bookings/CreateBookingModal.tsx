@@ -22,9 +22,9 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { bookingApi, customerApi } from '@/lib/api';
 import { toast } from 'sonner';
-import { TRUCK_TYPES, BODY_TYPES, MATERIAL_TYPES } from '@/lib/constants';
 import type { Customer, Booking } from '@/types';
 import { Loader2 } from 'lucide-react';
+import { useMasterData } from '@/hooks/useMasterData';
 
 interface CreateBookingModalProps {
   isOpen: boolean;
@@ -40,6 +40,11 @@ export function CreateBookingModal({
   const [loading, setLoading] = useState(false);
   const [customersLoading, setCustomersLoading] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  
+  // Fetch master data
+  const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
+  const { data: bodyTypes, loading: bodyTypesLoading } = useMasterData('body-type');
+  const { data: materialTypes, loading: materialTypesLoading } = useMasterData('material-type');
   const [formData, setFormData] = useState({
     customerId: '',
     pickupCity: '',
@@ -221,16 +226,19 @@ export function CreateBookingModal({
               <Select
                 value={formData.materialType}
                 onValueChange={(value) => setFormData({ ...formData, materialType: value })}
+                disabled={materialTypesLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select material" />
+                  <SelectValue placeholder={materialTypesLoading ? "Loading..." : "Select material"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {MATERIAL_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
+                  {materialTypes
+                    .filter(type => type.isActive)
+                    .map((type) => (
+                      <SelectItem key={type._id} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -252,16 +260,19 @@ export function CreateBookingModal({
               <Select
                 value={formData.truckType}
                 onValueChange={(value) => setFormData({ ...formData, truckType: value })}
+                disabled={truckTypesLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select truck type" />
+                  <SelectValue placeholder={truckTypesLoading ? "Loading..." : "Select truck type"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {TRUCK_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
+                  {truckTypes
+                    .filter(type => type.isActive)
+                    .map((type) => (
+                      <SelectItem key={type._id} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -271,16 +282,19 @@ export function CreateBookingModal({
               <Select
                 value={formData.bodyType}
                 onValueChange={(value) => setFormData({ ...formData, bodyType: value })}
+                disabled={bodyTypesLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select body type" />
+                  <SelectValue placeholder={bodyTypesLoading ? "Loading..." : "Select body type"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {BODY_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
+                  {bodyTypes
+                    .filter(type => type.isActive)
+                    .map((type) => (
+                      <SelectItem key={type._id} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
