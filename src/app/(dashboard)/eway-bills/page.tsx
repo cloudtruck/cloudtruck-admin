@@ -100,12 +100,22 @@ export default function EwayBillsPage() {
             Manage E-way bills and Part-B vehicle updates
           </p>
         </div>
-        {canCreateEwayBill && (
-          <Button onClick={() => openCreateModal()}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create E-way Bill
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="text-blue-600 border-blue-600 hover:bg-blue-50"
+            onClick={() => openFindModal()}
+          >
+            Find Eway-bill
           </Button>
-        )}
+          {canCreateEwayBill && (
+            <Button onClick={() => openCreateModal()}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create E-way Bill
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -122,14 +132,7 @@ export default function EwayBillsPage() {
             <TabsTrigger value="manual-override">Manual</TabsTrigger>
           </TabsList>
           
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="text-blue-600 border-blue-600 hover:bg-blue-50"
-            onClick={() => openFindModal()}
-          >
-            Find Eway-bill
-          </Button>
+          
         </div>
 
         <TabsContent value="part-b-pending" className="space-y-4">
