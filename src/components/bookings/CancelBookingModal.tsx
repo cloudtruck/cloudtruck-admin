@@ -45,8 +45,9 @@ export function CancelBookingModal({
       toast.success('Booking cancelled successfully');
       onSuccess();
       onClose();
-    } catch (error: any) {
-      console.error('Failed to cancel booking:', error);
+    } catch (err: unknown) {
+      console.error('Failed to cancel booking:', err);
+      const error = err as { response?: { data?: { errors?: Array<{ message?: string }>; message?: string } } };
       const errorMessage = error.response?.data?.errors?.[0]?.message || 
                            error.response?.data?.message || 
                            'Failed to cancel booking';

@@ -1,7 +1,6 @@
 'use client';
 
 import { use, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/common/PageHeader';
 import { CustomerProfile } from '@/components/customers/CustomerProfile';
 import { CustomerStats } from '@/components/customers/CustomerStats';
@@ -11,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { customerApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Customer } from '@/types';
-import { ArrowLeft, RefreshCw, Ban, CheckCircle } from 'lucide-react';
+import { RefreshCw, Ban, CheckCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +29,6 @@ interface CustomerDetailPageProps {
 
 export default function CustomerDetailPage({ params }: CustomerDetailPageProps) {
   const { id } = use(params);
-  const router = useRouter();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
@@ -40,6 +38,7 @@ export default function CustomerDetailPage({ params }: CustomerDetailPageProps) 
 
   useEffect(() => {
     fetchCustomer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchCustomer = async () => {

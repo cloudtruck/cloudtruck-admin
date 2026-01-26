@@ -15,7 +15,7 @@ describe('Dashboard wiring', () => {
       assignedChange: { value: 0, isPositive: false }
     };
 
-    vi.spyOn(bookingApi, 'getStats').mockResolvedValue({ data: { data: mockStats } } as any);
+    vi.spyOn(bookingApi, 'getStats').mockResolvedValue({ data: { data: mockStats } } as never);
 
     // Simulate fetch and setStats
     const resp = await bookingApi.getStats();

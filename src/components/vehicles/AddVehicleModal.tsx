@@ -67,7 +67,7 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
   
   // Fetch master data
   const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
-  const { data: bodyTypes, loading: bodyTypesLoading } = useMasterData('body-type');
+  const { data: bodyTypes } = useMasterData('body-type');
 
   const form = useForm<AddVehicleFormData>({
     resolver: zodResolver(addVehicleSchema),

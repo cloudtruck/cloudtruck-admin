@@ -27,6 +27,7 @@ export function DriverTripHistory({ driverId }: DriverTripHistoryProps) {
 
   useEffect(() => {
     fetchTripHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [driverId, pagination.currentPage]);
 
   const fetchTripHistory = async () => {

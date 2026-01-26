@@ -1,9 +1,8 @@
 'use client';
 
 import { use, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, RefreshCw, Truck, User, Package, Calendar } from 'lucide-react';
+import { RefreshCw, Truck, User, Package, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +22,6 @@ interface VehicleDetailPageProps {
 
 export default function VehicleDetailPage({ params }: VehicleDetailPageProps) {
   const { id } = use(params);
-  const router = useRouter();
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
   const [tripHistory, setTripHistory] = useState<Booking[]>([]);
@@ -32,6 +30,7 @@ export default function VehicleDetailPage({ params }: VehicleDetailPageProps) {
   useEffect(() => {
     fetchVehicle();
     fetchTripHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchVehicle = async () => {

@@ -1,7 +1,6 @@
 'use client';
 
 import { use, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { RefreshCw, Download, CreditCard, Calendar, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,13 +19,13 @@ interface PaymentDetailPageProps {
 
 export default function PaymentDetailPage({ params }: PaymentDetailPageProps) {
   const { id } = use(params);
-  const router = useRouter();
   const [payment, setPayment] = useState<Payment | null>(null);
   const [loading, setLoading] = useState(true);
   const [markAsReceivedModalOpen, setMarkAsReceivedModalOpen] = useState(false);
 
   useEffect(() => {
     fetchPayment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchPayment = async () => {

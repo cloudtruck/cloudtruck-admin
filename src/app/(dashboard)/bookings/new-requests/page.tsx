@@ -10,7 +10,6 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
 import { AssignDriverModal } from '@/components/bookings/AssignDriverModal';
 import { ChevronLeft, ChevronRight, Package } from 'lucide-react';
-import { toast } from 'sonner';
 
 export default function NewRequestsPage() {
   const { bookings, loading, error, refetch } = useBookings();

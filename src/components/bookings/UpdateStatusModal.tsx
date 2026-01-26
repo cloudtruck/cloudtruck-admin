@@ -58,8 +58,9 @@ export function UpdateStatusModal({
       toast.success('Booking status updated successfully');
       onSuccess();
       onClose();
-    } catch (error: any) {
-      console.error('Failed to update status:', error);
+    } catch (err: unknown) {
+      console.error('Failed to update status:', err);
+      const error = err as { response?: { data?: { errors?: Array<{ message?: string }>; message?: string } } };
       const errorMessage = error.response?.data?.errors?.[0]?.message || 
                            error.response?.data?.message || 
                            'Failed to update status';

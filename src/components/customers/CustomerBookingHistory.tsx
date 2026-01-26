@@ -27,6 +27,7 @@ export function CustomerBookingHistory({ customerId }: CustomerBookingHistoryPro
 
   useEffect(() => {
     fetchBookings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId, pagination.currentPage]);
 
   const fetchBookings = async () => {

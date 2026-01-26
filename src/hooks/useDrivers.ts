@@ -34,6 +34,7 @@ export function useDrivers() {
 
   useEffect(() => {
     fetchDrivers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, pagination.currentPage]);
 
   return { drivers, loading, error, refetch: fetchDrivers };
@@ -62,6 +63,7 @@ export function useAvailableDrivers(params?: { truckType?: string; city?: string
 
   useEffect(() => {
     fetchAvailableDrivers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(params)]);
 
   return { drivers, loading, error, refetch: fetchAvailableDrivers };
