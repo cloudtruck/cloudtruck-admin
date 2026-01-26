@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,11 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { employeeApi } from '@/lib/api';
+import { employeeApi, roleTemplateApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { DEPARTMENTS } from '@/lib/constants';
-import type { CreateStaffData, ApiErrorResponse } from '@/types';
+import type { CreateStaffData, RoleTemplate, ApiErrorResponse } from '@/types';
 
 interface AddEmployeeModalProps {
   onSuccess: () => void;
@@ -32,6 +32,8 @@ interface AddEmployeeModalProps {
 export function AddEmployeeModal({ onSuccess }: AddEmployeeModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [roleTemplates, setRoleTemplates] = useState<RoleTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [formData, setFormData] = useState<CreateStaffData>({
     name: '',
     email: '',
@@ -40,6 +42,28 @@ export function AddEmployeeModal({ onSuccess }: AddEmployeeModalProps) {
     roleTemplate: '',
     password: '',
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchRoleTemplates();
+    }
+  }, [isOpen]);
+
+  const fetchRoleTemplates = async () => {
+    try {
+      setLoadingTemplates(true);
+      const response = await roleTemplateApi.list({ isActive: true });
+      
+      if (response.data.success && response.data.data) {
+        setRoleTemplates(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching role templates:', error);
+      toast.error('Failed to load role templates');
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,14 +189,22 @@ export function AddEmployeeModal({ onSuccess }: AddEmployeeModalProps) {
                 <Select
                   value={formData.roleTemplate}
                   onValueChange={(value) => setFormData({ ...formData, roleTemplate: value })}
+                  disabled={loadingTemplates}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select role template (optional)" />
+                    <SelectValue placeholder={loadingTemplates ? 'Loading...' : 'Select role template (optional)'} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="operations-manager">Operations Manager</SelectItem>
-                    <SelectItem value="finance-user">Finance User</SelectItem>
-                    <SelectItem value="customer-support">Customer Support</SelectItem>
+                    {roleTemplates.map((template) => (
+                      <SelectItem key={template._id} value={template._id}>
+                        <div className="flex flex-col">
+                          <span>{template.templateName}</span>
+                          <span className="text-xs text-gray-500">
+                            {template.permissions.length} permissions
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-gray-500">
