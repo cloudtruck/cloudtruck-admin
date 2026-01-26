@@ -48,7 +48,7 @@ export interface Account {
   accountHolderName: string;
   bankName: string;
   branchName: string;
-  accountType: 'savings' | 'current';
+  accountType: 'savings' | 'current' | 'od';
   isPrimary: boolean;
   isActive: boolean;
   createdAt: string;
@@ -143,7 +143,7 @@ export interface CreateRoleTemplateData {
   templateName: string;
   description: string;
   permissions: string[];
-  category: string;
+  category: RoleTemplate['category'];
 }
 
 export interface CreateMasterDataData {

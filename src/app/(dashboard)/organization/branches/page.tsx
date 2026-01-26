@@ -10,7 +10,7 @@ import { useBranches } from '@/hooks/useBranches';
 import { AddBranchModal } from '@/components/organization/AddBranchModal';
 
 export default function BranchesPage() {
-  const { branches, loading, refetch } = useBranches();
+  const { branches, loading } = useBranches();
 
   const getRegionColor = (region: string) => {
     const colors: Record<string, string> = {
@@ -64,7 +64,7 @@ export default function BranchesPage() {
       <PageHeader
         title="Branches"
         description="Manage branches and regional operations"
-        actions={<AddBranchModal onSuccess={refetch} />}
+        actions={<AddBranchModal />}
       />
 
       {branches.length === 0 ? (
@@ -76,7 +76,7 @@ export default function BranchesPage() {
               <p className="text-gray-500 mb-4">
                 Get started by creating your first branch
               </p>
-              <AddBranchModal onSuccess={refetch} />
+              <AddBranchModal />
             </div>
           </CardContent>
         </Card>

@@ -15,10 +15,9 @@ interface EditMasterDataModalProps {
   item: MasterData;
   open: boolean;
   onCloseAction: () => void;
-  onSuccess?: () => void;
 }
 
-export function EditMasterDataModal({ item, open, onCloseAction, onSuccess }: EditMasterDataModalProps) {
+export function EditMasterDataModal({ item, open, onCloseAction }: EditMasterDataModalProps) {
   const [saving, setSaving] = useState(false);
   const { updateItem } = useMasterData(item.category);
   const [formData, setFormData] = useState({
@@ -40,7 +39,6 @@ export function EditMasterDataModal({ item, open, onCloseAction, onSuccess }: Ed
     setSaving(false);
 
     if (result) {
-      onSuccess?.();
       onCloseAction();
     }
   };

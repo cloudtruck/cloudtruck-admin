@@ -21,7 +21,7 @@ import { EditAccountModal } from '@/components/organization/EditAccountModal';
 import type { Account } from '@/types';
 
 export default function AccountsPage() {
-  const { accounts, loading, setPrimaryAccount, refetch } = useAccounts();
+  const { accounts, loading, setPrimaryAccount } = useAccounts();
   const [settingPrimary, setSettingPrimary] = useState<string | null>(null);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
@@ -59,7 +59,7 @@ export default function AccountsPage() {
       <PageHeader
         title="Organization Accounts"
         description="Manage company bank accounts"
-        actions={<AddAccountModal onSuccess={refetch} />}
+        actions={<AddAccountModal />}
       />
 
       <Card>
@@ -75,7 +75,7 @@ export default function AccountsPage() {
               <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No accounts found</h3>
               <p className="text-gray-500 mb-4">Get started by adding your first bank account</p>
-              <AddAccountModal onSuccess={refetch} />
+              <AddAccountModal />
             </div>
           ) : (
             <Table>
@@ -171,7 +171,6 @@ export default function AccountsPage() {
           account={editingAccount}
           open={!!editingAccount}
           onClose={() => setEditingAccount(null)}
-          onSuccess={refetch}
         />
       )}
     </div>

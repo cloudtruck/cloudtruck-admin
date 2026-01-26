@@ -9,11 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Loader2 } from 'lucide-react';
 import { useAccounts } from '@/hooks/useAccounts';
 
-interface AddAccountModalProps {
-  onSuccess?: () => void;
-}
-
-export function AddAccountModal({ onSuccess }: AddAccountModalProps) {
+export function AddAccountModal() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const { createAccount } = useAccounts();
@@ -23,7 +19,7 @@ export function AddAccountModal({ onSuccess }: AddAccountModalProps) {
     ifscCode: '',
     bankName: '',
     branchName: '',
-    accountType: 'current' as 'savings' | 'current',
+    accountType: 'current' as 'savings' | 'current' | 'od',
     isPrimary: false,
   });
 
@@ -39,7 +35,6 @@ export function AddAccountModal({ onSuccess }: AddAccountModalProps) {
     setSaving(false);
 
     if (result) {
-      onSuccess?.();
       setOpen(false);
       setFormData({
         accountHolderName: '',
@@ -125,7 +120,7 @@ export function AddAccountModal({ onSuccess }: AddAccountModalProps) {
               <Label htmlFor="accountType">Account Type *</Label>
               <Select
                 value={formData.accountType}
-                onValueChange={(value: 'savings' | 'current') => setFormData({ ...formData, accountType: value })}
+                onValueChange={(value: "current" | "savings" | "od") => setFormData({ ...formData, accountType: value })}
               >
                 <SelectTrigger id="accountType">
                   <SelectValue />
@@ -133,6 +128,7 @@ export function AddAccountModal({ onSuccess }: AddAccountModalProps) {
                 <SelectContent>
                   <SelectItem value="savings">Savings</SelectItem>
                   <SelectItem value="current">Current</SelectItem>
+                  <SelectItem value="od">Overdraft (OD)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

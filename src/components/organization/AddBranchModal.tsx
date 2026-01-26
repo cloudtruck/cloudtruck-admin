@@ -11,11 +11,7 @@ import { useBranches } from '@/hooks/useBranches';
 
 const REGIONS = ['North', 'South', 'East', 'West', 'Central'];
 
-interface AddBranchModalProps {
-  onSuccess?: () => void;
-}
-
-export function AddBranchModal({ onSuccess }: AddBranchModalProps) {
+export function AddBranchModal() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const { createBranch } = useBranches();
@@ -67,7 +63,6 @@ export function AddBranchModal({ onSuccess }: AddBranchModalProps) {
     setSaving(false);
 
     if (result) {
-      onSuccess?.();
       setOpen(false);
       setFormData({
         branchCode: '',
