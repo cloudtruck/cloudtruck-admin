@@ -11,12 +11,11 @@ import { useMasterData } from '@/hooks/useMasterData';
 import type { MasterData } from '@/types';
 
 interface AddMasterDataModalProps {
-  category: string;
+  category: MasterData['category'];
   categoryLabel: string;
-  onSuccess?: () => void;
 }
 
-export function AddMasterDataModal({ category, categoryLabel, onSuccess }: AddMasterDataModalProps) {
+export function AddMasterDataModal({ category, categoryLabel }: AddMasterDataModalProps) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const { createItem } = useMasterData(category);
@@ -31,7 +30,7 @@ export function AddMasterDataModal({ category, categoryLabel, onSuccess }: AddMa
     setSaving(true);
 
     const result = await createItem({
-      category: category as MasterData['category'],
+      category,
       displayName: formData.displayName,
       key: formData.key || formData.displayName.toLowerCase().replace(/\s+/g, '-'),
       description: formData.description,
@@ -41,7 +40,6 @@ export function AddMasterDataModal({ category, categoryLabel, onSuccess }: AddMa
     setSaving(false);
 
     if (result) {
-      onSuccess?.();
       setOpen(false);
       setFormData({ displayName: '', key: '', description: '' });
     }

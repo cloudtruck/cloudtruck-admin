@@ -319,7 +319,7 @@ export const ewayBillApi = {
     api.patch<ApiResponse<EwayBill>>(`/eway-bills/${id}/cancel`, data),
 
   sync: (ewayBillNumber: string) =>
-    api.post<ApiResponse<EwayBill>>('/eway-bills/sync', { ewayBillNumber }),
+    api.post<ApiResponse<EwayBill>>(`/eway-bills/sync/${ewayBillNumber}`),
 
   verifyGSTIN: (gstin: string) =>
     api.post<ApiResponse<GSTVerificationResponse>>('/eway-bills/verify-gstin', { gstin }),
@@ -368,8 +368,8 @@ export const masterDataApi = {
   list: (params?: { category?: string; isActive?: boolean }) =>
     api.get<ApiResponse<MasterData[]>>('/master-data', { params }),
   
-  getByCategory: (category: string, includeInactive = true) =>
-    api.get<ApiResponse<MasterData[]>>(`/master-data/category/${category}?includeInactive=${includeInactive}`),
+  getByCategory: (category: string) =>
+    api.get<ApiResponse<MasterData[]>>(`/master-data/category/${category}`),
   
   getById: (id: string) => api.get<ApiResponse<MasterData>>(`/master-data/${id}`),
   

@@ -11,6 +11,14 @@ import { Building, FileText, Settings as SettingsIcon, Save, Loader2 } from 'luc
 import { useOrganizationSettings } from '@/hooks/useOrganizationSettings';
 import { Skeleton } from '@/components/ui/skeleton';
 
+type SettingsFormState = {
+  companyName: string;
+  gstNumber: string;
+  bookingSeriesPrefix: string;
+  advancePaymentPercentage: number;
+  podMandatory: boolean;
+};
+
 export default function OrganizationSettingsPage() {
   const { 
     settings, 
@@ -20,57 +28,105 @@ export default function OrganizationSettingsPage() {
     updateOperationalSettings 
   } = useOrganizationSettings();
 
-  const [saving, setSaving] = useState({
-    companyInfo: false,
-    bookingConfig: false,
-    operational: false,
-  });
-  const [localSettings, setLocalSettings] = useState({
+  const [savingCompany, setSavingCompany] = useState(false);
+  const [savingBooking, setSavingBooking] = useState(false);
+  const [savingOperational, setSavingOperational] = useState(false);
+  const [localSettings, setLocalSettings] = useState<SettingsFormState>({
     companyName: '',
     gstNumber: '',
     bookingSeriesPrefix: '',
     advancePaymentPercentage: 30,
     podMandatory: false,
   });
+  const [lastSavedSettings, setLastSavedSettings] = useState<SettingsFormState | null>(null);
 
   // Update local settings when API data loads
   useEffect(() => {
     if (settings) {
-      setLocalSettings({
+      const newSettings = {
         companyName: settings.companyName || '',
         gstNumber: settings.gstNumber || '',
         bookingSeriesPrefix: settings.bookingSeriesPrefix || '',
         advancePaymentPercentage: settings.advancePaymentPercentage || 30,
         podMandatory: settings.podMandatory || false,
-      });
+      };
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLocalSettings(newSettings);
+      setLastSavedSettings(newSettings);
     }
   }, [settings]);
 
   const handleSaveCompanyInfo = async () => {
-    setSaving({ ...saving, companyInfo: true });
-    await updateCompanyInfo({
+    setSavingCompany(true);
+    const success = await updateCompanyInfo({
       companyName: localSettings.companyName,
       gstNumber: localSettings.gstNumber,
     });
-    setSaving({ ...saving, companyInfo: false });
+    if (success) {
+      setLastSavedSettings((prev) =>
+        prev
+          ? {
+              ...prev,
+              companyName: localSettings.companyName,
+              gstNumber: localSettings.gstNumber,
+            }
+          : prev
+      );
+    }
+    setSavingCompany(false);
   };
 
   const handleSaveBookingConfig = async () => {
-    setSaving({ ...saving, bookingConfig: true });
-    await updateBookingConfig({
+    setSavingBooking(true);
+    const success = await updateBookingConfig({
       bookingSeriesPrefix: localSettings.bookingSeriesPrefix,
       advancePaymentPercentage: localSettings.advancePaymentPercentage,
     });
-    setSaving({ ...saving, bookingConfig: false });
+    if (success) {
+      setLastSavedSettings((prev) =>
+        prev
+          ? {
+              ...prev,
+              bookingSeriesPrefix: localSettings.bookingSeriesPrefix,
+              advancePaymentPercentage: localSettings.advancePaymentPercentage,
+            }
+          : prev
+      );
+    }
+    setSavingBooking(false);
   };
 
   const handleSaveOperational = async () => {
-    setSaving({ ...saving, operational: true });
-    await updateOperationalSettings({
+    setSavingOperational(true);
+    const success = await updateOperationalSettings({
       podMandatory: localSettings.podMandatory,
     });
-    setSaving({ ...saving, operational: false });
+    if (success) {
+      setLastSavedSettings((prev) =>
+        prev
+          ? {
+              ...prev,
+              podMandatory: localSettings.podMandatory,
+            }
+          : prev
+      );
+    }
+    setSavingOperational(false);
   };
+
+  const isCompanyDirty = Boolean(
+    lastSavedSettings &&
+      (localSettings.companyName !== lastSavedSettings.companyName ||
+        localSettings.gstNumber !== lastSavedSettings.gstNumber)
+  );
+  const isBookingDirty = Boolean(
+    lastSavedSettings &&
+      (localSettings.bookingSeriesPrefix !== lastSavedSettings.bookingSeriesPrefix ||
+        localSettings.advancePaymentPercentage !== lastSavedSettings.advancePaymentPercentage)
+  );
+  const isOperationalDirty = Boolean(
+    lastSavedSettings && localSettings.podMandatory !== lastSavedSettings.podMandatory
+  );
 
   if (loading) {
     return (
@@ -151,8 +207,8 @@ export default function OrganizationSettingsPage() {
               </div>
             </div>
             <div className="flex justify-end">
-              <Button onClick={handleSaveCompanyInfo} disabled={saving.companyInfo}>
-                {saving.companyInfo && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <Button onClick={handleSaveCompanyInfo} disabled={!isCompanyDirty || savingCompany}>
+                {savingCompany && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 <Save className="h-4 w-4 mr-2" />
                 Save Company Info
               </Button>
@@ -206,8 +262,8 @@ export default function OrganizationSettingsPage() {
               </div>
             </div>
             <div className="flex justify-end">
-              <Button onClick={handleSaveBookingConfig} disabled={saving.bookingConfig}>
-                {saving.bookingConfig && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <Button onClick={handleSaveBookingConfig} disabled={!isBookingDirty || savingBooking}>
+                {savingBooking && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 <Save className="h-4 w-4 mr-2" />
                 Save Booking Config
               </Button>
@@ -237,8 +293,8 @@ export default function OrganizationSettingsPage() {
               </Label>
             </div>
             <div className="flex justify-end">
-              <Button onClick={handleSaveOperational} disabled={saving.operational}>
-                {saving.operational && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <Button onClick={handleSaveOperational} disabled={!isOperationalDirty || savingOperational}>
+                {savingOperational && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 <Save className="h-4 w-4 mr-2" />
                 Save Operational Settings
               </Button>
