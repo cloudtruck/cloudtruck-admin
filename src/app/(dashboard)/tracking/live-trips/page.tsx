@@ -13,7 +13,7 @@ import type { Booking, Pagination } from '@/types';
 import Link from 'next/link';
 
 export default function LiveTripsPage() {
-  const [bookings, setBookings] = useState<(Booking & { lastLocation?: any })[]>([]);
+  const [bookings, setBookings] = useState<(Booking & { lastLocation?: { location?: { coordinates: [number, number] }; timestamp?: string } })[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');

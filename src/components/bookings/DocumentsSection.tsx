@@ -4,15 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Booking } from '@/types';
 import { FileText, Download, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 
 interface DocumentsSectionProps {
   booking: Booking;
 }
 
 export function DocumentsSection({ booking }: DocumentsSectionProps) {
-  const handleDownload = (url: string, filename: string) => {
+  const handleDownload = (url: string, filename?: string) => {
     // TODO: Implement download logic
-    console.log('Download:', url);
+    console.log('Download:', url, filename);
   };
 
   return (
@@ -34,16 +35,17 @@ export function DocumentsSection({ booking }: DocumentsSectionProps) {
                   key={index}
                   className="relative aspect-square rounded-lg border overflow-hidden group"
                 >
-                  <img
+                  <Image
                     src={image}
                     alt={`Cargo image ${index + 1}`}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => handleDownload(image, `cargo-${index + 1}.jpg`)}
+                      onClick={() => handleDownload(image)}
                     >
                       <Download className="h-4 w-4 mr-1" />
                       Download
@@ -75,7 +77,7 @@ export function DocumentsSection({ booking }: DocumentsSectionProps) {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => handleDownload('pod-url', `POD_${booking.bookingId}.pdf`)}
+                onClick={() => handleDownload('pod-url')}
               >
                 <Download className="h-4 w-4 mr-1" />
                 Download
@@ -111,7 +113,7 @@ export function DocumentsSection({ booking }: DocumentsSectionProps) {
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => handleDownload('loading-url', `loading-${index}.jpg`)}
+                      onClick={() => handleDownload('loading-url')}
                     >
                       <Download className="h-4 w-4 mr-1" />
                       Download

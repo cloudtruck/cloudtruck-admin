@@ -18,6 +18,7 @@ export function DriverVehicles({ driverId }: DriverVehiclesProps) {
 
   useEffect(() => {
     fetchVehicles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [driverId]);
 
   const fetchVehicles = async () => {

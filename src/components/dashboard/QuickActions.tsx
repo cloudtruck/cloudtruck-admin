@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Truck, FileText, Users } from 'lucide-react';
+import { Plus, Search, Truck, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { CreateBookingModal } from '@/components/bookings/CreateBookingModal';

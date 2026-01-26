@@ -9,7 +9,7 @@ describe('bookingApi', () => {
 
   it('getActivities calls correct endpoint and returns data', async () => {
     const mock = { data: { data: [{ _id: '1', type: 'booking_created' }] } };
-    vi.spyOn(api, 'get').mockResolvedValueOnce(mock as any);
+    vi.spyOn(api, 'get').mockResolvedValueOnce(mock as never);
 
     const res = await bookingApi.getActivities({ limit: 10 });
     expect(api.get).toHaveBeenCalledWith('/bookings/dashboard/activities', { params: { limit: 10 } });
@@ -18,7 +18,7 @@ describe('bookingApi', () => {
 
   it('getTrends calls correct endpoint and returns data', async () => {
     const mock = { data: { data: [{ date: 'Mon', bookings: 1, delivered: 0 }] } };
-    vi.spyOn(api, 'get').mockResolvedValueOnce(mock as any);
+    vi.spyOn(api, 'get').mockResolvedValueOnce(mock as never);
 
     const res = await bookingApi.getTrends({ days: 7 });
     expect(api.get).toHaveBeenCalledWith('/bookings/dashboard/trends', { params: { days: 7 } });

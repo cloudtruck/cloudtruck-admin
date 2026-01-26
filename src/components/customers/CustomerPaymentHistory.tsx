@@ -26,6 +26,7 @@ export function CustomerPaymentHistory({ customerId }: CustomerPaymentHistoryPro
 
   useEffect(() => {
     fetchPayments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId, pagination.currentPage]);
 
   const fetchPayments = async () => {

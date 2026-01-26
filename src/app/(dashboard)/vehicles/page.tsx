@@ -38,6 +38,7 @@ export default function VehiclesPage() {
 
   useEffect(() => {
     fetchVehicles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, pagination.currentPage]);
 
   const fetchVehicles = async () => {

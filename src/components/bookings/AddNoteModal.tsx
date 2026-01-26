@@ -45,8 +45,9 @@ export function AddNoteModal({
       setNote('');
       onSuccess();
       onClose();
-    } catch (error: any) {
-      console.error('Failed to add note:', error);
+    } catch (err: unknown) {
+      console.error('Failed to add note:', err);
+      const error = err as { response?: { data?: { errors?: Array<{ message?: string }>; message?: string } } };
       const errorMessage = error.response?.data?.errors?.[0]?.message || 
                            error.response?.data?.message || 
                            'Failed to add note';

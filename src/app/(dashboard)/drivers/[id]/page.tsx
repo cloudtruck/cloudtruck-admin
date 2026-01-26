@@ -1,8 +1,7 @@
 'use client';
 
 import { use, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common/PageHeader';
 import { DriverProfile } from '@/components/drivers/DriverProfile';
@@ -20,12 +19,12 @@ interface DriverDetailPageProps {
 
 export default function DriverDetailPage({ params }: DriverDetailPageProps) {
   const { id } = use(params);
-  const router = useRouter();
   const [driver, setDriver] = useState<Driver | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDriver();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchDriver = async () => {

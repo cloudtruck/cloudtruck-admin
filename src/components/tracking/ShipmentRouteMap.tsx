@@ -6,7 +6,7 @@ import { trackingApi } from '@/lib/api';
 import { decodePolyline } from '@/lib/maps';
 import { GoogleMapWrapper } from './GoogleMapWrapper';
 import type { Booking } from '@/types';
-import type { TrackingLocation, PlannedRoute } from '@/types/tracking.types';
+import type { TrackingLocation } from '@/types/tracking.types';
 
 interface ShipmentRouteMapProps {
   booking: Booking;
@@ -25,7 +25,7 @@ const mapOptions = {
 export function ShipmentRouteMap({ booking, currentLocation, height = '400px' }: ShipmentRouteMapProps) {
   const [routePath, setRoutePath] = useState<{ lat: number; lng: number }[]>([]);
   const [plannedPath, setPlannedPath] = useState<{ lat: number; lng: number }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const pickupPos = useMemo(() => {
     const loc = booking.pickup?.latLng;
@@ -92,6 +92,7 @@ export function ShipmentRouteMap({ booking, currentLocation, height = '400px' }:
     };
 
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booking._id, pickupPos, dropPos]);
 
   const center = useMemo(() => {
@@ -103,81 +104,88 @@ export function ShipmentRouteMap({ booking, currentLocation, height = '400px' }:
   }, [currentPos, pickupPos, dropPos]);
 
   return (
-    <GoogleMapWrapper>
-      <GoogleMap
-        mapContainerStyle={{ width: '100%', height }}
-        center={center}
-        zoom={7}
-        options={mapOptions}
-      >
-        {/* Pickup Marker */}
-        <Marker
-          position={pickupPos}
-          label={{
-            text: 'P',
-            color: 'white',
-            fontWeight: 'bold'
-          }}
-          title={`Pickup: ${booking.pickup.city}`}
-        />
-
-        {/* Drop Marker */}
-        <Marker
-          position={dropPos}
-          label={{
-            text: 'D',
-            color: 'white',
-            fontWeight: 'bold'
-          }}
-          title={`Drop: ${booking.drop.city}`}
-        />
-
-        {/* Current Location Marker */}
-        {currentPos && (
+    <div className="relative w-full rounded-md overflow-hidden bg-gray-100" style={{ height }}>
+      {loading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/50 backdrop-blur-sm">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      )}
+      <GoogleMapWrapper>
+        <GoogleMap
+          mapContainerStyle={{ width: '100%', height: '100%' }}
+          center={center}
+          zoom={7}
+          options={mapOptions}
+        >
+          {/* Pickup Marker */}
           <Marker
-            position={currentPos}
-            icon={{
-              path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-              scale: 5,
-              fillColor: '#3b82f6',
-              fillOpacity: 1,
-              strokeWeight: 2,
-              strokeColor: '#ffffff',
-              rotation: currentLocation?.heading || 0,
+            position={pickupPos}
+            label={{
+              text: 'P',
+              color: 'white',
+              fontWeight: 'bold'
             }}
-            title="Current Location"
+            title={`Pickup: ${booking.pickup.city}`}
           />
-        )}
 
-        {/* Route History Polyline */}
-        {routePath.length > 0 && (
-          <Polyline
-            path={routePath}
-            options={{
-              strokeColor: '#3b82f6',
-              strokeOpacity: 0.8,
-              strokeWeight: 4,
+          {/* Drop Marker */}
+          <Marker
+            position={dropPos}
+            label={{
+              text: 'D',
+              color: 'white',
+              fontWeight: 'bold'
             }}
+            title={`Drop: ${booking.drop.city}`}
           />
-        )}
-        
-        {/* Planned Route Polyline */}
-        {plannedPath.length > 0 && (
-          <Polyline
-            path={plannedPath}
-            options={{
-              strokeColor: '#94a3b8',
-              strokeOpacity: 0.6,
-              strokeWeight: 2,
-              icons: [{
-                icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 2 },
-                offset: '0',
-                repeat: '10px'
-              }],
-            }}
-          />
-        )}
-      </GoogleMap>
-    </GoogleMapWrapper>
+
+          {/* Current Location Marker */}
+          {currentPos && (
+            <Marker
+              position={currentPos}
+              icon={{
+                path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                scale: 5,
+                fillColor: '#3b82f6',
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: '#ffffff',
+                rotation: currentLocation?.heading || 0,
+              }}
+              title="Current Location"
+            />
+          )}
+
+          {/* Route History Polyline */}
+          {routePath.length > 0 && (
+            <Polyline
+              path={routePath}
+              options={{
+                strokeColor: '#3b82f6',
+                strokeOpacity: 0.8,
+                strokeWeight: 4,
+              }}
+            />
+          )}
+          
+          {/* Planned Route Polyline */}
+          {plannedPath.length > 0 && (
+            <Polyline
+              path={plannedPath}
+              options={{
+                strokeColor: '#94a3b8',
+                strokeOpacity: 0.6,
+                strokeWeight: 2,
+                icons: [{
+                  icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 2 },
+                  offset: '0',
+                  repeat: '10px'
+                }],
+              }}
+            />
+          )}
+        </GoogleMap>
+      </GoogleMapWrapper>
+    </div>
   );
 }

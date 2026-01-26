@@ -13,7 +13,6 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { AssignDriverModal } from '@/components/bookings/AssignDriverModal';
 import { CreateBookingModal } from '@/components/bookings/CreateBookingModal';
 import { ChevronLeft, ChevronRight, Package, Plus } from 'lucide-react';
-import { toast } from 'sonner';
 import type { BookingStats } from '@/types';
 
 export default function AllBookingsPage() {

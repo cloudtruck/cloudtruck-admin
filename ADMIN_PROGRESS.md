@@ -1,9 +1,20 @@
 # Admin Frontend Implementation Progress
 
-**Last Updated:** January 25, 2026
+**Last Updated:** January 26, 2026
 
 This document compares the admin frontend implementation with the PRD requirements for the Internal and Support App.
 
+- **Recent Implementations (2026-01-26)**:
+  - **Role Template Management UI (Complete)**:
+    - Built comprehensive role template management interface at `/organization/roles`
+    - Created 7 components: main page, table, add modal, edit modal, detail drawer, permission selector, custom hook
+    - Features: CRUD operations, filtering (category/status), search, permission grouping by resource
+    - Advanced permission selector with search, accordion grouping, select all/none, resource-level selection
+    - Integrated with employee creation (dynamic role template dropdown)
+    - Added backend permissions API with 6 endpoints (CRUD + grouped/filtered)
+    - Full audit logging for all permission operations
+    - Files: `roles/page.tsx`, `RoleTemplateTable.tsx`, `AddRoleTemplateModal.tsx`, `EditRoleTemplateModal.tsx`, `RoleTemplateDetailDrawer.tsx`, `PermissionSelector.tsx`, `useRoleTemplates.ts`
+    - Backend: `permission.controller.js`, `permission.service.js`, `permission.routes.js`
 - **Recent Fixes (2026-01-25)**:
   - Fixed data refresh issue where users had to manually refresh page after mutations
   - Implemented `onSuccess` callback pattern in master data, branch, and account modals
@@ -28,7 +39,7 @@ This document compares the admin frontend implementation with the PRD requiremen
   - Fixed TypeScript type mismatch for Google Maps libraries in `GoogleMapWrapper.tsx` and resolved ESLint `no-explicit-any` warning in `api.ts`.
   - Fixed `TypeError` in `EmployeeTable` (undefined list handling).
   - Fixed 400 Bad Request error when adding employees by updating backend staff creation logic to handle full onboarding and role templates.
-- **Completely Implemented**: 12 features
+- **Completely Implemented**: 13 features
 - **Partially Implemented**: 0 features
 - **Not Yet Started**: 1 feature (Audit log viewer)
 
@@ -136,6 +147,62 @@ This document compares the admin frontend implementation with the PRD requiremen
     - GST verification (optional)
     - Components: `EwayBillSection`, `CreateEwayBillModal`, `UpdatePartBModal`, `EwayBillDetailsModal`
     - Pages: `/eway-bills` list page
+
+12. **Organization Management - Staff & Permissions** ✅ **COMPLETE**
+    - **Employee Management**: Full CRUD at `/organization/employees`
+      - List all employees with filters (department, status, role)
+      - Add new employees with role template assignment
+      - Edit employee details and permissions
+      - View employee details in drawer
+      - Block/activate employees
+      - Components: `EmployeeTable`, `AddEmployeeModal`, `EditEmployeeModal`, `EmployeeDetailDrawer`
+    
+    - **Role Template Management**: Full CRUD at `/organization/roles`
+      - List all role templates with filters (category, status)
+      - Create custom role templates
+      - Edit existing templates (name, description, permissions)
+      - View template details with permission breakdown
+      - Delete templates (soft delete)
+      - Permission assignment per template
+      - Components: `RoleTemplateTable`, `AddRoleTemplateModal`, `EditRoleTemplateModal`, `RoleTemplateDetailDrawer`
+    
+    - **Permission Management**:
+      - Complex permission selector with accordion grouping
+      - Search across all permissions
+      - Select all/deselect all functionality
+      - Resource-level selection (select all in a group)
+      - Individual permission checkboxes
+      - Indeterminate state for partial selection
+      - Badge showing selected count per resource
+      - 66 permissions across 15 resources (Booking, Driver, Vehicle, Customer, Payment, E-way Bill, Tracking, Staff, Organization, Master Data, Reports, Dashboard, Document, Notification, User)
+      - Component: `PermissionSelector`
+    
+    - **Backend API**:
+      - Permissions CRUD: `GET /api/v1/permissions`, `GET /api/v1/permissions/grouped`, `POST`, `PUT`, `DELETE`
+      - Role Templates CRUD: `GET /api/v1/role-templates`, `POST`, `PUT`, `DELETE`
+      - Staff CRUD with role assignment: `GET /api/v1/staff`, `POST`, `PUT`, `DELETE`
+      - Audit logging for all operations
+    
+    - **Integration**:
+      - AddEmployeeModal dynamically fetches role templates
+      - Role template dropdown shows permission count
+      - Employees auto-assigned permissions from role template
+      - Permission changes reflect immediately
+    
+    - **Features**:
+      - Category grouping: Operations, Management, Finance, Customer Service, Technical
+      - Status filtering: Active/Inactive
+      - Search by template name
+      - Employee count per template
+      - Permission count per template
+      - Warning on edit: "Changes will affect X employees"
+      - Delete protection: Can't delete if employees assigned
+    
+    - **Files Created**:
+      - Frontend: `roles/page.tsx`, `RoleTemplateTable.tsx`, `AddRoleTemplateModal.tsx`, `EditRoleTemplateModal.tsx`, `RoleTemplateDetailDrawer.tsx`, `PermissionSelector.tsx`, `useRoleTemplates.ts`
+      - Backend: `permission.controller.js`, `permission.service.js`, `permission.routes.js`
+
+13. **Branch Management** ✅ **COMPLETE**
 
 12. **Live Trips Monitoring**
     - Real-time fleet overview at `/tracking/live-trips`

@@ -33,13 +33,14 @@ export function useBookings() {
 
   useEffect(() => {
     fetchBookings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, pagination.currentPage]);
 
   return { bookings, loading, error, refetch: fetchBookings };
 }
 
 export function useBookingById(id: string) {
-  const [booking, setBooking] = useState<any>(null);
+  const [booking, setBooking] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

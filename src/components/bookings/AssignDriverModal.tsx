@@ -70,6 +70,7 @@ export function AssignDriverModal({
     } finally {
       setDriversLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booking.truckTypeNeeded]);
 
   const fetchVehicles = useCallback(async (driverId: string) => {
