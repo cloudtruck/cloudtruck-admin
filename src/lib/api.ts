@@ -316,6 +316,9 @@ export const ewayBillApi = {
 
   verifyGSTIN: (gstin: string) =>
     api.post<ApiResponse<GSTVerificationResponse>>('/eway-bills/verify-gstin', { gstin }),
+
+  sync: (id: string | number) =>
+    api.post<ApiResponse<EwayBill>>(`/eway-bills/${id}/sync`, {}),
 };
 
 // ============================================================================
