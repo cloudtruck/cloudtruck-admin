@@ -368,8 +368,8 @@ export const masterDataApi = {
   list: (params?: { category?: string; isActive?: boolean }) =>
     api.get<ApiResponse<MasterData[]>>('/master-data', { params }),
   
-  getByCategory: (category: string) =>
-    api.get<ApiResponse<MasterData[]>>(`/master-data/category/${category}`),
+  getByCategory: (category: string, includeInactive = true) =>
+    api.get<ApiResponse<MasterData[]>>(`/master-data/category/${category}?includeInactive=${includeInactive}`),
   
   getById: (id: string) => api.get<ApiResponse<MasterData>>(`/master-data/${id}`),
   
