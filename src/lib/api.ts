@@ -319,13 +319,10 @@ export const ewayBillApi = {
     api.patch<ApiResponse<EwayBill>>(`/eway-bills/${id}/cancel`, data),
 
   sync: (ewayBillNumber: string) =>
-    api.post<ApiResponse<EwayBill>>(`/eway-bills/sync/${ewayBillNumber}`),
+    api.post<ApiResponse<EwayBill>>('/eway-bills/sync', { ewayBillNumber }),
 
   verifyGSTIN: (gstin: string) =>
     api.post<ApiResponse<GSTVerificationResponse>>('/eway-bills/verify-gstin', { gstin }),
-
-  sync: (id: string | number) =>
-    api.post<ApiResponse<EwayBill>>(`/eway-bills/${id}/sync`, {}),
 };
 
 // ============================================================================
