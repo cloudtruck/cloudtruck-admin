@@ -79,6 +79,29 @@ export interface Booking {
   updatedAt: string;
 }
 
+export interface CreateBookingPayload {
+  customerId: string;
+  pickupCity: string;
+  pickupAddress: string;
+  pickupLat: number;
+  pickupLng: number;
+  dropCity: string;
+  dropAddress: string;
+  dropLat: number;
+  dropLng: number;
+  materialType: string;
+  weight: number;
+  truckType: string;
+  bodyType?: string;
+  loadDate: string;
+  expectedAmount?: number;
+  advanceRequired?: number;
+  additionalInstructions?: string;
+  isHazardous?: boolean;
+  isFragile?: boolean;
+  requiresTemperatureControl?: boolean;
+}
+
 export interface BookingFilters {
   status?: string;
   paymentStatus?: string;

@@ -4,6 +4,7 @@ import type {
   Booking,
   BookingFilters,
   BookingStats,
+  CreateBookingPayload,
   Driver,
   DriverFilters,
   Vehicle,
@@ -71,7 +72,7 @@ export const bookingApi = {
   getTrends: (params?: { days?: number }) => api.get<ApiResponse<TrendData[]>>('/bookings/dashboard/trends', { params }),
   getStatusBreakdown: () => api.get<ApiResponse<Record<string, number>>>('/bookings/dashboard/status'),
 
-  create: (data: Partial<Booking>) => api.post<ApiResponse<Booking>>('/bookings', data),
+  create: (data: CreateBookingPayload) => api.post<ApiResponse<Booking>>('/bookings', data),
 
   updateStatus: (id: string, data: { status: string; notes?: string }) =>
     api.patch<ApiResponse<Booking>>(`/bookings/${id}/status`, data),

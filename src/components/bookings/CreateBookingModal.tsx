@@ -22,32 +22,9 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { bookingApi, customerApi } from '@/lib/api';
 import { toast } from 'sonner';
-import type { Customer } from '@/types';
+import type { Customer, CreateBookingPayload } from '@/types';
 import { Loader2 } from 'lucide-react';
 import { useMasterData } from '@/hooks/useMasterData';
-
-interface CreateBookingPayload {
-  customerId: string;
-  pickupCity: string;
-  pickupAddress: string;
-  pickupLat: number;
-  pickupLng: number;
-  dropCity: string;
-  dropAddress: string;
-  dropLat: number;
-  dropLng: number;
-  materialType: string;
-  weight: number;
-  truckType: string;
-  bodyType?: string;
-  loadDate: string;
-  expectedAmount?: number;
-  advanceRequired?: number;
-  additionalInstructions?: string;
-  isHazardous?: boolean;
-  isFragile?: boolean;
-  requiresTemperatureControl?: boolean;
-}
 
 interface CreateBookingModalProps {
   isOpen: boolean;
