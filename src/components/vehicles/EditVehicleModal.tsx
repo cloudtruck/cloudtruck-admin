@@ -49,7 +49,7 @@ const editVehicleSchema = z.object({
   lengthUnit: z.enum(['ft', 'm']),
   capacityValue: z.string().min(1, 'Capacity is required'),
   capacityUnit: z.enum(['kg', 'tons']),
-  bodyType: z.enum(['open', 'closed', 'container']),
+  bodyType: z.string().min(1, 'Body type is required'),
   owner: z.string().min(1, 'Owner is required'),
   insuranceExpiry: z.date().optional(),
   fitnessExpiry: z.date().optional(),
