@@ -10,7 +10,7 @@ export interface Vehicle {
     value: number;
     unit: 'kg' | 'tons';
   };
-  bodyType: 'open' | 'closed' | 'container';
+  bodyType: string;
   rcDocument?: string;
   expiryDates?: {
     insurance?: string;

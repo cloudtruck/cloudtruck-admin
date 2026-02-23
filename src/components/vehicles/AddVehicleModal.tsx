@@ -50,7 +50,7 @@ const addVehicleSchema = z.object({
   lengthUnit: z.enum(['ft', 'm']),
   capacityValue: z.string().min(1, 'Capacity is required'),
   capacityUnit: z.enum(['kg', 'tons']),
-  bodyType: z.enum(['open', 'closed', 'container']),
+  bodyType: z.string().min(1, 'Body type is required'),
   owner: z.string().min(1, 'Owner is required'),
   insuranceExpiry: z.date(),
 });
@@ -78,7 +78,7 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
       lengthUnit: 'ft',
       capacityValue: '',
       capacityUnit: 'tons',
-      bodyType: 'closed',
+      bodyType: '',
       owner: '',
     },
   });
