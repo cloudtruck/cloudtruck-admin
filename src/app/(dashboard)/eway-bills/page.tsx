@@ -64,9 +64,14 @@ export default function EwayBillsPage() {
       }
 
       const response = await ewayBillApi.getAll(queryParams);
-      if (response.data.success) {
-        setEwayBills(response.data.data.ewayBills);
-        setPagination(response.data.data.pagination);
+      if (response.data.success && response.data.data) {
+        setEwayBills(response.data.data.ewayBills || []);
+        setPagination(response.data.data.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          itemsPerPage: 20
+        });
       }
     } catch (error) {
       const err = error as { response?: { data?: { message?: string } } };

@@ -28,8 +28,8 @@ export default function EwayBillSection({ bookingId }: EwayBillSectionProps) {
     setLoading(true);
     try {
       const response = await ewayBillApi.getAll({ bookingId });
-      if (response.data.success) {
-        setEwayBills(response.data.data.ewayBills);
+      if (response.data.success && response.data.data) {
+        setEwayBills(response.data.data.ewayBills || []);
       }
     } catch {
       // Quietly fail as this is a sub-section
@@ -113,7 +113,7 @@ export default function EwayBillSection({ bookingId }: EwayBillSectionProps) {
         )}
       </div>
 
-      {ewayBills.length === 0 ? (
+      {(ewayBills?.length ?? 0) === 0 ? (
         <div className="text-center py-8">
           <p className="text-muted-foreground text-sm">No E-way bills linked to this booking</p>
           {canCreateEwayBill && (
@@ -130,7 +130,7 @@ export default function EwayBillSection({ bookingId }: EwayBillSectionProps) {
         </div>
       ) : (
         <div className="space-y-3">
-          {ewayBills.map((bill) => (
+          {ewayBills?.map((bill) => (
             <Card key={bill._id} className="p-4 hover:shadow-md transition-shadow">
               <div className="space-y-3">
                 {/* Header Row */}
