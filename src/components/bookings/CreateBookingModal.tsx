@@ -28,30 +28,19 @@ import { useMasterData } from '@/hooks/useMasterData';
 
 interface CreateBookingPayload {
   customerId: string;
-  pickup: {
-    city: string;
-    address: string;
-    latLng: {
-      type: 'Point';
-      coordinates: [number, number];
-    };
-  };
-  drop: {
-    city: string;
-    address: string;
-    latLng: {
-      type: 'Point';
-      coordinates: [number, number];
-    };
-  };
+  pickupCity: string;
+  pickupAddress: string;
+  pickupLat: number;
+  pickupLng: number;
+  dropCity: string;
+  dropAddress: string;
+  dropLat: number;
+  dropLng: number;
   materialType: string;
-  weight: {
-    value: number;
-    unit: 'kg' | 'tons';
-  };
-  truckTypeNeeded: string;
+  weight: number;
+  truckType: string;
   bodyType?: string;
-  loadDateTime: string;
+  loadDate: string;
   expectedAmount?: number;
   advanceRequired?: number;
   additionalInstructions?: string;
@@ -152,30 +141,19 @@ export function CreateBookingModal({
     try {
       const bookingData: CreateBookingPayload = {
         customerId: formData.customerId,
-        pickup: {
-          city: formData.pickupCity,
-          address: formData.pickupAddress,
-          latLng: {
-            type: 'Point',
-            coordinates: [0, 0], // Mocked for now - [lng, lat]
-          },
-        },
-        drop: {
-          city: formData.dropCity,
-          address: formData.dropAddress,
-          latLng: {
-            type: 'Point',
-            coordinates: [0, 0], // Mocked for now - [lng, lat]
-          },
-        },
+        pickupCity: formData.pickupCity,
+        pickupAddress: formData.pickupAddress,
+        pickupLat: 0,
+        pickupLng: 0,
+        dropCity: formData.dropCity,
+        dropAddress: formData.dropAddress,
+        dropLat: 0,
+        dropLng: 0,
         materialType: formData.materialType,
-        weight: {
-          value: parseFloat(formData.weight),
-          unit: 'tons',
-        },
-        truckTypeNeeded: formData.truckType,
+        weight: parseFloat(formData.weight),
+        truckType: formData.truckType,
         bodyType: formData.bodyType || 'open',
-        loadDateTime: new Date(formData.loadDateTime).toISOString(),
+        loadDate: new Date(formData.loadDateTime).toISOString(),
         expectedAmount: formData.expectedAmount ? parseFloat(formData.expectedAmount) : undefined,
         advanceRequired: formData.advanceRequired ? parseFloat(formData.advanceRequired) : 0,
         additionalInstructions: formData.additionalInstructions,
