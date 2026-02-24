@@ -130,7 +130,7 @@ export function CreateBookingModal({
         weight: parseFloat(formData.weight),
         truckType: formData.truckType,
         bodyType: formData.bodyType || 'open',
-        loadDate: new Date(formData.loadDateTime).toISOString(),
+        loadDate: formData.loadDateTime ? new Date(formData.loadDateTime).toISOString() : undefined,
         expectedAmount: formData.expectedAmount ? parseFloat(formData.expectedAmount) : undefined,
         advanceRequired: formData.advanceRequired ? parseFloat(formData.advanceRequired) : 0,
         additionalInstructions: formData.additionalInstructions,
@@ -305,7 +305,6 @@ export function CreateBookingModal({
                 type="datetime-local"
                 value={formData.loadDateTime}
                 onChange={(e) => setFormData({ ...formData, loadDateTime: e.target.value })}
-                required
               />
             </div>
 

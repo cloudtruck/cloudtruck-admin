@@ -93,7 +93,7 @@ export interface CreateBookingPayload {
   weight: number;
   truckType: string;
   bodyType?: string;
-  loadDate: string;
+  loadDate?: string;
   expectedAmount?: number;
   advanceRequired?: number;
   additionalInstructions?: string;
