@@ -33,6 +33,7 @@ export interface MasterData {
   key: string;
   displayName: string;
   description?: string;
+  imageUrl?: string;
   metadata?: Record<string, unknown>;
   displayOrder: number;
   isActive: boolean;

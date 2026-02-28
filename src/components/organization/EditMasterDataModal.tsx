@@ -7,9 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload, X } from 'lucide-react';
 import { useMasterData } from '@/hooks/useMasterData';
 import type { MasterData } from '@/types';
+import Image from 'next/image';
+import { useEffect } from 'react';
 
 interface EditMasterDataModalProps {
   item: MasterData;
@@ -25,16 +27,49 @@ export function EditMasterDataModal({ item, open, onCloseAction }: EditMasterDat
     description: item.description || '',
     isActive: item.isActive !== false,
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(item.imageUrl || null);
+
+  useEffect(() => {
+    setFormData({
+      displayName: item.displayName || '',
+      description: item.description || '',
+      isActive: item.isActive !== false,
+    });
+    setImagePreview(item.imageUrl || null);
+    setImageFile(null);
+  }, [item, open]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
-    const result = await updateItem(item._id, {
-      displayName: formData.displayName,
-      description: formData.description,
-      isActive: formData.isActive,
-    });
+    const data = new FormData();
+    data.append('displayName', formData.displayName);
+    data.append('description', formData.description);
+    data.append('isActive', String(formData.isActive));
+    if (imageFile) {
+      data.append('image', imageFile);
+    }
+
+    const result = await updateItem(item._id, data);
 
     setSaving(false);
 
@@ -50,6 +85,45 @@ export function EditMasterDataModal({ item, open, onCloseAction }: EditMasterDat
           <DialogTitle>Edit {item.displayName}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {item.category === 'truck-type' && (
+            <div className="space-y-2">
+              <Label>Truck Image</Label>
+              <div className="flex items-center gap-4">
+                {imagePreview ? (
+                  <div className="relative w-20 h-20 rounded-md overflow-hidden border">
+                    <Image
+                      src={imagePreview}
+                      alt="Preview"
+                      fill
+                      className="object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed rounded-md cursor-pointer hover:bg-gray-50 transition-colors border-gray-300">
+                    <Upload className="h-6 w-6 text-gray-400" />
+                    <span className="text-[10px] text-gray-500 mt-1">Upload</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                )}
+                <div className="text-xs text-gray-500">
+                  <p>Update the image for this truck type.</p>
+                  <p>Recommended: Square image, max 2MB.</p>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="displayName">Display Name *</Label>
             <Input

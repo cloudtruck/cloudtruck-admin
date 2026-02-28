@@ -12,6 +12,7 @@ import { useMasterData } from '@/hooks/useMasterData';
 import { AddMasterDataModal } from '@/components/organization/AddMasterDataModal';
 import { EditMasterDataModal } from '@/components/organization/EditMasterDataModal';
 import type { MasterData } from '@/types';
+import Image from 'next/image';
 
 const CATEGORIES = [
   { value: 'truck-type', label: 'Truck Types' },
@@ -23,7 +24,7 @@ const CATEGORIES = [
 
 export default function MasterDataPage() {
   const [selectedCategory, setSelectedCategory] = useState<MasterData['category']>('truck-type');
-  const { data, loading, deleteItem } = useMasterData(selectedCategory);
+  const { data, loading, deleteItem, refetch } = useMasterData(selectedCategory);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<MasterData | null>(null);
 
@@ -56,13 +57,13 @@ export default function MasterDataPage() {
         <CardContent className="pt-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">{categoryLabel} ({data.length})</h3>
-            <AddMasterDataModal category={category} categoryLabel={categoryLabel.slice(0, -1)} />
+            <AddMasterDataModal category={category} categoryLabel={categoryLabel.slice(0, -1)} onSuccess={() => refetch()} />
           </div>
 
           {data.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <p className="mb-4">No {categoryLabel.toLowerCase()} found</p>
-              <AddMasterDataModal category={category} categoryLabel={categoryLabel.slice(0, -1)} />
+              <AddMasterDataModal category={category} categoryLabel={categoryLabel.slice(0, -1)} onSuccess={() => refetch()} />
             </div>
           ) : (
             <div className="space-y-2">
@@ -73,6 +74,22 @@ export default function MasterDataPage() {
                 >
                   <div className="flex items-center gap-3 flex-1">
                     <GripVertical className="h-4 w-4 text-gray-400 cursor-move" />
+                    {item.category === 'truck-type' && (
+                      <div className="relative h-10 w-10 border rounded overflow-hidden flex-shrink-0 bg-gray-50">
+                        {item.imageUrl ? (
+                          <Image
+                            src={item.imageUrl}
+                            alt={item.displayName}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">
+                            No Image
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div className="flex-1">
                       <span className="font-medium">{item.displayName}</span>
                       {item.description && (
@@ -147,7 +164,10 @@ export default function MasterDataPage() {
           key={editingItem._id}
           item={editingItem}
           open={!!editingItem}
-          onCloseAction={() => setEditingItem(null)}
+          onCloseAction={() => {
+            setEditingItem(null);
+            refetch();
+          }}
         />
       )}
     </div>

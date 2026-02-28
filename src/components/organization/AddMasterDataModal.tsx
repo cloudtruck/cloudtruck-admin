@@ -6,16 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, Upload, X } from 'lucide-react';
 import { useMasterData } from '@/hooks/useMasterData';
 import type { MasterData } from '@/types';
+import Image from 'next/image';
 
 interface AddMasterDataModalProps {
   category: MasterData['category'];
   categoryLabel: string;
+  onSuccess?: () => void;
 }
 
-export function AddMasterDataModal({ category, categoryLabel }: AddMasterDataModalProps) {
+export function AddMasterDataModal({ category, categoryLabel, onSuccess }: AddMasterDataModalProps) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const { createItem } = useMasterData(category);
@@ -24,24 +26,50 @@ export function AddMasterDataModal({ category, categoryLabel }: AddMasterDataMod
     key: '',
     description: '',
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
-    const result = await createItem({
-      category,
-      displayName: formData.displayName,
-      key: formData.key || formData.displayName.toLowerCase().replace(/\s+/g, '-'),
-      description: formData.description,
-      isActive: true,
-    });
+    const data = new FormData();
+    data.append('category', category);
+    data.append('displayName', formData.displayName);
+    data.append('key', formData.key || formData.displayName.toLowerCase().replace(/\s+/g, '-'));
+    data.append('description', formData.description);
+    data.append('isActive', 'true');
+    if (imageFile) {
+      data.append('image', imageFile);
+    }
+
+    const result = await createItem(data);
 
     setSaving(false);
 
     if (result) {
       setOpen(false);
       setFormData({ displayName: '', key: '', description: '' });
+      setImageFile(null);
+      setImagePreview(null);
+      onSuccess?.();
     }
   };
 
@@ -58,6 +86,46 @@ export function AddMasterDataModal({ category, categoryLabel }: AddMasterDataMod
           <DialogTitle>Add {categoryLabel}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {category === 'truck-type' && (
+            <div className="space-y-2">
+              <Label>Truck Image</Label>
+              <div className="flex items-center gap-4">
+                {imagePreview ? (
+                  <div className="relative w-20 h-20 rounded-md overflow-hidden border">
+                    <Image
+                      src={imagePreview}
+                      alt="Preview"
+                      fill
+                      className="object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed rounded-md cursor-pointer hover:bg-gray-50 transition-colors border-gray-300">
+                    <Upload className="h-6 w-6 text-gray-400" />
+                    <span className="text-[10px] text-gray-500 mt-1">Upload</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                )}
+                <div className="text-xs text-gray-500">
+                  <p>Upload a clear image of the truck type.</p>
+                  <p>Recommended: Square image, max 2MB.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="displayName">Display Name *</Label>
             <Input

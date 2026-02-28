@@ -374,9 +374,15 @@ export const masterDataApi = {
   
   getById: (id: string) => api.get<ApiResponse<MasterData>>(`/master-data/${id}`),
   
-  create: (data: Partial<MasterData>) => api.post<ApiResponse<MasterData>>('/master-data', data),
+  create: (data: Partial<MasterData> | FormData) => 
+    api.post<ApiResponse<MasterData>>('/master-data', data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
+    }),
   
-  update: (id: string, data: Partial<MasterData>) => api.patch<ApiResponse<MasterData>>(`/master-data/${id}`, data),
+  update: (id: string, data: Partial<MasterData> | FormData) => 
+    api.patch<ApiResponse<MasterData>>(`/master-data/${id}`, data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
+    }),
   
   reorder: (items: Array<{ id: string; displayOrder: number }>) =>
     api.patch<ApiResponse<null>>('/master-data/reorder', { items }),
