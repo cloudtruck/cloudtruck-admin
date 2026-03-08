@@ -147,6 +147,9 @@ export const vehicleApi = {
 
   verify: (id: string) => api.post<ApiResponse<Vehicle>>(`/vehicles/${id}/verify`, {}),
 
+  reject: (id: string, data: { reason: string }) =>
+    api.post<ApiResponse<Vehicle>>(`/vehicles/${id}/reject`, data),
+
   delete: (id: string) => api.delete<ApiResponse<null>>(`/vehicles/${id}`),
 
   getByDriver: (driverId: string) =>

@@ -23,7 +23,7 @@ export default function VehicleApprovalsPage() {
     setLoading(true);
     try {
       const response = await vehicleApi.getAll({
-        isVerified: false,
+        verificationStatus: 'pending',
         page: pagination.currentPage,
         limit: 20,
       });

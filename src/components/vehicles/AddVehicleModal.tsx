@@ -48,6 +48,8 @@ const addVehicleSchema = z.object({
   truckType: z.string().min(1, 'Truck type is required'),
   lengthValue: z.string().min(1, 'Length is required'),
   lengthUnit: z.enum(['ft', 'm']),
+  heightValue: z.string().optional(),
+  heightUnit: z.enum(['ft', 'm']),
   capacityValue: z.string().min(1, 'Capacity is required'),
   capacityUnit: z.enum(['kg', 'tons']),
   bodyType: z.string().min(1, 'Body type is required'),
@@ -76,6 +78,8 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
       truckType: '',
       lengthValue: '',
       lengthUnit: 'ft',
+      heightValue: '',
+      heightUnit: 'ft',
       capacityValue: '',
       capacityUnit: 'tons',
       bodyType: '',
@@ -106,6 +110,12 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
           value: parseFloat(data.lengthValue),
           unit: data.lengthUnit === 'm' ? 'meter' : 'ft',
         },
+        ...(data.heightValue && {
+          height: {
+            value: parseFloat(data.heightValue),
+            unit: data.heightUnit === 'm' ? 'meter' : 'ft',
+          },
+        }),
         capacity: {
           value: parseFloat(data.capacityValue),
           unit: data.capacityUnit,
@@ -268,6 +278,44 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
                   <FormField
                     control={form.control}
                     name="lengthUnit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="w-20">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="ft">ft</SelectItem>
+                            <SelectItem value="m">m</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>Height (optional)</FormLabel>
+                <div className="flex gap-2">
+                  <FormField
+                    control={form.control}
+                    name="heightValue"
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormControl>
+                          <Input type="number" step="0.1" placeholder="7.5" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="heightUnit"
                     render={({ field }) => (
                       <FormItem>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>

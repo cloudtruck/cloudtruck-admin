@@ -55,6 +55,10 @@ const navigationItems: NavItem[] = [
     label: 'Vehicles',
     href: '/vehicles',
     icon: Truck,
+    children: [
+      { label: 'All Vehicles', href: '/vehicles', icon: Truck },
+      { label: 'Approvals', href: '/vehicles/approvals', icon: Truck },
+    ],
   },
   {
     label: 'Tracking',

@@ -44,4 +44,5 @@ export interface VehicleFilters {
   bodyType?: string;
   search?: string;
   isVerified?: boolean;
+  verificationStatus?: string;
 }
