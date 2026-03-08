@@ -43,7 +43,33 @@ export function DriverProfile({ driver }: DriverProfileProps) {
                     : 'bg-yellow-100 text-yellow-800 border-yellow-200'
                 }
               >
-                {driver.isVerified ? 'Verified' : 'Pending'}
+                {driver.isVerified ? 'Verified' : 'Pending Approval'}
+              </Badge>
+
+              <Badge
+                variant="outline"
+                className={
+                  driver.kycStatus === 'verified'
+                    ? 'bg-green-100 text-green-800 border-green-200'
+                    : driver.kycStatus === 'rejected'
+                    ? 'bg-red-100 text-red-800 border-red-200'
+                    : 'bg-blue-100 text-blue-800 border-blue-200'
+                }
+              >
+                KYC: {driver.kycStatus || 'pending'}
+              </Badge>
+
+              <Badge
+                variant="outline"
+                className={
+                  driver.accountInfoStatus === 'verified'
+                    ? 'bg-green-100 text-green-800 border-green-200'
+                    : driver.accountInfoStatus === 'rejected'
+                    ? 'bg-red-100 text-red-800 border-red-200'
+                    : 'bg-blue-100 text-blue-800 border-blue-200'
+                }
+              >
+                Account: {driver.accountInfoStatus || 'pending'}
               </Badge>
               {driver.isBlacklisted && (
                 <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
@@ -53,6 +79,18 @@ export function DriverProfile({ driver }: DriverProfileProps) {
             </div>
           </div>
         </div>
+
+        {driver.rejectionReason && (
+          <div className="p-4 bg-red-50 border border-red-100 rounded-lg">
+            <p className="text-sm font-medium text-red-800">Rejection Reason</p>
+            <p className="text-sm text-red-700 mt-1">{driver.rejectionReason}</p>
+            {driver.rejectedAt && (
+              <p className="text-xs text-red-500 mt-2">
+                Rejected on {format(new Date(driver.rejectedAt), 'MMM dd, yyyy HH:mm')}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-center gap-3">

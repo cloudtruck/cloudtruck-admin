@@ -23,7 +23,7 @@ export default function DriverApprovalsPage() {
     setLoading(true);
     try {
       const response = await driverApi.getAll({
-        isVerified: false,
+        kycStatus: 'submitted',
         page: pagination.currentPage,
         limit: 20,
       });

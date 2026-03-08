@@ -39,6 +39,8 @@ export interface Driver {
 export interface DriverFilters {
   status?: string;
   isVerified?: boolean;
+  kycStatus?: string;
+  accountInfoStatus?: string;
   isBlacklisted?: boolean;
   search?: string;
   truckType?: string;
