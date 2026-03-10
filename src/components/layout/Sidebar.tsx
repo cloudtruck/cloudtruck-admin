@@ -49,6 +49,7 @@ const navigationItems: NavItem[] = [
       { label: 'All Drivers', href: '/drivers', icon: Users },
       { label: 'Available Drivers', href: '/drivers?status=available', icon: Users },
       { label: 'Approvals', href: '/drivers/approvals', icon: Users },
+      { label: 'Payment Requests', href: '/drivers/payouts', icon: DollarSign },
     ],
   },
   {

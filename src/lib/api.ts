@@ -33,6 +33,7 @@ import type {
   OrganizationSettings,
   Branch,
   PlannedRoute,
+  WalletTransaction,
 } from '@/types';
 
 // ============================================================================
@@ -88,6 +89,12 @@ export const bookingApi = {
 
   getDocuments: (id: string) =>
     api.get<ApiResponse<{ documents: Array<{ _id: string; type: string; url: string; uploadedAt: string }> }>>(`/bookings/${id}/documents`),
+
+  getAllPaymentRequests: (params?: { status?: string; page?: number; limit?: number }) =>
+    api.get<ApiResponse<{ requests: unknown[]; pagination: Pagination }>>('/bookings/payment-requests', { params }),
+
+  processPaymentRequest: (bookingId: string, requestId: string, action: 'pay' | 'reject', data?: { utrNumber?: string; rejectionReason?: string }) =>
+    api.patch<ApiResponse<unknown>>(`/bookings/${bookingId}/payment-requests/${requestId}/${action}`, data || {}),
 };
 
 // ============================================================================
@@ -464,4 +471,16 @@ export const branchApi = {
 // City Search API
 export const cityApi = {
   search: (query: string) => api.get<ApiResponse<string[]>>('/cities/search', { params: { q: query } }),
+};
+
+// Wallet / Payouts API
+export const walletApi = {
+  getAllPayouts: (params?: { page?: number; limit?: number; status?: string }) =>
+    api.get<ApiResponse<{ payouts: WalletTransaction[]; pagination: Pagination }>>('/wallet/payouts/all', { params }),
+
+  approvePayout: (transactionId: string, data?: { utrNumber?: string }) =>
+    api.patch<ApiResponse<WalletTransaction>>(`/wallet/payouts/${transactionId}/approve`, data || {}),
+
+  rejectPayout: (transactionId: string, data: { reason: string }) =>
+    api.patch<ApiResponse<WalletTransaction>>(`/wallet/payouts/${transactionId}/reject`, data),
 };
