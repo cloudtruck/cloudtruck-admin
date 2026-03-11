@@ -30,6 +30,18 @@ export function DriverDocuments({ driver }: DriverDocumentsProps) {
       type: 'image',
     },
     {
+      label: 'Cancelled Cheque',
+      value: driver.chequePhoto,
+      icon: FileText,
+      type: 'image',
+    },
+    {
+      label: 'TDS Document',
+      value: driver.tdsDocument,
+      icon: FileText,
+      type: 'document',
+    },
+    {
       label: 'Profile Photo',
       value: driver.profilePhoto,
       icon: ImageIcon,

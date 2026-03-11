@@ -12,6 +12,9 @@ export interface Driver {
   aadhaarPhoto?: string;
   panNumber?: string;
   panPhoto?: string;
+  chequePhoto?: string;
+  tdsDocument?: string;
+  gstin?: string;
   bankDetails?: {
     accountNumber?: string;
     ifscCode?: string;
@@ -20,6 +23,10 @@ export interface Driver {
   status: 'available' | 'on-trip' | 'offline' | 'blocked';
   isVerified: boolean;
   verifiedAt?: string;
+  kycStatus?: string;
+  accountInfoStatus?: string;
+  rejectionReason?: string;
+  rejectedAt?: string;
   isBlacklisted: boolean;
   blacklistReason?: string;
   preferredTruckTypes?: string[];
