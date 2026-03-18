@@ -1,243 +1,238 @@
 'use client';
 
 import { useEwayBillStore } from '@/store/ewayBillStore';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, Download } from 'lucide-react';
-import { format, differenceInHours } from 'date-fns';
+import { Eye, Edit, Inbox } from 'lucide-react';
+import { format } from 'date-fns';
 import type { EwayBill } from '@/types';
-import { exportToCSV, exportToExcel } from '@/lib/export';
-import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
 
-export default function EwayBillsTable() {
+type TabValue = 'part-b-pending' | 'active' | 'expiring' | 'expired' | 'manual-override';
+
+interface Props {
+  tab: TabValue;
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center h-48 text-gray-400 gap-2">
+      <Inbox className="h-12 w-12 text-gray-200" strokeWidth={1} />
+      <span className="text-sm text-gray-400">No data</span>
+    </div>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="flex items-center justify-center h-48">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+    </div>
+  );
+}
+
+// Standard table for Part-B Pending / Active / Expiring / Expired
+function StandardTable({
+  bills,
+  canUpdatePartB,
+  openDetailsModal,
+  openUpdateModal,
+}: {
+  bills: EwayBill[];
+  canUpdatePartB: boolean;
+  openDetailsModal: (b: EwayBill) => void;
+  openUpdateModal: (b: EwayBill) => void;
+}) {
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="border-b border-gray-200">
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            Actions
+          </th>
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            Eway no
+          </th>
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            Company
+          </th>
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            From Place
+          </th>
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            To Place
+          </th>
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            Truck no
+          </th>
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            Distance
+          </th>
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            Doc No
+          </th>
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            Doc Date
+          </th>
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            Created at
+          </th>
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            Valid till
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {bills.map((bill) => (
+          <tr
+            key={bill._id}
+            className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+          >
+            <td className="py-3 px-4">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-gray-500 hover:text-blue-600"
+                  onClick={() => openDetailsModal(bill)}
+                  title="View"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                {canUpdatePartB && bill.status === 'active' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-gray-500 hover:text-blue-600"
+                    onClick={() => openUpdateModal(bill)}
+                    title="Update Part-B"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </td>
+            <td className="py-3 px-4 font-medium text-blue-600">{bill.ewayBillNumber}</td>
+            <td className="py-3 px-4 text-gray-700">
+              {bill.partA.consignorTradeName || bill.partA.consignorLegalName || '—'}
+            </td>
+            <td className="py-3 px-4 text-gray-700">{bill.partA.consignorState || '—'}</td>
+            <td className="py-3 px-4 text-gray-700">{bill.partA.consigneeState || '—'}</td>
+            <td className="py-3 px-4 text-gray-700">{bill.partB.vehicleNumber || '—'}</td>
+            <td className="py-3 px-4 text-gray-700">—</td>
+            <td className="py-3 px-4 text-gray-700">{bill.partA.documentNumber || '—'}</td>
+            <td className="py-3 px-4 text-gray-700">
+              {bill.partA.documentDate
+                ? format(new Date(bill.partA.documentDate), 'dd/MM/yyyy')
+                : '—'}
+            </td>
+            <td className="py-3 px-4 text-gray-700">
+              {bill.createdAt ? format(new Date(bill.createdAt), 'dd/MM/yyyy HH:mm') : '—'}
+            </td>
+            <td
+              className={cn(
+                'py-3 px-4',
+                bill.status === 'expired' ? 'text-red-600 font-medium' : 'text-gray-700'
+              )}
+            >
+              {bill.validUntil ? format(new Date(bill.validUntil), 'dd/MM/yyyy HH:mm') : '—'}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+// Manual tab table: Eway Bill, Created at, Valid till, Trip id, Truck no
+function ManualTable({
+  bills,
+  openDetailsModal,
+}: {
+  bills: EwayBill[];
+  openDetailsModal: (b: EwayBill) => void;
+}) {
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="border-b border-gray-200">
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            Eway Bill
+          </th>
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            Created at
+          </th>
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            Valid till
+          </th>
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            Trip id
+          </th>
+          <th className="text-left py-3 px-4 font-medium text-gray-600 whitespace-nowrap">
+            Truck no
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {bills.map((bill) => (
+          <tr
+            key={bill._id}
+            className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+          >
+            <td className="py-3 px-4">
+              <button
+                className="font-medium text-blue-600 hover:underline"
+                onClick={() => openDetailsModal(bill)}
+              >
+                {bill.ewayBillNumber}
+              </button>
+            </td>
+            <td className="py-3 px-4 text-gray-700">
+              {bill.createdAt ? format(new Date(bill.createdAt), 'dd/MM/yyyy HH:mm') : '—'}
+            </td>
+            <td
+              className={cn(
+                'py-3 px-4',
+                bill.status === 'expired' ? 'text-red-600 font-medium' : 'text-gray-700'
+              )}
+            >
+              {bill.validUntil ? format(new Date(bill.validUntil), 'dd/MM/yyyy HH:mm') : '—'}
+            </td>
+            <td className="py-3 px-4 text-gray-700">{bill.booking?.bookingId || '—'}</td>
+            <td className="py-3 px-4 text-gray-700">{bill.partB.vehicleNumber || '—'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+export default function EwayBillsTable({ tab }: Props) {
   const { user } = useAuth();
-  const {
-    ewayBills,
-    loading,
-    pagination,
-    setPagination,
-    openDetailsModal,
-    openUpdateModal,
-  } = useEwayBillStore();
-
+  const { ewayBills, loading, openDetailsModal, openUpdateModal } = useEwayBillStore();
   const canUpdatePartB = user?.role === 'admin' || user?.role === 'super-admin';
 
-  const getStatusBadge = (bill: EwayBill) => {
-    const hoursUntilExpiry = differenceInHours(new Date(bill.validUntil), new Date());
+  if (loading) return <LoadingState />;
 
-    if (bill.status === 'expired') {
-      return <Badge variant="destructive">Expired</Badge>;
-    }
-
-    if (hoursUntilExpiry <= 48 && hoursUntilExpiry > 0) {
-      return (
-        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-          Expiring ({hoursUntilExpiry}h)
-        </Badge>
-      );
-    }
-
-    if (bill.status === 'active') {
-      return <Badge className="bg-green-100 text-green-800">Active</Badge>;
-    }
-
-    if (bill.status === 'cancelled') {
-      return <Badge variant="outline">Cancelled</Badge>;
-    }
-
-    return <Badge>{bill.status}</Badge>;
-  };
-
-  const getPartBStatusBadge = (bill: EwayBill) => {
-    if (bill.autoSynced) {
-      return (
-        <Badge variant="outline" className="bg-blue-50 text-blue-700">
-          🔄 Auto-Synced
-        </Badge>
-      );
-    }
-
-    return (
-      <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-        ⚠️ Pending Manual Update
-      </Badge>
-    );
-  };
-
-  const handleExportCSV = () => {
-    try {
-      const data = ewayBills.map((bill) => ({
-        'E-way Bill No': bill.ewayBillNumber,
-        'Booking ID': bill.booking?.bookingId || 'N/A',
-        Route: `${bill.partA.consignorState} → ${bill.partA.consigneeState}`,
-        Status: bill.status,
-        'Valid Until': format(new Date(bill.validUntil), 'dd MMM yyyy HH:mm'),
-        'Part-B Status': bill.autoSynced ? 'Auto-Synced' : 'Pending',
-        'Vehicle Number': bill.partB.vehicleNumber,
-      }));
-      exportToCSV(data, 'eway-bills');
-      toast.success('Exported to CSV successfully');
-    } catch {
-      toast.error('Failed to export CSV');
-    }
-  };
-
-  const handleExportExcel = () => {
-    try {
-      const data = ewayBills.map((bill) => ({
-        'E-way Bill No': bill.ewayBillNumber,
-        'Booking ID': bill.booking?.bookingId || 'N/A',
-        Route: `${bill.partA.consignorState} → ${bill.partA.consigneeState}`,
-        Status: bill.status,
-        'Valid Until': format(new Date(bill.validUntil), 'dd MMM yyyy HH:mm'),
-        'Part-B Status': bill.autoSynced ? 'Auto-Synced' : 'Pending',
-        'Vehicle Number': bill.partB.vehicleNumber,
-        'Consignor GSTIN': bill.partA.consignorGSTIN,
-        'Consignee GSTIN': bill.partA.consigneeGSTIN,
-        'Total Value': bill.partA.totalValue,
-      }));
-      exportToExcel(data, 'eway-bills');
-      toast.success('Exported to Excel successfully');
-    } catch {
-      toast.error('Failed to export Excel');
-    }
-  };
-
-  const handlePageChange = (page: number) => {
-    setPagination({ ...pagination, currentPage: page });
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (!ewayBills || ewayBills.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">No E-way bills found</p>
-      </div>
-    );
-  }
+  const isEmpty = !ewayBills || ewayBills.length === 0;
 
   return (
-    <div className="space-y-4">
-      {/* Export Buttons */}
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" size="sm" onClick={handleExportCSV}>
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleExportExcel}>
-          <Download className="mr-2 h-4 w-4" />
-          Export Excel
-        </Button>
-      </div>
-
-      {/* Table */}
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>E-way Bill No</TableHead>
-              <TableHead>Booking ID</TableHead>
-              <TableHead>Route</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Valid Until</TableHead>
-              <TableHead>Part-B Status</TableHead>
-              <TableHead>Vehicle</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {ewayBills.map((bill) => (
-              <TableRow key={bill._id}>
-                <TableCell className="font-medium">{bill.ewayBillNumber}</TableCell>
-                <TableCell>{bill.booking?.bookingId || 'N/A'}</TableCell>
-                <TableCell>
-                  <div className="text-sm">
-                    {bill.partA.consignorState} → {bill.partA.consigneeState}
-                  </div>
-                </TableCell>
-                <TableCell>{getStatusBadge(bill)}</TableCell>
-                <TableCell>
-                  <div className="text-sm">
-                    {format(new Date(bill.validUntil), 'dd MMM yyyy')}
-                    <br />
-                    <span className="text-xs text-muted-foreground">
-                      {format(new Date(bill.validUntil), 'HH:mm')}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>{getPartBStatusBadge(bill)}</TableCell>
-                <TableCell className="font-mono text-sm">
-                  {bill.partB.vehicleNumber}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => openDetailsModal(bill)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    {canUpdatePartB && bill.status === 'active' && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => openUpdateModal(bill)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            Showing {(pagination.currentPage - 1) * pagination.itemsPerPage + 1} to{' '}
-            {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
-            {pagination.totalItems} results
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(pagination.currentPage - 1)}
-              disabled={pagination.currentPage === 1}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(pagination.currentPage + 1)}
-              disabled={pagination.currentPage === pagination.totalPages}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+    <div className="overflow-x-auto">
+      {tab === 'manual-override' ? (
+        <>
+          <ManualTable bills={isEmpty ? [] : ewayBills} openDetailsModal={openDetailsModal} />
+          {isEmpty && <EmptyState />}
+        </>
+      ) : (
+        <>
+          <StandardTable
+            bills={isEmpty ? [] : ewayBills}
+            canUpdatePartB={canUpdatePartB}
+            openDetailsModal={openDetailsModal}
+            openUpdateModal={openUpdateModal}
+          />
+          {isEmpty && <EmptyState />}
+        </>
       )}
     </div>
   );

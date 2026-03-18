@@ -36,8 +36,8 @@ export default function NewRequestsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">New Booking Requests</h1>
-          <p className="text-muted-foreground">Review and assign drivers to new bookings</p>
+          <h1 className="text-3xl font-bold">New Indent Requests</h1>
+          <p className="text-muted-foreground">Review and assign drivers to new indents</p>
         </div>
         <div className="text-center py-12">
           <p className="text-red-600 mb-4">{error}</p>
@@ -52,8 +52,8 @@ export default function NewRequestsPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">New Booking Requests</h1>
-          <p className="text-muted-foreground">Review and assign drivers to new bookings</p>
+          <h1 className="text-3xl font-bold">New Indent Requests</h1>
+          <p className="text-muted-foreground">Review and assign drivers to new indents</p>
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold">{newRequestBookings.length}</p>
@@ -79,8 +79,8 @@ export default function NewRequestsPage() {
       {!loading && newRequestBookings.length === 0 && (
         <EmptyState
           icon={Package}
-          title="No new booking requests"
-          description="All booking requests have been reviewed and assigned"
+          title="No new indent requests"
+          description="All indent requests have been reviewed and assigned"
         />
       )}
 

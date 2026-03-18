@@ -3,17 +3,12 @@
 import { useState } from 'react';
 import { useEwayBillStore } from '@/store/ewayBillStore';
 import { ewayBillApi } from '@/lib/api';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 interface FindEwayBillModalProps {
   onSuccessAction?: () => void;
@@ -26,7 +21,7 @@ export default function FindEwayBillModal({ onSuccessAction }: FindEwayBillModal
 
   const handleFind = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!ewayBillNumber || ewayBillNumber.length !== 12) {
       toast.error('Please enter a valid 12-digit E-way bill number');
       return;
@@ -37,7 +32,7 @@ export default function FindEwayBillModal({ onSuccessAction }: FindEwayBillModal
 
     try {
       const response = await ewayBillApi.sync(ewayBillNumber);
-      
+
       if (response.data.success) {
         toast.success('E-way bill synced successfully');
         closeFindModal();
@@ -45,7 +40,9 @@ export default function FindEwayBillModal({ onSuccessAction }: FindEwayBillModal
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      const errorMessage = err.response?.data?.message || 'Failed to find E-way bill. Please ensure the number is correct and it exists on the NIC portal.';
+      const errorMessage =
+        err.response?.data?.message ||
+        'Failed to find E-way bill. Please ensure the number is correct and it exists on the NIC portal.';
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -59,35 +56,29 @@ export default function FindEwayBillModal({ onSuccessAction }: FindEwayBillModal
         <DialogHeader>
           <DialogTitle>Search Eway-Bill</DialogTitle>
         </DialogHeader>
-        
-        <form onSubmit={handleFind} className="space-y-6 py-4">
-          <div className="space-y-2">
+
+        <form onSubmit={handleFind} className="py-4 space-y-4">
+          <div className="space-y-1.5">
             <Label htmlFor="eway-number" className="text-sm font-medium">
-              <span className="text-red-500 mr-1">*</span> 
-              Eway-bill
+              <span className="text-red-500 mr-1">*</span>Eway-bill
             </Label>
-            <div className="relative">
+            <div className="flex items-center gap-2">
               <Input
                 id="eway-number"
                 placeholder="Enter eway number"
                 value={ewayBillNumber}
                 onChange={(e) => setEwayBillNumber(e.target.value)}
-                className="pr-10"
                 maxLength={12}
                 autoFocus
               />
-              <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Button
+                type="submit"
+                disabled={loading || ewayBillNumber.length !== 12}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-5 shrink-0"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Find'}
+              </Button>
             </div>
-          </div>
-
-          <div className="flex justify-end gap-3 mt-4">
-            <Button
-              type="submit"
-              disabled={loading || ewayBillNumber.length !== 12}
-              className="bg-blue-600 hover:bg-blue-700 text-white min-w-20"
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Find'}
-            </Button>
           </div>
         </form>
       </DialogContent>

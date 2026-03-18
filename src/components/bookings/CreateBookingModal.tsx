@@ -1,13 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { useState, useEffect, useCallback } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -22,7 +16,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { bookingApi, customerApi } from '@/lib/api';
 import { toast } from 'sonner';
-import type { Customer, CreateBookingPayload } from '@/types';
+import type { Customer, CreateBookingPayload, MasterData } from '@/types';
 import { Loader2 } from 'lucide-react';
 import { useMasterData } from '@/hooks/useMasterData';
 
@@ -32,339 +26,564 @@ interface CreateBookingModalProps {
   onSuccessAction: () => void;
 }
 
+const EXPIRY_HOURS = [24, 36, 48];
+
+const emptyForm = {
+  // Core
+  customerId: '',
+  laneCode: '',
+  indentType: 'FTL' as 'FTL' | 'PTL' | 'LCL',
+  exim: 'domestic' as 'domestic' | 'import' | 'export',
+  // Source / Destination (location master data keys)
+  sourceCode: '',
+  destinationCode: '',
+  // Truck & cargo
+  truckType: '',
+  weightUnit: 'tons' as 'kg' | 'tons',
+  weight: '',
+  ratePerTon: false,
+  materialType: '',
+  numberOfTrucks: '1',
+  bodyType: '',
+  // Staff
+  trafficController: '',
+  supplier: '',
+  branch: '',
+  // Pricing
+  customerPrice: '',
+  supplierPrice: '',
+  // Scheduling
+  loadDate: '',
+  expiryHours: 48,
+  expiryCustom: '',
+  // Misc
+  remarks: '',
+  postToSupplier: true,
+  isHazardous: false,
+  isFragile: false,
+  requiresTemperatureControl: false,
+};
+
 export function CreateBookingModal({
   isOpen,
   onCloseAction,
   onSuccessAction,
 }: CreateBookingModalProps) {
   const [loading, setLoading] = useState(false);
-  const [customersLoading, setCustomersLoading] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  
-  // Fetch master data
+  const [formData, setFormData] = useState({ ...emptyForm });
+
+  // Master data
   const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
-  const { data: bodyTypes, loading: bodyTypesLoading } = useMasterData('body-type');
   const { data: materialTypes, loading: materialTypesLoading } = useMasterData('material-type');
-  const [formData, setFormData] = useState({
-    customerId: '',
-    pickupCity: '',
-    pickupAddress: '',
-    dropCity: '',
-    dropAddress: '',
-    materialType: '',
-    weight: '',
-    truckType: '',
-    bodyType: '',
-    loadDateTime: '',
-    expectedAmount: '',
-    advanceRequired: '',
-    additionalInstructions: '',
-    isHazardous: false,
-    isFragile: false,
-    requiresTemperatureControl: false,
-  });
+  const { data: locations, loading: locationsLoading } = useMasterData('location');
+  const { data: lanes } = useMasterData('lane');
+  const { data: suppliers } = useMasterData('supplier');
+
+  const set = (key: keyof typeof emptyForm, value: unknown) =>
+    setFormData((prev) => ({ ...prev, [key]: value }));
 
   useEffect(() => {
     if (isOpen) {
       fetchCustomers();
     } else {
-      resetForm();
+      setFormData({ ...emptyForm });
     }
   }, [isOpen]);
 
   const fetchCustomers = async () => {
     try {
-      setCustomersLoading(true);
       const response = await customerApi.getAll({ limit: 100 });
       setCustomers(response.data.data.customers);
-    } catch (error: unknown) {
-      console.error('Failed to fetch customers:', error);
+    } catch {
       toast.error('Failed to fetch customers');
-    } finally {
-      setCustomersLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      customerId: '',
-      pickupCity: '',
-      pickupAddress: '',
-      dropCity: '',
-      dropAddress: '',
-      materialType: '',
-      weight: '',
-      truckType: '',
-      bodyType: '',
-      loadDateTime: '',
-      expectedAmount: '',
-      advanceRequired: '',
-      additionalInstructions: '',
-      isHazardous: false,
-      isFragile: false,
-      requiresTemperatureControl: false,
-    });
-  };
+  // When lane is selected, auto-fill source + destination
+  const handleLaneChange = useCallback(
+    (laneKey: string) => {
+      set('laneCode', laneKey);
+      const lane = lanes.find((l) => l.key === laneKey);
+      if (lane?.metadata) {
+        if (lane.metadata.sourceKey) set('sourceCode', lane.metadata.sourceKey);
+        if (lane.metadata.destinationKey) set('destinationCode', lane.metadata.destinationKey);
+      }
+    },
+    [lanes]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.customerId) {
-      toast.error('Please select a customer');
+      toast.error('Customer is required');
       return;
+    }
+    if (!formData.sourceCode) {
+      toast.error('Source is required');
+      return;
+    }
+    if (!formData.destinationCode) {
+      toast.error('Destination is required');
+      return;
+    }
+    if (!formData.truckType) {
+      toast.error('Truck type is required');
+      return;
+    }
+
+    // Derive pickup/drop city from location metadata
+    const srcLoc = locations.find((l: MasterData) => l.key === formData.sourceCode);
+    const dstLoc = locations.find((l: MasterData) => l.key === formData.destinationCode);
+    const pickupCity = (srcLoc?.metadata?.city as string) || formData.sourceCode || '';
+    const dropCity = (dstLoc?.metadata?.city as string) || formData.destinationCode || '';
+    const pickupAddress =
+      (srcLoc?.metadata?.address as string) || srcLoc?.displayName || pickupCity;
+    const dropAddress = (dstLoc?.metadata?.address as string) || dstLoc?.displayName || dropCity;
+
+    // Compute expiryTime
+    let expiryTime: string | undefined;
+    if (formData.expiryCustom) {
+      expiryTime = new Date(formData.expiryCustom).toISOString();
+    } else {
+      const d = new Date();
+      d.setHours(d.getHours() + formData.expiryHours);
+      expiryTime = d.toISOString();
     }
 
     setLoading(true);
     try {
-      const bookingData: CreateBookingPayload = {
+      const payload: CreateBookingPayload = {
         customerId: formData.customerId,
-        pickupCity: formData.pickupCity,
-        pickupAddress: formData.pickupAddress,
+        pickupCity,
+        pickupAddress,
         pickupLat: 0,
         pickupLng: 0,
-        dropCity: formData.dropCity,
-        dropAddress: formData.dropAddress,
+        dropCity,
+        dropAddress,
         dropLat: 0,
         dropLng: 0,
-        materialType: formData.materialType,
-        weight: parseFloat(formData.weight),
+        materialType: formData.materialType || 'general-cargo',
+        weight: formData.weight ? parseFloat(formData.weight) : 1,
+        weightUnit: formData.weightUnit,
         truckType: formData.truckType,
         bodyType: formData.bodyType || 'open',
-        loadDate: formData.loadDateTime ? new Date(formData.loadDateTime).toISOString() : undefined,
-        expectedAmount: formData.expectedAmount ? parseFloat(formData.expectedAmount) : undefined,
-        advanceRequired: formData.advanceRequired ? parseFloat(formData.advanceRequired) : 0,
-        additionalInstructions: formData.additionalInstructions,
+        numberOfTrucks: parseInt(formData.numberOfTrucks) || 1,
+        loadDate: formData.loadDate ? new Date(formData.loadDate).toISOString() : undefined,
+        expectedAmount: formData.customerPrice ? parseFloat(formData.customerPrice) : undefined,
+        advanceRequired: 0,
         isHazardous: formData.isHazardous,
         isFragile: formData.isFragile,
         requiresTemperatureControl: formData.requiresTemperatureControl,
+        // Digitify fields
+        laneCode: formData.laneCode || undefined,
+        sourceCode: formData.sourceCode,
+        destinationCode: formData.destinationCode,
+        indentType: formData.indentType,
+        exim: formData.exim,
+        supplier: formData.supplier || undefined,
+        trafficController: formData.trafficController || undefined,
+        supplierPrice: formData.supplierPrice ? parseFloat(formData.supplierPrice) : 0,
+        customerPrice: formData.customerPrice ? parseFloat(formData.customerPrice) : 0,
+        ratePerTon: formData.ratePerTon,
+        expiryTime,
+        postToSupplier: formData.postToSupplier,
+        remarks: formData.remarks || undefined,
       };
 
-      await bookingApi.create(bookingData);
-      toast.success('Booking created successfully');
+      await bookingApi.create(payload);
+      toast.success('Indent created successfully');
       onSuccessAction();
       onCloseAction();
     } catch (error: unknown) {
-      console.error('Failed to create booking:', error);
       const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to create booking');
+      toast.error(err.response?.data?.message || 'Failed to create indent');
     } finally {
       setLoading(false);
     }
   };
 
+  const expiryDate = (() => {
+    const d = new Date();
+    d.setHours(d.getHours() + formData.expiryHours);
+    return d.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  })();
+
   return (
     <Dialog open={isOpen} onOpenChange={onCloseAction}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create New Booking</DialogTitle>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogHeader className="px-6 pt-5 pb-0">
+          <DialogTitle className="text-lg font-semibold">Create Indent</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="customer">Customer</Label>
-              <Select
-                value={formData.customerId}
-                onValueChange={(value) => setFormData({ ...formData, customerId: value })}
-              >
+        <form onSubmit={handleSubmit} className="px-6 pb-6 pt-4 space-y-4">
+          {/* Lane Code */}
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1 block">Lane Code</Label>
+            <Select value={formData.laneCode} onValueChange={handleLaneChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select lane code" />
+              </SelectTrigger>
+              <SelectContent>
+                {lanes
+                  .filter((l) => l.isActive)
+                  .map((lane) => (
+                    <SelectItem key={lane._id} value={lane.key}>
+                      {lane.displayName}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Customer + Date row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">
+                Customer <span className="text-red-500">*</span>
+              </Label>
+              <Select value={formData.customerId} onValueChange={(v) => set('customerId', v)}>
                 <SelectTrigger>
-                  <SelectValue placeholder={customersLoading ? 'Loading customers...' : 'Select customer'} />
+                  <SelectValue placeholder="Select customer" />
                 </SelectTrigger>
                 <SelectContent>
-                  {customers?.map((customer) => (
-                    <SelectItem key={customer._id} value={customer._id}>
-                      {customer.companyName} ({customer.contactPerson?.phone || 'No phone'})
+                  {customers.map((c) => (
+                    <SelectItem key={c._id} value={c._id}>
+                      {c.companyName}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pickupCity">Pickup City</Label>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Load Date</Label>
               <Input
-                id="pickupCity"
-                value={formData.pickupCity}
-                onChange={(e) => setFormData({ ...formData, pickupCity: e.target.value })}
-                required
+                type="datetime-local"
+                value={formData.loadDate}
+                onChange={(e) => set('loadDate', e.target.value)}
               />
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="dropCity">Drop City</Label>
-              <Input
-                id="dropCity"
-                value={formData.dropCity}
-                onChange={(e) => setFormData({ ...formData, dropCity: e.target.value })}
-                required
-              />
-            </div>
+          {/* Source */}
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1 block">
+              Source <span className="text-red-500">*</span>
+            </Label>
+            <Select
+              value={formData.sourceCode}
+              onValueChange={(v) => set('sourceCode', v)}
+              disabled={locationsLoading}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={locationsLoading ? 'Loading...' : 'Select source location'}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {locations
+                  .filter((l) => l.isActive)
+                  .map((loc) => (
+                    <SelectItem key={loc._id} value={loc.key}>
+                      {loc.displayName}
+                      {loc.metadata?.city && loc.metadata.city !== loc.displayName
+                        ? ` — ${loc.metadata.city}`
+                        : ''}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="pickupAddress">Pickup Address</Label>
-              <Input
-                id="pickupAddress"
-                value={formData.pickupAddress}
-                onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
-                required
-              />
-            </div>
+          {/* Destination */}
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1 block">
+              Destination <span className="text-red-500">*</span>
+            </Label>
+            <Select
+              value={formData.destinationCode}
+              onValueChange={(v) => set('destinationCode', v)}
+              disabled={locationsLoading}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={locationsLoading ? 'Loading...' : 'Select destination location'}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {locations
+                  .filter((l) => l.isActive && l.key !== formData.sourceCode)
+                  .map((loc) => (
+                    <SelectItem key={loc._id} value={loc.key}>
+                      {loc.displayName}
+                      {loc.metadata?.city && loc.metadata.city !== loc.displayName
+                        ? ` — ${loc.metadata.city}`
+                        : ''}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="dropAddress">Drop Address</Label>
-              <Input
-                id="dropAddress"
-                value={formData.dropAddress}
-                onChange={(e) => setFormData({ ...formData, dropAddress: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="materialType">Material Type</Label>
-              <Select
-                value={formData.materialType}
-                onValueChange={(value) => setFormData({ ...formData, materialType: value })}
-                disabled={materialTypesLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={materialTypesLoading ? "Loading..." : "Select material"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {materialTypes
-                    .filter(type => type.isActive)
-                    .map((type) => (
-                      <SelectItem key={type._id} value={type.key}>
-                        {type.displayName}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="weight">Weight (Tons)</Label>
-              <Input
-                id="weight"
-                type="number"
-                step="0.1"
-                value={formData.weight}
-                onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="truckType">Truck Type</Label>
+          {/* Truck Type + Weight + Rate/ton */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">
+                Truck Type <span className="text-red-500">*</span>
+              </Label>
               <Select
                 value={formData.truckType}
-                onValueChange={(value) => setFormData({ ...formData, truckType: value })}
+                onValueChange={(v) => set('truckType', v)}
                 disabled={truckTypesLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={truckTypesLoading ? "Loading..." : "Select truck type"} />
+                  <SelectValue
+                    placeholder={truckTypesLoading ? 'Loading...' : 'Select truck type'}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {truckTypes
-                    .filter(type => type.isActive)
-                    .map((type) => (
-                      <SelectItem key={type._id} value={type.key}>
-                        {type.displayName}
+                    .filter((t) => t.isActive)
+                    .map((t) => (
+                      <SelectItem key={t._id} value={t.key}>
+                        {t.displayName}
                       </SelectItem>
                     ))}
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Weight</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="1"
+                  placeholder="e.g. 20"
+                  value={formData.weight}
+                  onChange={(e) => set('weight', e.target.value)}
+                  className="flex-1"
+                />
+                <Select value={formData.weightUnit} onValueChange={(v) => set('weightUnit', v)}>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tons">Ton</SelectItem>
+                    <SelectItem value="kg">KG</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="bodyType">Body Type</Label>
+          {/* Rate/ton + Material Type + No of Vehicles */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Material Type</Label>
               <Select
-                value={formData.bodyType}
-                onValueChange={(value) => setFormData({ ...formData, bodyType: value })}
-                disabled={bodyTypesLoading}
+                value={formData.materialType}
+                onValueChange={(v) => set('materialType', v)}
+                disabled={materialTypesLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={bodyTypesLoading ? "Loading..." : "Select body type"} />
+                  <SelectValue
+                    placeholder={materialTypesLoading ? 'Loading...' : 'Select material'}
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {bodyTypes
-                    .filter(type => type.isActive)
-                    .map((type) => (
-                      <SelectItem key={type._id} value={type.key}>
-                        {type.displayName}
+                  {materialTypes
+                    .filter((t) => t.isActive)
+                    .map((t) => (
+                      <SelectItem key={t._id} value={t.key}>
+                        {t.displayName}
                       </SelectItem>
                     ))}
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="loadDateTime">Load Date & Time</Label>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">No. of Vehicles</Label>
               <Input
-                id="loadDateTime"
-                type="datetime-local"
-                value={formData.loadDateTime}
-                onChange={(e) => setFormData({ ...formData, loadDateTime: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="expectedAmount">Expected Amount (₹)</Label>
-              <Input
-                id="expectedAmount"
                 type="number"
-                value={formData.expectedAmount}
-                onChange={(e) => setFormData({ ...formData, expectedAmount: e.target.value })}
+                min="1"
+                value={formData.numberOfTrucks}
+                onChange={(e) => set('numberOfTrucks', e.target.value)}
               />
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isHazardous"
-                checked={formData.isHazardous}
-                onCheckedChange={(checked) => setFormData({ ...formData, isHazardous: !!checked })}
-              />
-              <Label htmlFor="isHazardous">Hazardous</Label>
+          {/* Supplier + Traffic */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Supplier</Label>
+              <Select value={formData.supplier} onValueChange={(v) => set('supplier', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select supplier" />
+                </SelectTrigger>
+                <SelectContent>
+                  {suppliers
+                    .filter((s) => s.isActive)
+                    .map((s) => (
+                      <SelectItem key={s._id} value={s.key}>
+                        {s.displayName}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isFragile"
-                checked={formData.isFragile}
-                onCheckedChange={(checked) => setFormData({ ...formData, isFragile: !!checked })}
-              />
-              <Label htmlFor="isFragile">Fragile</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="requiresTemperatureControl"
-                checked={formData.requiresTemperatureControl}
-                onCheckedChange={(checked) => setFormData({ ...formData, requiresTemperatureControl: !!checked })}
-              />
-              <Label htmlFor="requiresTemperatureControl">Temp Control</Label>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Indent Type</Label>
+              <Select value={formData.indentType} onValueChange={(v) => set('indentType', v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="FTL">FTL</SelectItem>
+                  <SelectItem value="PTL">PTL</SelectItem>
+                  <SelectItem value="LCL">LCL</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="additionalInstructions">Additional Instructions</Label>
+          {/* Customer Price + Supplier Price */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Customer Price (₹)</Label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={formData.customerPrice}
+                onChange={(e) => set('customerPrice', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Supplier Price (₹)</Label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={formData.supplierPrice}
+                onChange={(e) => set('supplierPrice', e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Rate per ton checkbox */}
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="ratePerTon"
+              checked={formData.ratePerTon}
+              onCheckedChange={(v) => set('ratePerTon', !!v)}
+            />
+            <Label htmlFor="ratePerTon" className="text-sm cursor-pointer">
+              Rate / ton
+            </Label>
+          </div>
+
+          {/* Expiry Time */}
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1 block">
+              Expiry time: {expiryDate}
+            </Label>
+            <div className="flex items-center gap-2">
+              {EXPIRY_HOURS.map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => {
+                    set('expiryHours', h);
+                    set('expiryCustom', '');
+                  }}
+                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                    formData.expiryHours === h && !formData.expiryCustom
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'border-gray-300 text-gray-600 hover:border-blue-400'
+                  }`}
+                >
+                  {h}
+                </button>
+              ))}
+              <Input
+                type="datetime-local"
+                placeholder="Custom"
+                value={formData.expiryCustom}
+                onChange={(e) => set('expiryCustom', e.target.value)}
+                className="flex-1 h-8 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Remarks */}
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1 block">Remarks</Label>
             <Textarea
-              id="additionalInstructions"
-              value={formData.additionalInstructions}
-              onChange={(e) => setFormData({ ...formData, additionalInstructions: e.target.value })}
-              placeholder="Any special requirements..."
+              placeholder="Additional notes or special requirements..."
+              value={formData.remarks}
+              onChange={(e) => set('remarks', e.target.value)}
+              rows={2}
             />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onCloseAction}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Booking
-            </Button>
-          </DialogFooter>
+          {/* Post to supplier + cargo flags */}
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="postToSupplier"
+                checked={formData.postToSupplier}
+                onCheckedChange={(v) => set('postToSupplier', !!v)}
+              />
+              <Label htmlFor="postToSupplier" className="text-sm cursor-pointer">
+                Post to supplier
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="isHazardous"
+                checked={formData.isHazardous}
+                onCheckedChange={(v) => set('isHazardous', !!v)}
+              />
+              <Label htmlFor="isHazardous" className="text-sm cursor-pointer">
+                Hazardous
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="isFragile"
+                checked={formData.isFragile}
+                onCheckedChange={(v) => set('isFragile', !!v)}
+              />
+              <Label htmlFor="isFragile" className="text-sm cursor-pointer">
+                Fragile
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="requiresTemperatureControl"
+                checked={formData.requiresTemperatureControl}
+                onCheckedChange={(v) => set('requiresTemperatureControl', !!v)}
+              />
+              <Label htmlFor="requiresTemperatureControl" className="text-sm cursor-pointer">
+                Temp Control
+              </Label>
+            </div>
+          </div>
+
+          {/* Submit */}
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}+ CREATE INDENT
+          </Button>
         </form>
       </DialogContent>
     </Dialog>

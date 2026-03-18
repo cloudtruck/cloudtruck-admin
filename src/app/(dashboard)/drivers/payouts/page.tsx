@@ -161,7 +161,7 @@ function usePaymentRequests(status?: string) {
       const params: Record<string, unknown> = { page, limit: 20 };
       if (status) params.status = status;
       const res = await bookingApi.getAllPaymentRequests(params);
-      setRequests(res.data.data.requests || []);
+      setRequests((res.data.data.requests as PaymentRequest[]) || []);
       setPagination(res.data.data.pagination || { currentPage: 1, totalPages: 1, totalItems: 0, itemsPerPage: 20 });
     } catch {
       toast.error('Failed to fetch payment requests');

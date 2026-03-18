@@ -40,7 +40,7 @@ export function AddNoteModal({
 
     try {
       setLoading(true);
-      await bookingApi.addNote(booking._id, { note });
+      await bookingApi.addNote(booking._id, { text: note });
       toast.success('Note added successfully');
       setNote('');
       onSuccess();

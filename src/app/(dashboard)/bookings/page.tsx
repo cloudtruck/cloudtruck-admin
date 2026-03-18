@@ -82,8 +82,8 @@ export default function AllBookingsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">All Bookings</h1>
-          <p className="text-muted-foreground">Manage all shipment bookings</p>
+          <h1 className="text-3xl font-bold">All Indents</h1>
+          <p className="text-muted-foreground">Manage all shipment indents</p>
         </div>
         <div className="text-center py-12">
           <p className="text-red-600 mb-4">{error}</p>
@@ -98,12 +98,12 @@ export default function AllBookingsPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">All Bookings</h1>
-          <p className="text-muted-foreground">Manage all shipment bookings</p>
+          <h1 className="text-3xl font-bold">All Indents</h1>
+          <p className="text-muted-foreground">Manage all shipment indents</p>
         </div>
         <Button onClick={() => setCreateModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Create Booking
+          Create Indent
         </Button>
       </div>
 
@@ -149,8 +149,8 @@ export default function AllBookingsPage() {
           {!loading && filteredBookings.length === 0 && (
             <EmptyState
               icon={Package}
-              title="No bookings found"
-              description="Try adjusting your filters or create a new booking"
+              title="No indents found"
+              description="Try adjusting your filters or create a new indent"
             />
           )}
 

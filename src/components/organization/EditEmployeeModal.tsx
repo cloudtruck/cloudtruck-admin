@@ -14,15 +14,147 @@ import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { employeeApi } from '@/lib/api';
+import { employeeApi, roleTemplateApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { DEPARTMENTS } from '@/lib/constants';
-import type { Staff, UpdateStaffData, ApiErrorResponse } from '@/types';
+import type { Staff, UpdateStaffData, RoleTemplate, Permission, ApiErrorResponse } from '@/types';
+
+// Department → RoleTemplate category mapping
+const DEPT_TO_CATEGORY: Record<string, RoleTemplate['category']> = {
+  operations: 'operations',
+  finance: 'finance',
+  support: 'support',
+  management: 'management',
+  admin: 'admin',
+  traffic: 'operations',
+  sales: 'custom',
+};
+
+function getPopulatedPermissions(template: RoleTemplate): Permission[] {
+  return template.permissions.filter(
+    (p): p is Permission => typeof p === 'object' && p !== null && 'name' in p
+  );
+}
+
+interface RoleTemplateSectionProps {
+  roleTemplates: RoleTemplate[];
+  loadingTemplates: boolean;
+  selectedTemplateId: string;
+  department: string;
+  onSelect: (id: string) => void;
+}
+
+function RoleTemplateSection({
+  roleTemplates,
+  loadingTemplates,
+  selectedTemplateId,
+  department,
+  onSelect,
+}: RoleTemplateSectionProps) {
+  const matchCategory = department ? DEPT_TO_CATEGORY[department] : null;
+
+  const suggested = matchCategory
+    ? roleTemplates.filter((t) => t.category === matchCategory)
+    : [];
+  const others = matchCategory
+    ? roleTemplates.filter((t) => t.category !== matchCategory)
+    : roleTemplates;
+
+  const selectedTemplate = roleTemplates.find((t) => t._id === selectedTemplateId);
+  const permissions = selectedTemplate ? getPopulatedPermissions(selectedTemplate) : [];
+
+  return (
+    <div className="space-y-2 col-span-2">
+      <Label htmlFor="roleTemplate">Role Template</Label>
+      <Select
+        value={selectedTemplateId}
+        onValueChange={onSelect}
+        disabled={loadingTemplates}
+      >
+        <SelectTrigger>
+          <SelectValue
+            placeholder={loadingTemplates ? 'Loading...' : 'Select role template (optional)'}
+          />
+        </SelectTrigger>
+        <SelectContent>
+          {suggested.length > 0 && (
+            <SelectGroup>
+              <SelectLabel className="text-xs text-blue-600 font-semibold">
+                Suggested for {DEPARTMENTS.find((d) => d.value === department)?.label}
+              </SelectLabel>
+              {suggested.map((t) => (
+                <SelectItem key={t._id} value={t._id}>
+                  <span>{t.templateName}</span>
+                  <span className="ml-2 text-xs text-gray-400">
+                    {t.permissions.length} permissions
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          )}
+          {suggested.length > 0 && others.length > 0 && <SelectSeparator />}
+          {others.length > 0 && (
+            <SelectGroup>
+              {suggested.length > 0 && (
+                <SelectLabel className="text-xs text-gray-400 font-semibold">
+                  Other Templates
+                </SelectLabel>
+              )}
+              {others.map((t) => (
+                <SelectItem key={t._id} value={t._id}>
+                  <span>{t.templateName}</span>
+                  <span className="ml-2 text-xs text-gray-400">
+                    {t.permissions.length} permissions
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          )}
+        </SelectContent>
+      </Select>
+
+      {/* Permissions preview */}
+      {selectedTemplate && (
+        <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2.5 mt-1">
+          <p className="text-xs font-medium text-gray-500 mb-1.5">
+            {selectedTemplate.templateName} —{' '}
+            <span className="text-gray-700">{selectedTemplate.permissions.length} permissions</span>
+          </p>
+          {permissions.length > 0 ? (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+              {permissions.map((p) => (
+                <span key={p._id} className="text-xs text-gray-600 flex items-center gap-1">
+                  <span className="text-green-500 font-bold">✓</span>
+                  {p.name}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 italic">
+              {selectedTemplate.permissions.length > 0
+                ? `${selectedTemplate.permissions.length} permissions assigned`
+                : 'No permissions assigned'}
+            </p>
+          )}
+        </div>
+      )}
+
+      {!selectedTemplateId && (
+        <p className="text-xs text-gray-500">
+          Changing role template will update employee permissions
+        </p>
+      )}
+    </div>
+  );
+}
 
 interface EditEmployeeModalProps {
   isOpen: boolean;
@@ -38,12 +170,17 @@ export function EditEmployeeModal({
   onSuccess,
 }: EditEmployeeModalProps) {
   const [loading, setLoading] = useState(false);
+  const [roleTemplates, setRoleTemplates] = useState<RoleTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [formData, setFormData] = useState<UpdateStaffData>({
     name: employee.name,
     email: employee.email,
     phone: employee.phone,
     department: employee.department,
-    roleTemplate: typeof employee.roleTemplate === 'string' ? employee.roleTemplate : employee.roleTemplate?._id,
+    roleTemplate:
+      typeof employee.roleTemplate === 'string'
+        ? employee.roleTemplate
+        : employee.roleTemplate?._id,
     status: employee.status,
   });
 
@@ -53,10 +190,37 @@ export function EditEmployeeModal({
       email: employee.email,
       phone: employee.phone,
       department: employee.department,
-      roleTemplate: typeof employee.roleTemplate === 'string' ? employee.roleTemplate : employee.roleTemplate?._id,
+      roleTemplate:
+        typeof employee.roleTemplate === 'string'
+          ? employee.roleTemplate
+          : employee.roleTemplate?._id,
       status: employee.status,
     });
   }, [employee]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchRoleTemplates();
+    }
+  }, [isOpen]);
+
+  const fetchRoleTemplates = async () => {
+    try {
+      setLoadingTemplates(true);
+      const response = await roleTemplateApi.list({ isActive: true });
+      if (response.data.success && response.data.data) {
+        setRoleTemplates(response.data.data);
+      }
+    } catch {
+      toast.error('Failed to load role templates');
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
+  const handleDepartmentChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, department: value, roleTemplate: '' }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +237,6 @@ export function EditEmployeeModal({
     } catch (error: unknown) {
       const err = error as ApiErrorResponse;
       toast.error(err.response?.data?.message || 'Failed to update employee');
-      console.error('Error updating employee:', error);
     } finally {
       setLoading(false);
     }
@@ -81,7 +244,7 @@ export function EditEmployeeModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Employee</DialogTitle>
         </DialogHeader>
@@ -129,7 +292,7 @@ export function EditEmployeeModal({
               <Label htmlFor="department">Department</Label>
               <Select
                 value={formData.department}
-                onValueChange={(value) => setFormData({ ...formData, department: value })}
+                onValueChange={handleDepartmentChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select department" />
@@ -145,30 +308,15 @@ export function EditEmployeeModal({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="roleTemplate">Role Template</Label>
-              <Select
-                value={formData.roleTemplate}
-                onValueChange={(value) => setFormData({ ...formData, roleTemplate: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select role template (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="operations-manager">Operations Manager</SelectItem>
-                  <SelectItem value="finance-user">Finance User</SelectItem>
-                  <SelectItem value="customer-support">Customer Support</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-gray-500">
-                Changing role template will update employee permissions
-              </p>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select
                 value={formData.status}
-                onValueChange={(value) => setFormData({ ...formData, status: value as 'active' | 'inactive' | 'blocked' })}
+                onValueChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    status: value as 'active' | 'inactive' | 'blocked',
+                  })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
@@ -180,6 +328,17 @@ export function EditEmployeeModal({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Empty cell to keep grid aligned */}
+            <div />
+
+            <RoleTemplateSection
+              roleTemplates={roleTemplates}
+              loadingTemplates={loadingTemplates}
+              selectedTemplateId={formData.roleTemplate || ''}
+              department={formData.department || ''}
+              onSelect={(id) => setFormData({ ...formData, roleTemplate: id })}
+            />
           </div>
 
           <DialogFooter>

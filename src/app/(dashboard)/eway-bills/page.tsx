@@ -4,18 +4,24 @@ import { useCallback, useEffect, useState } from 'react';
 import { useEwayBillStore } from '@/store/ewayBillStore';
 import { ewayBillApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import EwayBillsTable from '@/components/ewayBills/EwayBillsTable';
-import EwayBillFilters from '@/components/ewayBills/EwayBillFilters';
 import CreateEwayBillModal from '@/components/ewayBills/CreateEwayBillModal';
 import UpdatePartBModal from '@/components/ewayBills/UpdatePartBModal';
 import EwayBillDetailsModal from '@/components/ewayBills/EwayBillDetailsModal';
 import FindEwayBillModal from '@/components/ewayBills/FindEwayBillModal';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 type TabValue = 'part-b-pending' | 'active' | 'expiring' | 'expired' | 'manual-override';
+
+const TABS: { label: string; value: TabValue }[] = [
+  { label: 'Part-B Pending', value: 'part-b-pending' },
+  { label: 'Active', value: 'active' },
+  { label: 'Expiring', value: 'expiring' },
+  { label: 'Expired', value: 'expired' },
+  { label: 'Manual', value: 'manual-override' },
+];
 
 export default function EwayBillsPage() {
   const { user } = useAuth();
@@ -31,135 +37,101 @@ export default function EwayBillsPage() {
     openFindModal,
   } = useEwayBillStore();
 
-  const canCreateEwayBill = user?.role === 'admin' || user?.role === 'super-admin';
-
-  const fetchEwayBills = useCallback(async (tab: TabValue) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const queryParams: Record<string, string | number | undefined> = {
-        page: pagination.currentPage,
-        limit: pagination.itemsPerPage,
-        ...filters,
-      };
-
-      // Apply tab-specific filters
-      switch (tab) {
-        case 'part-b-pending':
-          queryParams.partBStatus = 'pending';
-          break;
-        case 'active':
-          queryParams.status = 'active';
-          break;
-        case 'expiring':
-          queryParams.status = 'expiring';
-          break;
-        case 'expired':
-          queryParams.status = 'expired';
-          break;
-        case 'manual-override':
-          queryParams.partBStatus = 'manual-override';
-          break;
+  const fetchEwayBills = useCallback(
+    async (tab: TabValue) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const queryParams: Record<string, string | number | undefined> = {
+          page: pagination.currentPage,
+          limit: pagination.itemsPerPage,
+          ...filters,
+        };
+        switch (tab) {
+          case 'part-b-pending':
+            queryParams.partBStatus = 'pending';
+            break;
+          case 'active':
+            queryParams.status = 'active';
+            break;
+          case 'expiring':
+            queryParams.status = 'expiring';
+            break;
+          case 'expired':
+            queryParams.status = 'expired';
+            break;
+          case 'manual-override':
+            queryParams.partBStatus = 'manual-override';
+            break;
+        }
+        const response = await ewayBillApi.getAll(queryParams);
+        if (response.data.success && response.data.data) {
+          setEwayBills(response.data.data.ewayBills || []);
+          setPagination(
+            response.data.data.pagination || {
+              currentPage: 1,
+              totalPages: 1,
+              totalItems: 0,
+              itemsPerPage: 20,
+            }
+          );
+        }
+      } catch (error) {
+        const err = error as { response?: { data?: { message?: string } } };
+        const errorMsg = err.response?.data?.message || 'Failed to fetch E-way bills';
+        setError(errorMsg);
+        toast.error(errorMsg);
+      } finally {
+        setLoading(false);
       }
-
-      const response = await ewayBillApi.getAll(queryParams);
-      if (response.data.success && response.data.data) {
-        setEwayBills(response.data.data.ewayBills || []);
-        setPagination(response.data.data.pagination || {
-          currentPage: 1,
-          totalPages: 1,
-          totalItems: 0,
-          itemsPerPage: 20
-        });
-      }
-    } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
-      const errorMsg = err.response?.data?.message || 'Failed to fetch E-way bills';
-      setError(errorMsg);
-      toast.error(errorMsg);
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, pagination.currentPage, pagination.itemsPerPage, setEwayBills, setError, setLoading, setPagination]);
+    },
+    [
+      filters,
+      pagination.currentPage,
+      pagination.itemsPerPage,
+      setEwayBills,
+      setError,
+      setLoading,
+      setPagination,
+    ]
+  );
 
   useEffect(() => {
     fetchEwayBills(activeTab);
   }, [activeTab, fetchEwayBills]);
 
-  const handleTabChange = (value: string) => {
-    setActiveTab(value as TabValue);
-  };
-
-  const handleRefresh = () => {
-    fetchEwayBills(activeTab);
-  };
+  const handleRefresh = () => fetchEwayBills(activeTab);
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">E-way Bills</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage E-way bills and Part-B vehicle updates
-          </p>
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {/* Tabs + Find button */}
+      <div className="flex items-center justify-between border-b border-gray-200 px-4">
+        <div className="flex items-center gap-0">
+          {TABS.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setActiveTab(tab.value)}
+              className={cn(
+                'px-4 py-3.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
+                activeTab === tab.value
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="text-blue-600 border-blue-600 hover:bg-blue-50"
-            onClick={() => openFindModal()}
-          >
-            Find Eway-bill
-          </Button>
-          {canCreateEwayBill && (
-            <Button onClick={() => openCreateModal()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create E-way Bill
-            </Button>
-          )}
-        </div>
+        <Button
+          className="bg-blue-600 hover:bg-blue-700 text-white text-sm h-8 px-4"
+          onClick={() => openFindModal()}
+        >
+          Find Eway-bill
+        </Button>
       </div>
 
-      {/* Filters */}
-      <EwayBillFilters onRefreshAction={handleRefresh} />
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-        <div className="flex items-center justify-between">
-          <TabsList>
-            <TabsTrigger value="part-b-pending">Part-B Pending</TabsTrigger>
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="expiring">Expiring</TabsTrigger>
-            <TabsTrigger value="expired">Expired</TabsTrigger>
-            <TabsTrigger value="manual-override">Manual</TabsTrigger>
-          </TabsList>
-          
-          
-        </div>
-
-        <TabsContent value="part-b-pending" className="space-y-4">
-          <EwayBillsTable />
-        </TabsContent>
-
-        <TabsContent value="active" className="space-y-4">
-          <EwayBillsTable />
-        </TabsContent>
-
-        <TabsContent value="expiring" className="space-y-4">
-          <EwayBillsTable />
-        </TabsContent>
-
-        <TabsContent value="expired" className="space-y-4">
-          <EwayBillsTable />
-        </TabsContent>
-
-        <TabsContent value="manual-override" className="space-y-4">
-          <EwayBillsTable />
-        </TabsContent>
-      </Tabs>
+      {/* Table */}
+      <EwayBillsTable tab={activeTab} />
 
       {/* Modals */}
       <CreateEwayBillModal onSuccessAction={handleRefresh} />
