@@ -32,12 +32,12 @@ const navigationItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    label: 'Bookings',
+    label: 'Indents',
     href: '/bookings',
     icon: Package,
     children: [
-      { label: 'All Bookings', href: '/bookings', icon: Package },
-      { label: 'New Requests', href: '/bookings/new-requests', icon: Package },
+      { label: 'All Indents', href: '/bookings', icon: Package },
+      { label: 'New Indents', href: '/bookings/new-requests', icon: Package },
       { label: 'E-way Bills', href: '/eway-bills', icon: FileCheck },
     ],
   },

@@ -14,8 +14,8 @@ export function QuickActions() {
   const actions = [
     {
       icon: Plus,
-      label: 'New Booking',
-      description: 'Create a new booking',
+      label: 'New Indent',
+      description: 'Create a new indent',
       onClick: () => setIsCreateBookingOpen(true),
       color: 'bg-blue-500 hover:bg-blue-600',
     },

@@ -19,7 +19,7 @@ export function BookingTrendsChart({ data, loading }: BookingTrendsChartProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Booking Trends (Last 7 Days)</CardTitle>
+          <CardTitle>Indent Trends (Last 7 Days)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[300px] flex items-center justify-center">
@@ -34,7 +34,7 @@ export function BookingTrendsChart({ data, loading }: BookingTrendsChartProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Booking Trends (Last 7 Days)</CardTitle>
+          <CardTitle>Indent Trends (Last 7 Days)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[300px] flex items-center justify-center">
@@ -48,7 +48,7 @@ export function BookingTrendsChart({ data, loading }: BookingTrendsChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Booking Trends (Last 7 Days)</CardTitle>
+        <CardTitle>Indent Trends (Last 7 Days)</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
@@ -76,7 +76,7 @@ export function BookingTrendsChart({ data, loading }: BookingTrendsChartProps) {
               dataKey="bookings" 
               stroke="#3b82f6" 
               strokeWidth={2}
-              name="Total Bookings"
+              name="Total Indents"
               dot={{ fill: '#3b82f6' }}
             />
             <Line 
