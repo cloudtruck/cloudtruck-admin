@@ -1,11 +1,19 @@
 // Organization-related type definitions
 
+export interface Permission {
+  _id: string;
+  name: string;
+  key: string;
+  resource: string;
+  action: string;
+}
+
 export interface RoleTemplate {
   _id: string;
   templateName: string;
   description: string;
-  permissions: string[];
-  category: 'operations' | 'finance' | 'support' | 'admin' | 'custom';
+  permissions: (string | Permission)[];
+  category: 'operations' | 'finance' | 'support' | 'management' | 'admin' | 'custom';
   isActive: boolean;
   employeeCount: number;
   createdAt: string;
@@ -29,7 +37,16 @@ export interface Staff {
 
 export interface MasterData {
   _id: string;
-  category: 'truck-type' | 'material-type' | 'charge-type' | 'body-type' | 'document-type';
+  category:
+    | 'truck-type'
+    | 'material-type'
+    | 'charge-type'
+    | 'body-type'
+    | 'document-type'
+    | 'location'
+    | 'lane'
+    | 'supplier'
+    | 'cost-center';
   key: string;
   displayName: string;
   description?: string;

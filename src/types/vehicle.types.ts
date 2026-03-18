@@ -31,6 +31,14 @@ export interface Vehicle {
     name: string;
     phone?: string;
   };
+  ownershipType?: 'own' | 'leased' | 'attached';
+  registrationCity?: string;
+  lastKnownLocation?: { type: 'Point'; coordinates: [number, number] };
+  stats?: {
+    totalTrips?: number;
+    completedTrips?: number;
+    lastTripDate?: string;
+  };
   status: 'active' | 'inactive' | 'under-maintenance' | 'retired';
   availability: 'available' | 'on-trip' | 'maintenance' | 'offline';
   verificationStatus: 'pending' | 'verified' | 'rejected' | 'expired';

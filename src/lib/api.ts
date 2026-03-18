@@ -34,6 +34,7 @@ import type {
   Branch,
   PlannedRoute,
   WalletTransaction,
+  UnloadingTruck,
 } from '@/types';
 
 // ============================================================================
@@ -69,9 +70,12 @@ export const bookingApi = {
   getStats: () => api.get<ApiResponse<BookingStats>>('/bookings/stats'),
 
   // Dashboard
-  getActivities: (params?: { limit?: number }) => api.get<ApiResponse<Activity[]>>('/bookings/dashboard/activities', { params }),
-  getTrends: (params?: { days?: number }) => api.get<ApiResponse<TrendData[]>>('/bookings/dashboard/trends', { params }),
-  getStatusBreakdown: () => api.get<ApiResponse<Record<string, number>>>('/bookings/dashboard/status'),
+  getActivities: (params?: { limit?: number }) =>
+    api.get<ApiResponse<Activity[]>>('/bookings/dashboard/activities', { params }),
+  getTrends: (params?: { days?: number }) =>
+    api.get<ApiResponse<TrendData[]>>('/bookings/dashboard/trends', { params }),
+  getStatusBreakdown: () =>
+    api.get<ApiResponse<Record<string, number>>>('/bookings/dashboard/status'),
 
   create: (data: CreateBookingPayload) => api.post<ApiResponse<Booking>>('/bookings', data),
 
@@ -81,20 +85,81 @@ export const bookingApi = {
   assignDriver: (id: string, data: { driverId: string; vehicleId: string; notes?: string }) =>
     api.post<ApiResponse<Booking>>(`/bookings/${id}/assign-driver`, data),
 
-  addNote: (id: string, data: { note: string }) =>
-    api.post<ApiResponse<{ note: { text: string; createdAt: string; createdBy: string } }>>(`/bookings/${id}/notes`, data),
+  addNote: (id: string, data: { text: string }) =>
+    api.post<ApiResponse<any>>(`/bookings/${id}/notes`, data),
+
+  getAuditLogs: (id: string) => api.get<ApiResponse<any[]>>(`/bookings/${id}/audit-logs`),
 
   cancel: (id: string, data: { reason: string }) =>
     api.post<ApiResponse<Booking>>(`/bookings/${id}/cancel`, data),
 
   getDocuments: (id: string) =>
-    api.get<ApiResponse<{ documents: Array<{ _id: string; type: string; url: string; uploadedAt: string }> }>>(`/bookings/${id}/documents`),
+    api.get<
+      ApiResponse<{
+        documents: Array<{ _id: string; type: string; url: string; uploadedAt: string }>;
+      }>
+    >(`/bookings/${id}/documents`),
 
   getAllPaymentRequests: (params?: { status?: string; page?: number; limit?: number }) =>
-    api.get<ApiResponse<{ requests: unknown[]; pagination: Pagination }>>('/bookings/payment-requests', { params }),
+    api.get<ApiResponse<{ requests: unknown[]; pagination: Pagination }>>(
+      '/bookings/payment-requests',
+      { params }
+    ),
 
-  processPaymentRequest: (bookingId: string, requestId: string, action: 'pay' | 'reject', data?: { utrNumber?: string; rejectionReason?: string }) =>
-    api.patch<ApiResponse<unknown>>(`/bookings/${bookingId}/payment-requests/${requestId}/${action}`, data || {}),
+  processPaymentRequest: (
+    bookingId: string,
+    requestId: string,
+    action: 'pay' | 'reject',
+    data?: { utrNumber?: string; rejectionReason?: string }
+  ) =>
+    api.patch<ApiResponse<unknown>>(
+      `/bookings/${bookingId}/payment-requests/${requestId}/${action}`,
+      data || {}
+    ),
+
+  getUnloadingTrucks: (params: { dropCity: string; truckType?: string; limit?: number }) =>
+    api.get<ApiResponse<UnloadingTruck[]>>('/bookings/unloading-trucks', { params }),
+};
+
+// ============================================================================
+// Document APIs
+// ============================================================================
+
+export const documentApi = {
+  uploadLR: (bookingId: string, files: File[]) => {
+    const fd = new FormData();
+    files.forEach((f) => fd.append('files', f));
+    return api.post<ApiResponse<any>>(`/documents/booking/${bookingId}/lr`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  uploadPOD: (bookingId: string, file: File, body?: Record<string, string>) => {
+    const fd = new FormData();
+    fd.append('pod', file);
+    if (body) Object.entries(body).forEach(([k, v]) => fd.append(k, v));
+    return api.post<ApiResponse<any>>(`/documents/booking/${bookingId}/pod`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  uploadLoadingMemo: (bookingId: string, files: File[]) => {
+    const fd = new FormData();
+    files.forEach((f) => fd.append('files', f));
+    return api.post<ApiResponse<any>>(`/documents/booking/${bookingId}/loading-images`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  uploadOtherDocuments: (bookingId: string, files: File[]) => {
+    const fd = new FormData();
+    files.forEach((f) => fd.append('files', f));
+    return api.post<ApiResponse<any>>(`/documents/booking/${bookingId}/other-documents`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  getLR: (bookingId: string) => api.get<ApiResponse<any>>(`/documents/booking/${bookingId}/lr`),
+  getPOD: (bookingId: string) => api.get<ApiResponse<any>>(`/documents/booking/${bookingId}/pod`),
+  deleteDocument: (docId: string) => api.delete<ApiResponse<any>>(`/documents/${docId}`),
+  deleteLR: (bookingId: string) =>
+    api.delete<ApiResponse<any>>(`/documents/booking/${bookingId}/lr`),
 };
 
 // ============================================================================
@@ -109,10 +174,16 @@ export const driverApi = {
 
   create: (data: Partial<Driver>) => api.post<ApiResponse<Driver>>('/drivers', data),
 
-  update: (id: string, data: Partial<Driver>) => api.patch<ApiResponse<Driver>>(`/drivers/${id}`, data),
+  update: (id: string, data: Partial<Driver>) =>
+    api.patch<ApiResponse<Driver>>(`/drivers/${id}`, data),
 
-  getAvailable: (params?: { truckType?: string; city?: string; lat?: number; lng?: number; matchPickupCity?: string }) =>
-    api.get<ApiResponse<Driver[]>>('/drivers/available', { params }),
+  getAvailable: (params?: {
+    truckType?: string;
+    city?: string;
+    lat?: number;
+    lng?: number;
+    matchPickupCity?: string;
+  }) => api.get<ApiResponse<Driver[]>>('/drivers/available', { params }),
 
   approve: (id: string, data?: { notes?: string }) =>
     api.post<ApiResponse<Driver>>(`/drivers/${id}/verify`, data || {}),
@@ -123,8 +194,7 @@ export const driverApi = {
   block: (id: string, data: { reason: string }) =>
     api.post<ApiResponse<Driver>>(`/drivers/${id}/blacklist`, data),
 
-  unblock: (id: string) =>
-    api.post<ApiResponse<Driver>>(`/drivers/${id}/remove-blacklist`, {}),
+  unblock: (id: string) => api.post<ApiResponse<Driver>>(`/drivers/${id}/remove-blacklist`, {}),
 
   updateStatus: (id: string, data: { status: string }) =>
     api.patch<ApiResponse<Driver>>(`/drivers/${id}/status`, data),
@@ -150,7 +220,8 @@ export const vehicleApi = {
 
   create: (data: Partial<Vehicle>) => api.post<ApiResponse<Vehicle>>('/vehicles', data),
 
-  update: (id: string, data: Partial<Vehicle>) => api.patch<ApiResponse<Vehicle>>(`/vehicles/${id}`, data),
+  update: (id: string, data: Partial<Vehicle>) =>
+    api.patch<ApiResponse<Vehicle>>(`/vehicles/${id}`, data),
 
   verify: (id: string) => api.post<ApiResponse<Vehicle>>(`/vehicles/${id}/verify`, {}),
 
@@ -198,6 +269,9 @@ export const customerApi = {
 
   getById: (id: string) => api.get<ApiResponse<Customer>>(`/customers/${id}`),
 
+  update: (id: string, data: Partial<Customer>) =>
+    api.patch<ApiResponse<Customer>>(`/customers/${id}`, data),
+
   getPending: (params?: { page?: number; limit?: number }) =>
     api.get<ApiResponse<{ customers: Customer[]; pagination: Pagination }>>('/customers/pending', {
       params,
@@ -224,6 +298,41 @@ export const customerApi = {
       `/customers/${id}/payments`,
       { params }
     ),
+
+  addLocation: (id: string, data: any) =>
+    api.post<ApiResponse<Customer>>(`/customers/${id}/locations`, data),
+
+  removeLocation: (id: string, locId: string) =>
+    api.delete<ApiResponse<Customer>>(`/customers/${id}/locations/${locId}`),
+
+  addCharge: (
+    id: string,
+    data: { type: string; amount: number; remarks?: string; chargeType: 'add' | 'reduce' }
+  ) => api.post<ApiResponse<Customer>>(`/customers/${id}/charges`, data),
+
+  removeCharge: (id: string, chargeId: string) =>
+    api.delete<ApiResponse<Customer>>(`/customers/${id}/charges/${chargeId}`),
+
+  addComment: (id: string, data: { topic: string; comment: string }) =>
+    api.post<ApiResponse<Customer>>(`/customers/${id}/comments`, data),
+
+  getComments: (id: string) => api.get<ApiResponse<any[]>>(`/customers/${id}/comments`),
+
+  create: (data: {
+    phone: string;
+    email?: string;
+    companyName: string;
+    contactPerson?: string;
+    city?: string;
+    gstNumber?: string;
+    pan?: string;
+    companyType?: string;
+    customerType?: string;
+    paymentTerms?: 'advance' | 'credit' | 'cod';
+    address?: string;
+    state?: string;
+    pincode?: string;
+  }) => api.post<ApiResponse<Customer>>('/customers', data),
 };
 
 // ============================================================================
@@ -234,13 +343,18 @@ export const trackingApi = {
   getLatest: (bookingId: string) =>
     api.get<ApiResponse<TrackingLocation>>(`/tracking/${bookingId}/last-location`),
 
-  getHistory: (bookingId: string, params?: { page?: number; limit?: number; startDate?: string; endDate?: string }) =>
-    api.get<ApiResponse<TrackingHistory>>(`/tracking/${bookingId}/history`, { params }),
+  getHistory: (
+    bookingId: string,
+    params?: { page?: number; limit?: number; startDate?: string; endDate?: string }
+  ) => api.get<ApiResponse<TrackingHistory>>(`/tracking/${bookingId}/history`, { params }),
 
   getPlannedRoute: (bookingId: string) =>
     api.get<ApiResponse<PlannedRoute>>(`/tracking/${bookingId}/planned-route`),
 
-  getLiveTrips: () => api.get<ApiResponse<Array<Booking & { lastLocation: TrackingLocation }>>>('/tracking/live-trips'),
+  getLiveTrips: () =>
+    api.get<ApiResponse<Array<Booking & { lastLocation: TrackingLocation }>>>(
+      '/tracking/live-trips'
+    ),
 };
 
 // ============================================================================
@@ -257,9 +371,12 @@ interface Notification {
 
 export const notificationApi = {
   getAll: (params?: { page?: number; limit?: number; read?: boolean }) =>
-    api.get<ApiResponse<{ notifications: Notification[]; pagination: Pagination }>>('/notifications', {
-      params,
-    }),
+    api.get<ApiResponse<{ notifications: Notification[]; pagination: Pagination }>>(
+      '/notifications',
+      {
+        params,
+      }
+    ),
 
   markAsRead: (id: string) => api.patch<ApiResponse<null>>(`/notifications/${id}/read`),
 
@@ -309,16 +426,14 @@ export const exportApi = {
 // ============================================================================
 
 export const ewayBillApi = {
-  create: (data: CreateEwayBillRequest) =>
-    api.post<ApiResponse<EwayBill>>('/eway-bills', data),
+  create: (data: CreateEwayBillRequest) => api.post<ApiResponse<EwayBill>>('/eway-bills', data),
 
   getAll: (params?: EwayBillFilters & { page?: number; limit?: number }) =>
     api.get<ApiResponse<{ ewayBills: EwayBill[]; pagination: Pagination }>>('/eway-bills', {
       params,
     }),
 
-  getById: (id: string) =>
-    api.get<ApiResponse<EwayBill>>(`/eway-bills/${id}`),
+  getById: (id: string) => api.get<ApiResponse<EwayBill>>(`/eway-bills/${id}`),
 
   getHistory: (id: string) =>
     api.get<ApiResponse<{ history: PartBHistoryEntry[] }>>(`/eway-bills/${id}/history`),
@@ -344,32 +459,43 @@ export const ewayBillApi = {
 export const roleTemplateApi = {
   list: (params?: { category?: string; isActive?: boolean }) =>
     api.get<ApiResponse<RoleTemplate[]>>('/role-templates', { params }),
-  
+
   getById: (id: string) => api.get<ApiResponse<RoleTemplate>>(`/role-templates/${id}`),
-  
-  create: (data: Partial<RoleTemplate>) => api.post<ApiResponse<RoleTemplate>>('/role-templates', data),
-  
-  update: (id: string, data: Partial<RoleTemplate>) => 
-    api.patch<ApiResponse<{ template: RoleTemplate; affectedEmployees: number }>>(`/role-templates/${id}`, data),
-  
+
+  create: (data: Partial<RoleTemplate>) =>
+    api.post<ApiResponse<RoleTemplate>>('/role-templates', data),
+
+  update: (id: string, data: Partial<RoleTemplate>) =>
+    api.patch<ApiResponse<{ template: RoleTemplate; affectedEmployees: number }>>(
+      `/role-templates/${id}`,
+      data
+    ),
+
   delete: (id: string) => api.delete<ApiResponse<null>>(`/role-templates/${id}`),
-  
-  getCategories: () => api.get<ApiResponse<Array<{ value: string; label: string }>>>('/role-templates/categories'),
+
+  getCategories: () =>
+    api.get<ApiResponse<Array<{ value: string; label: string }>>>('/role-templates/categories'),
 };
 
 // Staff/Employee APIs (extended)
 export const employeeApi = {
-  list: (params?: { department?: string; roleTemplate?: string; isActive?: boolean; search?: string; page?: number; limit?: number }) =>
-    api.get<ApiResponse<{ staff: Staff[]; pagination: Pagination }>>('/staff', { params }),
-  
+  list: (params?: {
+    department?: string;
+    roleTemplate?: string;
+    isActive?: boolean;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) => api.get<ApiResponse<{ staff: Staff[]; pagination: Pagination }>>('/staff', { params }),
+
   getById: (id: string) => api.get<ApiResponse<Staff>>(`/staff/${id}`),
-  
+
   create: (data: Partial<Staff>) => api.post<ApiResponse<Staff>>('/staff', data),
-  
+
   update: (id: string, data: Partial<Staff>) => api.patch<ApiResponse<Staff>>(`/staff/${id}`, data),
-  
+
   delete: (id: string) => api.delete<ApiResponse<null>>(`/staff/${id}`),
-  
+
   updateRoleTemplate: (id: string, roleTemplateId: string) =>
     api.patch<ApiResponse<Staff>>(`/staff/${id}`, { roleTemplate: roleTemplateId }),
 };
@@ -378,69 +504,75 @@ export const employeeApi = {
 export const masterDataApi = {
   list: (params?: { category?: string; isActive?: boolean }) =>
     api.get<ApiResponse<MasterData[]>>('/master-data', { params }),
-  
+
   getByCategory: (category: string, includeInactive = true) =>
-    api.get<ApiResponse<MasterData[]>>(`/master-data/category/${category}?includeInactive=${includeInactive}`),
-  
+    api.get<ApiResponse<MasterData[]>>(
+      `/master-data/category/${category}?includeInactive=${includeInactive}`
+    ),
+
   getById: (id: string) => api.get<ApiResponse<MasterData>>(`/master-data/${id}`),
-  
-  create: (data: Partial<MasterData> | FormData) => 
+
+  create: (data: Partial<MasterData> | FormData) =>
     api.post<ApiResponse<MasterData>>('/master-data', data, {
-      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {},
     }),
-  
-  update: (id: string, data: Partial<MasterData> | FormData) => 
+
+  update: (id: string, data: Partial<MasterData> | FormData) =>
     api.patch<ApiResponse<MasterData>>(`/master-data/${id}`, data, {
-      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {},
     }),
-  
+
   reorder: (items: Array<{ id: string; displayOrder: number }>) =>
     api.patch<ApiResponse<null>>('/master-data/reorder', { items }),
-  
+
   delete: (id: string) => api.delete<ApiResponse<null>>(`/master-data/${id}`),
-  
-  getCategories: () => api.get<ApiResponse<Array<{ value: string; label: string; icon: string }>>>('/master-data/categories'),
+
+  getCategories: () =>
+    api.get<ApiResponse<Array<{ value: string; label: string; icon: string }>>>(
+      '/master-data/categories'
+    ),
 };
 
 // Account APIs
 export const accountApi = {
   list: () => api.get<ApiResponse<Account[]>>('/accounts'),
-  
+
   getById: (id: string) => api.get<ApiResponse<Account>>(`/accounts/${id}`),
-  
+
   getPrimary: () => api.get<ApiResponse<Account>>('/accounts/primary'),
-  
+
   create: (data: Partial<Account>) => api.post<ApiResponse<Account>>('/accounts', data),
-  
-  update: (id: string, data: Partial<Account>) => api.patch<ApiResponse<Account>>(`/accounts/${id}`, data),
-  
+
+  update: (id: string, data: Partial<Account>) =>
+    api.patch<ApiResponse<Account>>(`/accounts/${id}`, data),
+
   setPrimary: (id: string) => api.patch<ApiResponse<Account>>(`/accounts/${id}/primary`, {}),
-  
+
   delete: (id: string) => api.delete<ApiResponse<null>>(`/accounts/${id}`),
 };
 
 // Organization Settings APIs
 export const organizationSettingsApi = {
   getSettings: () => api.get<ApiResponse<OrganizationSettings>>('/organization/settings'),
-  
-  updateSettings: (data: Partial<OrganizationSettings>) => 
+
+  updateSettings: (data: Partial<OrganizationSettings>) =>
     api.patch<ApiResponse<OrganizationSettings>>('/organization/settings', data),
-  
+
   updateCompanyInfo: (data: Partial<OrganizationSettings>) =>
     api.patch<ApiResponse<OrganizationSettings>>('/organization/settings/company', data),
-  
+
   updateBookingConfig: (data: Partial<OrganizationSettings>) =>
     api.patch<ApiResponse<OrganizationSettings>>('/organization/settings/booking-config', data),
-  
+
   updateOperationalSettings: (data: Partial<OrganizationSettings>) =>
     api.patch<ApiResponse<OrganizationSettings>>('/organization/settings/operational', data),
-  
+
   updateNotificationSettings: (data: Partial<OrganizationSettings>) =>
     api.patch<ApiResponse<OrganizationSettings>>('/organization/settings/notifications', data),
-  
+
   updateTaxSettings: (data: Partial<OrganizationSettings>) =>
     api.patch<ApiResponse<OrganizationSettings>>('/organization/settings/tax', data),
-  
+
   getNextBookingNumber: () =>
     api.get<ApiResponse<{ bookingNumber: string }>>('/organization/settings/next-booking-number'),
 };
@@ -449,37 +581,85 @@ export const organizationSettingsApi = {
 export const branchApi = {
   list: (params?: { region?: string; isActive?: boolean }) =>
     api.get<ApiResponse<Branch[]>>('/branches', { params }),
-  
+
   getById: (id: string) => api.get<ApiResponse<Branch>>(`/branches/${id}`),
-  
+
   create: (data: Partial<Branch>) => api.post<ApiResponse<Branch>>('/branches', data),
-  
-  update: (id: string, data: Partial<Branch>) => api.patch<ApiResponse<Branch>>(`/branches/${id}`, data),
-  
+
+  update: (id: string, data: Partial<Branch>) =>
+    api.patch<ApiResponse<Branch>>(`/branches/${id}`, data),
+
   delete: (id: string) => api.delete<ApiResponse<null>>(`/branches/${id}`),
-  
+
   assignEmployee: (branchId: string, staffId: string) =>
     api.patch<ApiResponse<Branch>>(`/branches/${branchId}/employees/${staffId}`, {}),
-  
+
   removeEmployee: (branchId: string, staffId: string) =>
     api.delete<ApiResponse<Branch>>(`/branches/${branchId}/employees/${staffId}`),
-  
-  getMetrics: (id: string) =>
-    api.get<ApiResponse<unknown>>(`/branches/${id}/metrics`),
+
+  getMetrics: (id: string) => api.get<ApiResponse<unknown>>(`/branches/${id}/metrics`),
 };
 
 // City Search API
 export const cityApi = {
-  search: (query: string) => api.get<ApiResponse<string[]>>('/cities/search', { params: { q: query } }),
+  search: (query: string) =>
+    api.get<ApiResponse<string[]>>('/cities/search', { params: { q: query } }),
+};
+
+// Market Rates API
+export const marketRateApi = {
+  getAll: (params?: {
+    origin?: string;
+    destination?: string;
+    truckType?: string;
+    page?: number;
+    limit?: number;
+  }) => api.get<ApiResponse<{ rates: any[]; pagination: Pagination }>>('/market-rates', { params }),
+  getCities: () => api.get<ApiResponse<string[]>>('/market-rates/cities'),
+  getTrends: (params?: { origin?: string; destination?: string; days?: number }) =>
+    api.get<ApiResponse<any[]>>('/market-rates/trends', { params }),
+};
+
+// Support Tickets API
+export const supportTicketApi = {
+  getAll: (params?: { status?: string; page?: number; limit?: number }) =>
+    api.get<ApiResponse<{ tickets: any[]; pagination: Pagination }>>('/support-tickets', {
+      params,
+    }),
+  getById: (id: string) => api.get<ApiResponse<any>>(`/support-tickets/${id}`),
+  reply: (id: string, data: { message: string }) =>
+    api.post<ApiResponse<any>>(`/support-tickets/${id}/reply`, data),
+};
+
+// Audit Logs API
+export const auditApi = {
+  getAll: (params?: {
+    action?: string;
+    entityType?: string;
+    userId?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }) => api.get<ApiResponse<{ logs: any[]; pagination: Pagination }>>('/audit', { params }),
+  getStats: () => api.get<ApiResponse<any>>('/audit/stats'),
+  getEntityHistory: (entityType: string, entityId: string) =>
+    api.get<ApiResponse<any[]>>(`/audit/entity/${entityType}/${entityId}`),
 };
 
 // Wallet / Payouts API
 export const walletApi = {
   getAllPayouts: (params?: { page?: number; limit?: number; status?: string }) =>
-    api.get<ApiResponse<{ payouts: WalletTransaction[]; pagination: Pagination }>>('/wallet/payouts/all', { params }),
+    api.get<ApiResponse<{ payouts: WalletTransaction[]; pagination: Pagination }>>(
+      '/wallet/payouts/all',
+      { params }
+    ),
 
   approvePayout: (transactionId: string, data?: { utrNumber?: string }) =>
-    api.patch<ApiResponse<WalletTransaction>>(`/wallet/payouts/${transactionId}/approve`, data || {}),
+    api.patch<ApiResponse<WalletTransaction>>(
+      `/wallet/payouts/${transactionId}/approve`,
+      data || {}
+    ),
 
   rejectPayout: (transactionId: string, data: { reason: string }) =>
     api.patch<ApiResponse<WalletTransaction>>(`/wallet/payouts/${transactionId}/reject`, data),

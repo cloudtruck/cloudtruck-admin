@@ -59,7 +59,18 @@ export interface Booking {
     receiverPhone?: string;
     deliveredAt?: string;
     remarks?: string;
-  };
+    signatureUrl?: string;
+    uploadedBy?: string | { _id: string; name: string };
+    uploadedAt?: string;
+    ackDate?: string;
+    verifiedBy?: string | { _id: string; name: string };
+    verifiedAt?: string;
+    receivedBy?: string | { _id: string; name: string };
+    approvedBy?: string | { _id: string; name: string };
+    courier?: string;
+    docketNo?: string;
+    ackNo?: string;
+  } | null;
   cancellationDetails?: {
     cancelledAt?: string;
     reason?: string;
@@ -70,11 +81,80 @@ export interface Booking {
     notes?: string;
   }>;
   images?: string[];
+  loadingDocuments?: Array<{ _id: string; url: string; fileType?: string }>;
+  otherDocuments?: Array<{ _id: string; url: string; fileType?: string }>;
   lastKnownLocation?: {
     type: 'Point';
     coordinates: [number, number];
   };
   lastLocationUpdate?: string;
+  laneCode?: string;
+  isAdhoc?: boolean;
+  indentType?: 'FTL' | 'PTL' | 'LCL' | null;
+  exim?: 'domestic' | 'import' | 'export';
+  trafficController?: { _id: string; name: string; phone?: string | null };
+  supervisor?: { _id: string; name: string; phone?: string | null };
+  // Location master data
+  sourceCode?: string;
+  destinationCode?: string;
+  supplier?: string;
+  // Pricing
+  supplierPrice?: number;
+  customerPrice?: number;
+  weightUnit?: 'kg' | 'tons';
+  ratePerTon?: boolean;
+  // Indent lifecycle
+  expiryTime?: string;
+  postToSupplier?: boolean;
+  remarks?: string;
+  numberOfTrucks?: number;
+  interestedDrivers?: string[];
+  interestedCount?: number;
+  marketTrucks?: number;
+  // Post-creation operational
+  lrNumber?: string;
+  lrDetails?: {
+    lrNumber?: string;
+    lrDate?: string;
+    remarks?: string;
+    uploadedAt?: string;
+    uploadedBy?: string;
+    documents?: Array<{ _id: string; url: string; fileType?: string; originalName?: string }>;
+  } | null;
+  boeNumber?: string;
+  jobNo?: string;
+  hireChallan?: string;
+  invoiceNo?: string;
+  shipmentNo?: string;
+  containerNo?: string;
+  poNumber?: string;
+  supplierType?: string;
+  truckSubType?: string;
+  bookedBy?: string | { _id: string; name: string };
+  customerCharge?: number;
+  supplierCharge?: number;
+  expense?: number;
+  supplierTds?: number;
+  lastComment?: string;
+  customerDetentionCharge?: number;
+  supplierDetentionCharge?: number;
+  actualKm?: number;
+  createdByStaff?: { _id: string; name: string } | null;
+  // Direct Load / Direct Invoice fields
+  bookingType?: 'indent' | 'direct-load' | 'direct-invoice';
+  customerAdvancePct?: number;
+  supplierAdvancePct?: number;
+  customerOnDelivery?: number;
+  customerPaysSupplier?: number;
+  supplierPaysSupplier?: number;
+  customerPodBalance?: number;
+  supplierPodBalance?: number;
+  invoiceTo?: 'Customer' | 'Supplier' | 'Both';
+  payTo?: 'Supplier' | 'Driver' | 'Customer';
+  accountNo?: string;
+  podType?: 'Hard' | 'Soft';
+  tripKm?: number;
+  expectedDeliveryDate?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -91,8 +171,10 @@ export interface CreateBookingPayload {
   dropLng: number;
   materialType: string;
   weight: number;
+  weightUnit?: 'kg' | 'tons';
   truckType: string;
   bodyType?: string;
+  numberOfTrucks?: number;
   loadDate?: string;
   expectedAmount?: number;
   advanceRequired?: number;
@@ -100,6 +182,36 @@ export interface CreateBookingPayload {
   isHazardous?: boolean;
   isFragile?: boolean;
   requiresTemperatureControl?: boolean;
+  // Digitify / indent fields
+  laneCode?: string;
+  sourceCode?: string;
+  destinationCode?: string;
+  supplier?: string;
+  indentType?: 'FTL' | 'PTL' | 'LCL' | null;
+  exim?: 'domestic' | 'import' | 'export';
+  trafficController?: string; // Staff ID for create/update payload
+  supplierPrice?: number;
+  customerPrice?: number;
+  ratePerTon?: boolean;
+  expiryTime?: string;
+  postToSupplier?: boolean;
+  remarks?: string;
+  // Direct Load / Direct Invoice fields
+  vehicleId?: string;
+  driverId?: string;
+  bookingType?: 'indent' | 'direct-load' | 'direct-invoice';
+  customerAdvancePct?: number;
+  supplierAdvancePct?: number;
+  customerOnDelivery?: number;
+  customerPaysSupplier?: number;
+  supplierPaysSupplier?: number;
+  customerPodBalance?: number;
+  supplierPodBalance?: number;
+  invoiceTo?: 'Customer' | 'Supplier' | 'Both';
+  payTo?: 'Supplier' | 'Driver' | 'Customer';
+  accountNo?: string;
+  podType?: 'Hard' | 'Soft';
+  tripKm?: number;
 }
 
 export interface BookingFilters {
@@ -138,7 +250,12 @@ export interface BookingStats {
 
 export interface Activity {
   _id: string;
-  type: 'booking_created' | 'driver_assigned' | 'status_update' | 'pod_uploaded' | 'payment_received';
+  type:
+    | 'booking_created'
+    | 'driver_assigned'
+    | 'status_update'
+    | 'pod_uploaded'
+    | 'payment_received';
   message: string;
   bookingId?: string;
   timestamp: string;
@@ -149,4 +266,14 @@ export interface TrendData {
   date: string;
   bookings: number;
   delivered: number;
+}
+
+export interface UnloadingTruck {
+  bookingId: string;
+  bookingDbId: string;
+  vehicle: { _id: string; vehicleNumber: string; truckType: string } | null;
+  driver: { _id: string; name: string; phone: string } | null;
+  dropCity: string;
+  status: string;
+  updatedAt: string;
 }

@@ -30,6 +30,7 @@ export interface Driver {
   isBlacklisted: boolean;
   blacklistReason?: string;
   preferredTruckTypes?: string[];
+  vehicles?: Array<{ _id: string; vehicleNumber: string; truckType: string }>;
   currentLocation?: {
     type: 'Point';
     coordinates: [number, number];
@@ -37,6 +38,7 @@ export interface Driver {
   lastActive?: string;
   totalTrips?: number;
   rating?: number;
+  city?: string;
   lastDropCity?: string;
   isReturnTrip?: boolean;
   createdAt: string;
