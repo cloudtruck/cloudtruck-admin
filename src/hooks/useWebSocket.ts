@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '@/store/authStore';
 import { WS_BASE_URL } from '@/lib/constants';
@@ -13,22 +14,22 @@ export function useWebSocket(namespace: string = '') {
     if (!isAuthenticated || !accessToken) return;
 
     const url = `${WS_BASE_URL}${namespace}`;
-    
+
     socketRef.current = io(url, {
       auth: { token: accessToken },
       transports: ['websocket', 'polling'],
     });
 
     socketRef.current.on('connect', () => {
-      console.log(`WebSocket connected to ${namespace || '/'}`);
+      logger.debug(`WebSocket connected to ${namespace || '/'}`);
     });
 
     socketRef.current.on('disconnect', () => {
-      console.log(`WebSocket disconnected from ${namespace || '/'}`);
+      logger.debug(`WebSocket disconnected from ${namespace || '/'}`);
     });
 
     socketRef.current.on('error', (error) => {
-      console.error('WebSocket error:', error);
+      logger.error('WebSocket error:', error);
     });
 
     return () => {

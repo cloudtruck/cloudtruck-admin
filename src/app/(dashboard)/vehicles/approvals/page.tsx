@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common/PageHeader';
 import { VehicleCard } from '@/components/vehicles/VehicleCard';
 import { vehicleApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import type { Vehicle, Pagination } from '@/types';
@@ -28,14 +29,16 @@ export default function VehicleApprovalsPage() {
         limit: 20,
       });
       setVehicles(response.data?.data?.vehicles || []);
-      setPagination(response.data?.data?.pagination || {
-        currentPage: 1,
-        totalPages: 1,
-        totalItems: 0,
-        itemsPerPage: 20,
-      });
+      setPagination(
+        response.data?.data?.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          itemsPerPage: 20,
+        }
+      );
     } catch (error: unknown) {
-      console.error('Failed to fetch pending vehicles:', error);
+      logger.error('Failed to fetch pending vehicles:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to fetch pending vehicles');
     } finally {
@@ -95,7 +98,9 @@ export default function VehicleApprovalsPage() {
           <Button
             variant="outline"
             disabled={pagination.currentPage === 1}
-            onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+            onClick={() =>
+              setPagination((prev) => ({ ...prev, currentPage: prev.currentPage - 1 }))
+            }
           >
             Previous
           </Button>
@@ -105,7 +110,9 @@ export default function VehicleApprovalsPage() {
           <Button
             variant="outline"
             disabled={pagination.currentPage === pagination.totalPages}
-            onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+            onClick={() =>
+              setPagination((prev) => ({ ...prev, currentPage: prev.currentPage + 1 }))
+            }
           >
             Next
           </Button>

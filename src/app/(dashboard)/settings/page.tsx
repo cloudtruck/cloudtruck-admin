@@ -8,9 +8,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
 import { staffApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 import { User, Mail, Shield, Key, Pencil } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 
 export default function SettingsPage() {
@@ -55,7 +62,7 @@ export default function SettingsPage() {
         confirmPassword: '',
       });
     } catch (error: unknown) {
-      console.error('Failed to change password:', error);
+      logger.error('Failed to change password:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to change password');
     } finally {
@@ -66,7 +73,7 @@ export default function SettingsPage() {
   const handleEditProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?._id) return;
-    
+
     setEditLoading(true);
     try {
       await staffApi.update(user._id, { name: editData.name, email: editData.email });
@@ -83,10 +90,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Settings"
-        description="Manage your account settings and preferences"
-      />
+      <PageHeader title="Settings" description="Manage your account settings and preferences" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
@@ -97,7 +101,12 @@ export default function SettingsPage() {
                   <CardTitle>Profile Information</CardTitle>
                   <CardDescription>Your account details</CardDescription>
                 </div>
-                <Button size="icon" variant="ghost" aria-label="Edit Profile" onClick={() => setEditOpen(true)}>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Edit Profile"
+                  onClick={() => setEditOpen(true)}
+                >
                   <Pencil className="h-4 w-4" />
                 </Button>
               </div>
@@ -118,7 +127,7 @@ export default function SettingsPage() {
                         <Input
                           id="editName"
                           value={editData.name}
-                          onChange={e => setEditData({ ...editData, name: e.target.value })}
+                          onChange={(e) => setEditData({ ...editData, name: e.target.value })}
                           required
                         />
                       </div>
@@ -128,12 +137,17 @@ export default function SettingsPage() {
                           id="editEmail"
                           type="email"
                           value={editData.email}
-                          onChange={e => setEditData({ ...editData, email: e.target.value })}
+                          onChange={(e) => setEditData({ ...editData, email: e.target.value })}
                           required
                         />
                       </div>
                       <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setEditOpen(false)} disabled={editLoading}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setEditOpen(false)}
+                          disabled={editLoading}
+                        >
                           Cancel
                         </Button>
                         <Button type="submit" disabled={editLoading}>
@@ -214,9 +228,7 @@ export default function SettingsPage() {
                     required
                     minLength={8}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Must be at least 8 characters
-                  </p>
+                  <p className="text-xs text-muted-foreground">Must be at least 8 characters</p>
                 </div>
 
                 <div className="space-y-2">

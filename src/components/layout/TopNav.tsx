@@ -24,7 +24,7 @@ const navItems = [
   { label: 'Trips', href: '/trips' },
   { label: 'E-way Bill', href: '/eway-bills' },
   { label: 'Customers', href: '/customers' },
-  { label: 'Drivers', href: '/drivers' },
+  { label: 'Suppliers', href: '/suppliers' },
   { label: 'Trucks', href: '/vehicles' },
   { label: 'Organisation', href: '/organization' },
   { label: 'Analytics', href: '/reports' },
@@ -43,6 +43,8 @@ export function TopNav() {
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard';
+    if (href === '/suppliers')
+      return pathname.startsWith('/suppliers') || pathname.startsWith('/drivers');
     return pathname.startsWith(href);
   };
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import {
   Dialog,
   DialogContent,
@@ -46,11 +47,14 @@ export function CancelBookingModal({
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      console.error('Failed to cancel booking:', err);
-      const error = err as { response?: { data?: { errors?: Array<{ message?: string }>; message?: string } } };
-      const errorMessage = error.response?.data?.errors?.[0]?.message || 
-                           error.response?.data?.message || 
-                           'Failed to cancel booking';
+      logger.error('Failed to cancel booking:', err);
+      const error = err as {
+        response?: { data?: { errors?: Array<{ message?: string }>; message?: string } };
+      };
+      const errorMessage =
+        error.response?.data?.errors?.[0]?.message ||
+        error.response?.data?.message ||
+        'Failed to cancel booking';
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -66,7 +70,8 @@ export function CancelBookingModal({
             Cancel Booking
           </DialogTitle>
           <DialogDescription>
-            Are you sure you want to cancel booking <strong>{booking.bookingId}</strong>? This action cannot be undone.
+            Are you sure you want to cancel booking <strong>{booking.bookingId}</strong>? This
+            action cannot be undone.
           </DialogDescription>
         </DialogHeader>
 
@@ -87,11 +92,7 @@ export function CancelBookingModal({
           <Button variant="outline" onClick={onClose} disabled={loading}>
             No, Keep Booking
           </Button>
-          <Button 
-            variant="destructive" 
-            onClick={handleCancel} 
-            disabled={loading || !reason.trim()}
-          >
+          <Button variant="destructive" onClick={handleCancel} disabled={loading || !reason.trim()}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Yes, Cancel Booking
           </Button>

@@ -60,10 +60,14 @@ export default function AuditLogsPage() {
       if (search) params.search = search;
       if (entityFilter) params.entityType = entityFilter;
       const res = await auditApi.getAll(params);
-      const data = res.data.data;
-      setLogs((data as any)?.items ?? (data as any)?.logs ?? []);
-      if ((data as any)?.pagination) {
-        setTotalPages((data as any).pagination.pages ?? 1);
+      const responseData = res.data.data as {
+        items?: AuditLog[];
+        logs?: AuditLog[];
+        pagination?: { pages?: number };
+      };
+      setLogs(responseData?.items ?? responseData?.logs ?? []);
+      if (responseData?.pagination) {
+        setTotalPages(responseData.pagination.pages ?? 1);
       }
     } catch {
       toast.error('Failed to load audit logs');

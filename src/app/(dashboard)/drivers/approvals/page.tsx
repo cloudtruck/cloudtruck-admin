@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common/PageHeader';
 import { DriverCard } from '@/components/drivers/DriverCard';
 import { driverApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import type { Driver, Pagination } from '@/types';
@@ -28,14 +29,16 @@ export default function DriverApprovalsPage() {
         limit: 20,
       });
       setDrivers(response.data?.data?.drivers || []);
-      setPagination(response.data?.data?.pagination || {
-        currentPage: 1,
-        totalPages: 1,
-        totalItems: 0,
-        itemsPerPage: 20,
-      });
+      setPagination(
+        response.data?.data?.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          itemsPerPage: 20,
+        }
+      );
     } catch (error: unknown) {
-      console.error('Failed to fetch pending drivers:', error);
+      logger.error('Failed to fetch pending drivers:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to fetch pending drivers');
     } finally {

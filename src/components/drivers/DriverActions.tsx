@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { MoreVertical, CheckCircle, XCircle, Ban, Unlock, Pencil } from 'lucide-react';
 import {
   DropdownMenu,
@@ -35,7 +36,9 @@ interface DriverActionsProps {
 
 export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
   const [loading, setLoading] = useState(false);
-  const [actionDialog, setActionDialog] = useState<'approve' | 'reject' | 'block' | 'unblock' | null>(null);
+  const [actionDialog, setActionDialog] = useState<
+    'approve' | 'reject' | 'block' | 'unblock' | null
+  >(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [reason, setReason] = useState('');
 
@@ -47,18 +50,19 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
       onSuccess();
       setActionDialog(null);
     } catch (error: unknown) {
-      console.error('Failed to approve driver:', error);
-      const err = error as { 
-        response?: { 
-          data?: { 
-            message?: string; 
-            errors?: Array<{ message: string }> 
-          } 
-        } 
+      logger.error('Failed to approve driver:', error);
+      const err = error as {
+        response?: {
+          data?: {
+            message?: string;
+            errors?: Array<{ message: string }>;
+          };
+        };
       };
-      const errorMessage = err.response?.data?.errors?.[0]?.message || 
-                           err.response?.data?.message || 
-                           'Failed to approve driver';
+      const errorMessage =
+        err.response?.data?.errors?.[0]?.message ||
+        err.response?.data?.message ||
+        'Failed to approve driver';
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -79,18 +83,19 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
       setActionDialog(null);
       setReason('');
     } catch (error: unknown) {
-      console.error('Failed to reject driver:', error);
-      const err = error as { 
-        response?: { 
-          data?: { 
-            message?: string; 
-            errors?: Array<{ message: string }> 
-          } 
-        } 
+      logger.error('Failed to reject driver:', error);
+      const err = error as {
+        response?: {
+          data?: {
+            message?: string;
+            errors?: Array<{ message: string }>;
+          };
+        };
       };
-      const errorMessage = err.response?.data?.errors?.[0]?.message || 
-                           err.response?.data?.message || 
-                           'Failed to reject driver';
+      const errorMessage =
+        err.response?.data?.errors?.[0]?.message ||
+        err.response?.data?.message ||
+        'Failed to reject driver';
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -111,18 +116,19 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
       setActionDialog(null);
       setReason('');
     } catch (error: unknown) {
-      console.error('Failed to block driver:', error);
-      const err = error as { 
-        response?: { 
-          data?: { 
-            message?: string; 
-            errors?: Array<{ message: string }> 
-          } 
-        } 
+      logger.error('Failed to block driver:', error);
+      const err = error as {
+        response?: {
+          data?: {
+            message?: string;
+            errors?: Array<{ message: string }>;
+          };
+        };
       };
-      const errorMessage = err.response?.data?.errors?.[0]?.message || 
-                           err.response?.data?.message || 
-                           'Failed to block driver';
+      const errorMessage =
+        err.response?.data?.errors?.[0]?.message ||
+        err.response?.data?.message ||
+        'Failed to block driver';
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -137,18 +143,19 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
       onSuccess();
       setActionDialog(null);
     } catch (error: unknown) {
-      console.error('Failed to unblock driver:', error);
-      const err = error as { 
-        response?: { 
-          data?: { 
-            message?: string; 
-            errors?: Array<{ message: string }> 
-          } 
-        } 
+      logger.error('Failed to unblock driver:', error);
+      const err = error as {
+        response?: {
+          data?: {
+            message?: string;
+            errors?: Array<{ message: string }>;
+          };
+        };
       };
-      const errorMessage = err.response?.data?.errors?.[0]?.message || 
-                           err.response?.data?.message || 
-                           'Failed to unblock driver';
+      const errorMessage =
+        err.response?.data?.errors?.[0]?.message ||
+        err.response?.data?.message ||
+        'Failed to unblock driver';
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -166,7 +173,7 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          
+
           {!driver.isVerified && (
             <>
               <DropdownMenuItem onClick={() => setActionDialog('approve')}>
@@ -179,14 +186,14 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
               </DropdownMenuItem>
             </>
           )}
-          
+
           {!driver.isBlacklisted && driver.isVerified && (
             <DropdownMenuItem onClick={() => setActionDialog('block')}>
               <Ban className="mr-2 h-4 w-4" />
               Block Driver
             </DropdownMenuItem>
           )}
-          
+
           {driver.status === 'blocked' && (
             <DropdownMenuItem onClick={() => setActionDialog('unblock')}>
               <Unlock className="mr-2 h-4 w-4" />
@@ -209,7 +216,10 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
         driver={driver}
       />
 
-      <AlertDialog open={actionDialog === 'approve'} onOpenChange={(open) => !open && setActionDialog(null)}>
+      <AlertDialog
+        open={actionDialog === 'approve'}
+        onOpenChange={(open) => !open && setActionDialog(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Approve Driver</AlertDialogTitle>
@@ -226,7 +236,10 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={actionDialog === 'reject'} onOpenChange={(open) => !open && setActionDialog(null)}>
+      <AlertDialog
+        open={actionDialog === 'reject'}
+        onOpenChange={(open) => !open && setActionDialog(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Reject Driver</AlertDialogTitle>
@@ -253,12 +266,16 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={actionDialog === 'block'} onOpenChange={(open) => !open && setActionDialog(null)}>
+      <AlertDialog
+        open={actionDialog === 'block'}
+        onOpenChange={(open) => !open && setActionDialog(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Block Driver</AlertDialogTitle>
             <AlertDialogDescription>
-              Please provide a reason for blocking {driver.name}. They will not be able to accept trips.
+              Please provide a reason for blocking {driver.name}. They will not be able to accept
+              trips.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2 py-4">
@@ -280,12 +297,16 @@ export function DriverActions({ driver, onSuccess }: DriverActionsProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={actionDialog === 'unblock'} onOpenChange={(open) => !open && setActionDialog(null)}>
+      <AlertDialog
+        open={actionDialog === 'unblock'}
+        onOpenChange={(open) => !open && setActionDialog(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Unblock Driver</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to unblock {driver.name}? They will be able to accept trips again.
+              Are you sure you want to unblock {driver.name}? They will be able to accept trips
+              again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

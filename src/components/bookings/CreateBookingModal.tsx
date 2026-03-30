@@ -14,9 +14,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { bookingApi, customerApi } from '@/lib/api';
+import { bookingApi, customerApi, supplierApi } from '@/lib/api';
 import { toast } from 'sonner';
-import type { Customer, CreateBookingPayload, MasterData } from '@/types';
+import type { Customer, CreateBookingPayload, MasterData, Supplier } from '@/types';
 import { Loader2 } from 'lucide-react';
 import { useMasterData } from '@/hooks/useMasterData';
 
@@ -32,7 +32,7 @@ const emptyForm = {
   // Core
   customerId: '',
   laneCode: '',
-  indentType: 'FTL' as 'FTL' | 'PTL' | 'LCL',
+  loadType: 'FTL' as 'FTL' | 'LTL' | 'PTL',
   exim: 'domestic' as 'domestic' | 'import' | 'export',
   // Source / Destination (location master data keys)
   sourceCode: '',
@@ -47,7 +47,7 @@ const emptyForm = {
   bodyType: '',
   // Staff
   trafficController: '',
-  supplier: '',
+  supplierEntity: '',
   branch: '',
   // Pricing
   customerPrice: '',
@@ -71,6 +71,7 @@ export function CreateBookingModal({
 }: CreateBookingModalProps) {
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [formData, setFormData] = useState({ ...emptyForm });
 
   // Master data
@@ -78,7 +79,6 @@ export function CreateBookingModal({
   const { data: materialTypes, loading: materialTypesLoading } = useMasterData('material-type');
   const { data: locations, loading: locationsLoading } = useMasterData('location');
   const { data: lanes } = useMasterData('lane');
-  const { data: suppliers } = useMasterData('supplier');
 
   const set = (key: keyof typeof emptyForm, value: unknown) =>
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -86,6 +86,7 @@ export function CreateBookingModal({
   useEffect(() => {
     if (isOpen) {
       fetchCustomers();
+      fetchSuppliers();
     } else {
       setFormData({ ...emptyForm });
     }
@@ -97,6 +98,15 @@ export function CreateBookingModal({
       setCustomers(response.data.data.customers);
     } catch {
       toast.error('Failed to fetch customers');
+    }
+  };
+
+  const fetchSuppliers = async () => {
+    try {
+      const response = await supplierApi.getAll({ verificationStatus: 'verified', limit: 100 });
+      setSuppliers(response.data.data.items || []);
+    } catch {
+      // non-blocking — supplier field is optional
     }
   };
 
@@ -180,9 +190,9 @@ export function CreateBookingModal({
         laneCode: formData.laneCode || undefined,
         sourceCode: formData.sourceCode,
         destinationCode: formData.destinationCode,
-        indentType: formData.indentType,
+        loadType: formData.loadType,
         exim: formData.exim,
-        supplier: formData.supplier || undefined,
+        supplierEntity: formData.supplierEntity || undefined,
         trafficController: formData.trafficController || undefined,
         supplierPrice: formData.supplierPrice ? parseFloat(formData.supplierPrice) : 0,
         customerPrice: formData.customerPrice ? parseFloat(formData.customerPrice) : 0,
@@ -424,24 +434,25 @@ export function CreateBookingModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">Supplier</Label>
-              <Select value={formData.supplier} onValueChange={(v) => set('supplier', v)}>
+              <Select
+                value={formData.supplierEntity}
+                onValueChange={(v) => set('supplierEntity', v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select supplier" />
                 </SelectTrigger>
                 <SelectContent>
-                  {suppliers
-                    .filter((s) => s.isActive)
-                    .map((s) => (
-                      <SelectItem key={s._id} value={s.key}>
-                        {s.displayName}
-                      </SelectItem>
-                    ))}
+                  {suppliers.map((s) => (
+                    <SelectItem key={s._id} value={s._id}>
+                      {s.displayName}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Indent Type</Label>
-              <Select value={formData.indentType} onValueChange={(v) => set('indentType', v)}>
+              <Label className="text-xs text-muted-foreground mb-1 block">Load Type</Label>
+              <Select value={formData.loadType} onValueChange={(v) => set('loadType', v)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form';
 import { loginSchema, type LoginFormData } from '@/validators/schemas';
 import { authApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { useAuthStore } from '@/store/authStore';
 import { AxiosError } from 'axios';
 import { useEffect } from 'react';
@@ -56,7 +57,7 @@ export default function LoginPage() {
       toast.success('Login successful!');
       router.push('/dashboard');
     } catch (error: unknown) {
-      console.error('Login failed:', error);
+      logger.error('Login failed:', error);
 
       let errorMessage = 'Login failed. Please try again.';
 
@@ -67,13 +68,19 @@ export default function LoginPage() {
 
         switch (status) {
           case 401:
-            errorMessage = (data as ErrorResponse)?.message || 'Invalid email or password. Please check your credentials.';
+            errorMessage =
+              (data as ErrorResponse)?.message ||
+              'Invalid email or password. Please check your credentials.';
             break;
           case 423:
-            errorMessage = (data as ErrorResponse)?.message || 'Account locked due to multiple failed login attempts. Please contact support.';
+            errorMessage =
+              (data as ErrorResponse)?.message ||
+              'Account locked due to multiple failed login attempts. Please contact support.';
             break;
           case 403:
-            errorMessage = (data as ErrorResponse)?.message || 'Account blocked or inactive. Please contact support.';
+            errorMessage =
+              (data as ErrorResponse)?.message ||
+              'Account blocked or inactive. Please contact support.';
             break;
           case 429:
             errorMessage = 'Too many login attempts. Please try again later.';
@@ -135,12 +142,7 @@ export default function LoginPage() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="••••••••"
-                      disabled={loading}
-                      {...field}
-                    />
+                    <Input type="password" placeholder="••••••••" disabled={loading} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -162,9 +164,7 @@ export default function LoginPage() {
       </div>
 
       {/* Footer */}
-      <p className="text-center text-xs text-zinc-600">
-        © 2024 Cloudtruck. All rights reserved.
-      </p>
+      <p className="text-center text-xs text-zinc-600">© 2024 Cloudtruck. All rights reserved.</p>
     </div>
   );
 }

@@ -81,6 +81,16 @@ const navigationItems: NavItem[] = [
     icon: FileText,
   },
   {
+    label: 'Suppliers',
+    href: '/suppliers',
+    icon: Building2,
+    children: [
+      { label: 'All Suppliers', href: '/suppliers', icon: Building2 },
+      { label: 'Approvals', href: '/suppliers/approvals', icon: FileCheck },
+      { label: 'Payouts', href: '/suppliers/payouts', icon: DollarSign },
+    ],
+  },
+  {
     label: 'Organization',
     href: '/organization',
     icon: Building2,
@@ -115,7 +125,7 @@ export function Sidebar() {
 
   const isActive = (href: string, exact: boolean = false) => {
     const [path, query] = href.split('?');
-    
+
     if (exact) {
       if (pathname !== path) return false;
     } else {
@@ -167,10 +177,7 @@ export function Sidebar() {
               <span>{item.label}</span>
             </div>
             <ChevronDown
-              className={cn(
-                'h-4 w-4 transition-transform',
-                isExpanded && 'rotate-180'
-              )}
+              className={cn('h-4 w-4 transition-transform', isExpanded && 'rotate-180')}
             />
           </button>
         ) : (
@@ -219,12 +226,8 @@ export function Sidebar() {
 
   return (
     <div className="flex flex-col h-full">
-      <nav className="flex-1 space-y-1 p-2">
-        {navigationItems.map(renderNavItem)}
-      </nav>
-      <div className="p-2 border-t">
-        {bottomNavigationItems.map(renderNavItem)}
-      </div>
+      <nav className="flex-1 space-y-1 p-2">{navigationItems.map(renderNavItem)}</nav>
+      <div className="p-2 border-t">{bottomNavigationItems.map(renderNavItem)}</div>
     </div>
   );
 }

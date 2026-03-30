@@ -1,3 +1,13 @@
+export interface BankAccount {
+  _id: string;
+  accountNumber?: string; // masked: ****1234
+  ifscCode?: string;
+  accountHolderName?: string;
+  bankName?: string;
+  branchName?: string;
+  isPrimary: boolean;
+}
+
 export interface Driver {
   _id: string;
   userId: string;
@@ -19,7 +29,9 @@ export interface Driver {
     accountNumber?: string;
     ifscCode?: string;
     accountHolderName?: string;
+    bankName?: string;
   };
+  bankAccounts?: BankAccount[];
   status: 'available' | 'on-trip' | 'offline' | 'blocked';
   isVerified: boolean;
   verifiedAt?: string;
@@ -29,6 +41,9 @@ export interface Driver {
   rejectedAt?: string;
   isBlacklisted: boolean;
   blacklistReason?: string;
+  driverRole?: 'individual' | 'employee';
+  supplierOwner?: { _id: string; displayName: string; companyName?: string };
+  isApprovedBySupplier?: boolean;
   preferredTruckTypes?: string[];
   vehicles?: Array<{ _id: string; vehicleNumber: string; truckType: string }>;
   currentLocation?: {

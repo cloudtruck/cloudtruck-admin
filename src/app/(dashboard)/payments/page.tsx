@@ -16,6 +16,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { PaymentTable } from '@/components/payments/PaymentTable';
 import { MarkAsReceivedModal } from '@/components/payments/MarkAsReceivedModal';
 import { paymentApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 import type { Payment, Pagination, PaymentFilters } from '@/types';
 
@@ -49,7 +50,7 @@ export default function PaymentsPage() {
       setPayments(response.data.data.payments);
       setPagination(response.data.data.pagination);
     } catch (error) {
-      console.error('Failed to fetch payments:', error);
+      logger.error('Failed to fetch payments:', error);
       toast.error('Failed to fetch payments');
     } finally {
       setLoading(false);
@@ -84,7 +85,7 @@ export default function PaymentsPage() {
       link.remove();
       toast.success('Invoice downloaded');
     } catch (error) {
-      console.error('Failed to download invoice:', error);
+      logger.error('Failed to download invoice:', error);
       toast.error('Failed to download invoice');
     }
   };
@@ -93,8 +94,7 @@ export default function PaymentsPage() {
     setPagination((prev) => ({ ...prev, currentPage: page }));
   };
 
-  const hasActiveFilters =
-    filters.search || filters.paymentStatus || filters.paymentMethod;
+  const hasActiveFilters = filters.search || filters.paymentStatus || filters.paymentMethod;
 
   return (
     <div className="space-y-6">

@@ -12,6 +12,7 @@ import { VehicleDocuments } from '@/components/vehicles/VehicleDocuments';
 import { VehicleActions } from '@/components/vehicles/VehicleActions';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { vehicleApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 import type { Vehicle, Booking } from '@/types';
 import { format } from 'date-fns';
@@ -39,7 +40,7 @@ export default function VehicleDetailPage({ params }: VehicleDetailPageProps) {
       const response = await vehicleApi.getById(id);
       setVehicle(response.data.data);
     } catch (error: unknown) {
-      console.error('Failed to fetch vehicle:', error);
+      logger.error('Failed to fetch vehicle:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to fetch vehicle');
     } finally {
@@ -55,7 +56,7 @@ export default function VehicleDetailPage({ params }: VehicleDetailPageProps) {
       // setTripHistory(response.data.data.bookings);
       setTripHistory([]);
     } catch (error) {
-      console.error('Failed to fetch trip history:', error);
+      logger.error('Failed to fetch trip history:', error);
     } finally {
       setLoadingTrips(false);
     }
@@ -159,22 +160,41 @@ export default function VehicleDetailPage({ params }: VehicleDetailPageProps) {
                   </div>
                 </div>
 
-                {vehicle.owner && (
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Owner</p>
-                      <Link
-                        href={`/drivers/${typeof vehicle.owner === 'string' ? vehicle.owner : vehicle.owner._id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {typeof vehicle.owner === 'string' ? 'Driver' : vehicle.owner.name}
-                      </Link>
-                    </div>
-                  </div>
-                )}
+                {(vehicle.ownerRef?.item || vehicle.owner) &&
+                  (() => {
+                    const ownerKind = vehicle.ownerRef?.kind ?? 'Driver';
+                    const ownerRefItem =
+                      vehicle.ownerRef?.item && typeof vehicle.ownerRef.item === 'object'
+                        ? vehicle.ownerRef.item
+                        : null;
+                    const legacyOwner = typeof vehicle.owner === 'object' ? vehicle.owner : null;
+                    const resolvedOwner = ownerRefItem ?? legacyOwner;
+                    if (!resolvedOwner) return null;
+                    const ownerHref =
+                      ownerKind === 'Supplier'
+                        ? `/suppliers/${resolvedOwner._id}`
+                        : `/drivers/${resolvedOwner._id}`;
+                    const ownerName =
+                      resolvedOwner.name ??
+                      ('displayName' in resolvedOwner ? resolvedOwner.displayName : undefined) ??
+                      ('companyName' in resolvedOwner ? resolvedOwner.companyName : undefined) ??
+                      (ownerKind === 'Supplier' ? 'Supplier' : 'Driver');
+                    return (
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">
+                            {ownerKind === 'Supplier' ? 'Company Owner' : 'Owner'}
+                          </p>
+                          <Link href={ownerHref} className="font-medium hover:underline">
+                            {ownerName}
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                 {vehicle.driver && (
                   <div className="flex items-center gap-3">

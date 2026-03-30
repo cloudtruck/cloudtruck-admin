@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { logger } from '@/lib/logger';
 import { GoogleMap, Marker, Polyline } from '@react-google-maps/api';
 import { trackingApi } from '@/lib/api';
 import { decodePolyline } from '@/lib/maps';
@@ -22,7 +23,11 @@ const mapOptions = {
   fullscreenControl: true,
 };
 
-export function ShipmentRouteMap({ booking, currentLocation, height = '400px' }: ShipmentRouteMapProps) {
+export function ShipmentRouteMap({
+  booking,
+  currentLocation,
+  height = '400px',
+}: ShipmentRouteMapProps) {
   const [routePath, setRoutePath] = useState<{ lat: number; lng: number }[]>([]);
   const [plannedPath, setPlannedPath] = useState<{ lat: number; lng: number }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -57,15 +62,15 @@ export function ShipmentRouteMap({ booking, currentLocation, height = '400px' }:
       try {
         const [historyRes, plannedRes] = await Promise.allSettled([
           trackingApi.getHistory(booking._id, { limit: 1000 }),
-          trackingApi.getPlannedRoute(booking._id)
+          trackingApi.getPlannedRoute(booking._id),
         ]);
 
         if (historyRes.status === 'fulfilled' && historyRes.value.data?.success) {
-          const locations = historyRes.value.data.data.locations;
-          if (locations.length > 0) {
-            const path = locations.map(loc => ({
+          const locations = historyRes.value.data.data?.locations;
+          if (locations?.length > 0) {
+            const path = locations.map((loc) => ({
               lat: loc.location.coordinates[1],
-              lng: loc.location.coordinates[0]
+              lng: loc.location.coordinates[0],
             }));
             setRoutePath(path);
           }
@@ -79,13 +84,13 @@ export function ShipmentRouteMap({ booking, currentLocation, height = '400px' }:
         }
 
         if (plannedRes.status === 'rejected' || !plannedRes.value.data?.data?.polyline) {
-           // If no planned route, fallback to straight line if no history
-           if (routePath.length === 0) {
-             setPlannedPath([pickupPos, dropPos]);
-           }
+          // If no planned route, fallback to straight line if no history
+          if (routePath.length === 0) {
+            setPlannedPath([pickupPos, dropPos]);
+          }
         }
       } catch (error) {
-        console.error('Failed to fetch tracking data:', error);
+        logger.error('Failed to fetch tracking data:', error);
       } finally {
         setLoading(false);
       }
@@ -123,7 +128,7 @@ export function ShipmentRouteMap({ booking, currentLocation, height = '400px' }:
             label={{
               text: 'P',
               color: 'white',
-              fontWeight: 'bold'
+              fontWeight: 'bold',
             }}
             title={`Pickup: ${booking.pickup.city}`}
           />
@@ -134,7 +139,7 @@ export function ShipmentRouteMap({ booking, currentLocation, height = '400px' }:
             label={{
               text: 'D',
               color: 'white',
-              fontWeight: 'bold'
+              fontWeight: 'bold',
             }}
             title={`Drop: ${booking.drop.city}`}
           />
@@ -167,7 +172,7 @@ export function ShipmentRouteMap({ booking, currentLocation, height = '400px' }:
               }}
             />
           )}
-          
+
           {/* Planned Route Polyline */}
           {plannedPath.length > 0 && (
             <Polyline
@@ -176,11 +181,13 @@ export function ShipmentRouteMap({ booking, currentLocation, height = '400px' }:
                 strokeColor: '#94a3b8',
                 strokeOpacity: 0.6,
                 strokeWeight: 2,
-                icons: [{
-                  icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 2 },
-                  offset: '0',
-                  repeat: '10px'
-                }],
+                icons: [
+                  {
+                    icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 2 },
+                    offset: '0',
+                    repeat: '10px',
+                  },
+                ],
               }}
             />
           )}

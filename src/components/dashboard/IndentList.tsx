@@ -268,21 +268,55 @@ export function IndentList({
   const [staffSearch, setStaffSearch] = useState('');
   const [savingSupervisor, setSavingSupervisor] = useState(false);
 
-  const [indentTypeEditId, setIndentTypeEditId] = useState<string | null>(null);
-  const [savingIndentType, setSavingIndentType] = useState<string | null>(null);
-  const [indentTypeOverrides, setIndentTypeOverrides] = useState<Record<string, string>>({});
+  const [loadTypeEditId, setLoadTypeEditId] = useState<string | null>(null);
+  const [savingLoadType, setSavingLoadType] = useState<string | null>(null);
+  const [loadTypeOverrides, setLoadTypeOverrides] = useState<Record<string, string>>({});
 
-  const handleIndentTypeChange = async (id: string, value: 'FTL' | 'PTL' | 'LCL') => {
-    setSavingIndentType(id);
+  // Inline-edit state for post-creation text fields
+  type TextFieldKey = 'boeNumber' | 'hireChallan';
+  const [textEditCell, setTextEditCell] = useState<{ id: string; field: TextFieldKey } | null>(
+    null
+  );
+  const [textEditValue, setTextEditValue] = useState('');
+  const [textEditOriginal, setTextEditOriginal] = useState('');
+  const [textFieldOverrides, setTextFieldOverrides] = useState<
+    Record<string, Partial<Record<TextFieldKey, string>>>
+  >({});
+
+  const startTextEdit = (id: string, field: TextFieldKey, current: string | undefined) => {
+    setTextEditCell({ id, field });
+    setTextEditValue(current || '');
+    setTextEditOriginal(current || '');
+  };
+
+  const commitTextEdit = async () => {
+    if (!textEditCell) return;
+    const { id, field } = textEditCell;
+    setTextEditCell(null);
+    if (textEditValue === textEditOriginal) return;
     try {
-      await bookingApi.update(id, { indentType: value });
-      setIndentTypeOverrides((prev) => ({ ...prev, [id]: value }));
-      toast.success('Transaction type updated');
+      await bookingApi.update(id, { [field]: textEditValue });
+      setTextFieldOverrides((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], [field]: textEditValue },
+      }));
+      toast.success('Updated');
     } catch {
-      toast.error('Failed to update transaction type');
+      toast.error('Failed to save');
+    }
+  };
+
+  const handleLoadTypeChange = async (id: string, value: 'FTL' | 'LTL' | 'PTL') => {
+    setSavingLoadType(id);
+    try {
+      await bookingApi.update(id, { loadType: value });
+      setLoadTypeOverrides((prev) => ({ ...prev, [id]: value }));
+      toast.success('Load type updated');
+    } catch {
+      toast.error('Failed to update load type');
     } finally {
-      setSavingIndentType(null);
-      setIndentTypeEditId(null);
+      setSavingLoadType(null);
+      setLoadTypeEditId(null);
     }
   };
   const supervisorRef = useRef<HTMLDivElement>(null);
@@ -313,7 +347,7 @@ export function IndentList({
   async function handleSupervisorChange(bookingId: string, staffMember: Staff) {
     setSavingSupervisor(true);
     try {
-      await bookingApi.update(bookingId, { supervisor: staffMember._id } as any);
+      await bookingApi.update(bookingId, { supervisor: staffMember._id } as unknown as Partial<Booking>);
       toast.success(`Supervisor updated to ${staffMember.name}`);
       setSupervisorEditId(null);
     } catch {
@@ -462,8 +496,8 @@ export function IndentList({
       'Lane Code',
       'LR No',
       'Weight',
-      'Transaction Type',
       'Load Type',
+      'Material',
       'EXIM',
       'Traffic',
       'Supervisor',
@@ -475,7 +509,6 @@ export function IndentList({
       'Destination Code',
       'Supplier',
       'BOE/Booking No',
-      'Job No',
       'Truck',
       'Driver No',
       'Truck Type',
@@ -488,7 +521,7 @@ export function IndentList({
       b.laneCode || '',
       b.lrDetails?.lrNumber || b.lrNumber || '',
       b.weight ? `${b.weight.value} ${b.weight.unit}` : '',
-      b.indentType || 'FTL',
+      b.loadType || '',
       b.materialType || '',
       b.exim || '',
       b.trafficController?.name || '',
@@ -496,16 +529,15 @@ export function IndentList({
       b.customer?.companyName || '',
       b.pickup?.city || '',
       b.pickup?.address || '',
-      (b as any).sourceCode || '',
+      b.sourceCode || '',
       b.drop?.city || '',
-      (b as any).destinationCode || '',
-      (b as any).supplier || '',
-      (b as any).boeNumber || '',
-      (b as any).jobNo || '',
+      b.destinationCode || '',
+      b.supplierEntity?.displayName || '',
+      b.boeNumber || '',
       b.vehicle?.vehicleNumber || '',
       b.driver?.phone || '',
       b.vehicle?.truckType || '',
-      (b as any).tripKm ?? (b as any).actualKm ?? '',
+      b.tripKm ?? b.actualKm ?? '',
       b.createdAt ? new Date(b.createdAt).toLocaleString('en-IN') : '',
       hoursDiff(b.createdAt, b.updatedAt),
     ]);
@@ -556,8 +588,8 @@ export function IndentList({
                 <Th>Lane Code</Th>
                 {showLrWeight && <ThSearch label="LR No" />}
                 {showLrWeight && <ThSearch label="Weight" />}
-                <Th>Transaction Type</Th>
                 <Th>Load Type</Th>
+                <Th>Material</Th>
                 <Th>EXIM</Th>
                 <ThSearch label="Traffic" />
                 <ThSearch label="Supervisor" />
@@ -569,7 +601,6 @@ export function IndentList({
                 <Th>Destination Code</Th>
                 <Th>Supplier</Th>
                 <Th>BOE/Booking No</Th>
-                <Th>Job No</Th>
                 <Th>Hire Challan</Th>
                 <Th>Branch(D)</Th>
                 <Th>Truck</Th>
@@ -681,17 +712,17 @@ export function IndentList({
                     {showLrWeight && (
                       <Td>{b.weight ? `${b.weight.value} ${b.weight.unit}` : '—'}</Td>
                     )}
-                    {/* Transaction Type */}
+                    {/* Load Type */}
                     <Td>
-                      {indentTypeEditId === b._id ? (
+                      {loadTypeEditId === b._id ? (
                         <select
                           autoFocus
-                          defaultValue={indentTypeOverrides[b._id] || b.indentType || ''}
+                          defaultValue={loadTypeOverrides[b._id] || b.loadType || ''}
                           onChange={(e) =>
-                            handleIndentTypeChange(b._id, e.target.value as 'FTL' | 'PTL' | 'LCL')
+                            handleLoadTypeChange(b._id, e.target.value as 'FTL' | 'LTL' | 'PTL')
                           }
-                          onBlur={() => setIndentTypeEditId(null)}
-                          disabled={savingIndentType === b._id}
+                          onBlur={() => setLoadTypeEditId(null)}
+                          disabled={savingLoadType === b._id}
                           className="text-xs font-medium text-gray-700 border border-blue-400 rounded px-1.5 py-0.5 bg-white focus:outline-none disabled:opacity-50"
                         >
                           <option value="">—</option>
@@ -702,19 +733,19 @@ export function IndentList({
                       ) : (
                         <span className="flex items-center gap-1 group">
                           <span className="font-medium text-gray-700">
-                            {indentTypeOverrides[b._id] || b.indentType || '—'}
+                            {loadTypeOverrides[b._id] || b.loadType || '—'}
                           </span>
                           <button
-                            onClick={() => setIndentTypeEditId(b._id)}
+                            onClick={() => setLoadTypeEditId(b._id)}
                             className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-500"
-                            title="Edit transaction type"
+                            title="Edit load type"
                           >
                             <Pencil className="h-3 w-3" />
                           </button>
                         </span>
                       )}
                     </Td>
-                    {/* Load Type */}
+                    {/* Material */}
                     <Td>{b.materialType || '—'}</Td>
                     {/* EXIM */}
                     <Td>{b.exim ? b.exim.charAt(0).toUpperCase() + b.exim.slice(1) : '—'}</Td>
@@ -832,13 +863,75 @@ export function IndentList({
                     {/* Destination Code */}
                     <Td>{b.destinationCode || '—'}</Td>
                     {/* Supplier */}
-                    <Td>{b.supplier || '—'}</Td>
+                    <Td>{b.supplierEntity?.displayName || '—'}</Td>
                     {/* BOE/Booking No */}
-                    <Td>{b.boeNumber || '—'}</Td>
-                    {/* Job No */}
-                    <Td>{b.jobNo || '—'}</Td>
+                    <Td>
+                      {textEditCell?.id === b._id && textEditCell?.field === 'boeNumber' ? (
+                        <input
+                          autoFocus
+                          className="border border-blue-400 rounded px-1 py-0.5 text-sm w-28 outline-none"
+                          value={textEditValue}
+                          onChange={(e) => setTextEditValue(e.target.value)}
+                          onBlur={commitTextEdit}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') commitTextEdit();
+                            if (e.key === 'Escape') setTextEditCell(null);
+                          }}
+                        />
+                      ) : (
+                        <span className="flex items-center gap-1 group">
+                          <span>{textFieldOverrides[b._id]?.boeNumber ?? b.boeNumber ?? '—'}</span>
+                          <button
+                            onClick={() =>
+                              startTextEdit(
+                                b._id,
+                                'boeNumber',
+                                textFieldOverrides[b._id]?.boeNumber ?? b.boeNumber
+                              )
+                            }
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-500"
+                            title="Edit BOE/Booking No"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        </span>
+                      )}
+                    </Td>
                     {/* Hire Challan */}
-                    <Td>{b.hireChallan || '—'}</Td>
+                    <Td>
+                      {textEditCell?.id === b._id && textEditCell?.field === 'hireChallan' ? (
+                        <input
+                          autoFocus
+                          className="border border-blue-400 rounded px-1 py-0.5 text-sm w-24 outline-none"
+                          value={textEditValue}
+                          onChange={(e) => setTextEditValue(e.target.value)}
+                          onBlur={commitTextEdit}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') commitTextEdit();
+                            if (e.key === 'Escape') setTextEditCell(null);
+                          }}
+                        />
+                      ) : (
+                        <span className="flex items-center gap-1 group">
+                          <span>
+                            {textFieldOverrides[b._id]?.hireChallan ?? b.hireChallan ?? '—'}
+                          </span>
+                          <button
+                            onClick={() =>
+                              startTextEdit(
+                                b._id,
+                                'hireChallan',
+                                textFieldOverrides[b._id]?.hireChallan ?? b.hireChallan
+                              )
+                            }
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-500"
+                            title="Edit Hire Challan"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        </span>
+                      )}
+                    </Td>
                     {/* Branch(D) */}
                     <Td>{b.drop?.city || '—'}</Td>
                     {/* Truck */}
@@ -1116,7 +1209,9 @@ export function IndentList({
                         <td className="px-4 py-3 text-sm text-gray-600">
                           {typeof lrTarget.lrDetails?.uploadedBy === 'string'
                             ? lrTarget.lrDetails.uploadedBy
-                            : (lrTarget.lrDetails?.uploadedBy as any)?.name || '-'}
+                            : typeof lrTarget.lrDetails?.uploadedBy === 'object'
+                              ? (lrTarget.lrDetails.uploadedBy as { name?: string })?.name || '-'
+                              : '-'}
                         </td>
                         {/* Eway Bill */}
                         <td className="px-4 py-3 text-sm text-gray-600">-</td>

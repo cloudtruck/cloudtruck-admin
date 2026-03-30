@@ -126,13 +126,17 @@ export default function CustomersPage() {
         page: pagination.currentPage,
         limit: 20,
       });
-      const data = response.data.data as any;
+      const data = response.data.data as {
+        customers?: Customer[];
+        items?: Customer[];
+        pagination?: { pages?: number; totalPages?: number; total?: number; totalItems?: number };
+      };
       setCustomers(data.customers ?? data.items ?? []);
       if (data.pagination) {
         setPagination((prev) => ({
           ...prev,
-          totalPages: data.pagination.pages ?? data.pagination.totalPages ?? 1,
-          totalItems: data.pagination.total ?? data.pagination.totalItems ?? 0,
+          totalPages: data.pagination!.pages ?? data.pagination!.totalPages ?? 1,
+          totalItems: data.pagination!.total ?? data.pagination!.totalItems ?? 0,
         }));
       }
     } catch {
@@ -144,7 +148,7 @@ export default function CustomersPage() {
 
   const handleInlineUpdate = async (id: string, field: string, value: string) => {
     try {
-      await customerApi.update(id, { [field]: value } as any);
+      await customerApi.update(id, { [field]: value } as Partial<Customer>);
       setCustomers((prev) => prev.map((c) => (c._id === id ? { ...c, [field]: value } : c)));
       toast.success('Updated');
     } catch {
@@ -155,7 +159,7 @@ export default function CustomersPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this customer?')) return;
     try {
-      await (customerApi as any).delete?.(id);
+      await customerApi.delete(id);
       setCustomers((prev) => prev.filter((c) => c._id !== id));
       toast.success('Customer deleted');
     } catch {
@@ -188,7 +192,7 @@ export default function CustomersPage() {
     try {
       // Fetch all records (high limit) so the CSV is complete regardless of current page
       const response = await customerApi.getAll({ limit: 10000, page: 1 });
-      const data = response.data.data as any;
+      const data = response.data.data as { customers?: Customer[]; items?: Customer[] };
       const all: Customer[] = data.customers ?? data.items ?? [];
       downloadCSV(all);
       setShowDownload(false);
@@ -217,7 +221,7 @@ export default function CustomersPage() {
         gstNumber: form.gstin || undefined,
         companyType: form.company || undefined,
         customerType: form.type || undefined,
-        paymentTerms: (form.paymentTerms as any) || undefined,
+        paymentTerms: (form.paymentTerms as 'advance' | 'credit' | 'cod') || undefined,
       });
       // Optimistically prepend the new customer so the list updates immediately
       const newCustomer = created.data.data as Customer;

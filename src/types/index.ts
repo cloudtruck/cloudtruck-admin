@@ -36,3 +36,4 @@ export * from './tracking.types';
 export * from './ewayBill.types';
 export * from './organization.types';
 export * from './wallet.types';
+export * from './supplier.types';

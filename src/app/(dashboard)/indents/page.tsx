@@ -18,9 +18,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { bookingApi, staffApi } from '@/lib/api';
+import { bookingApi, staffApi, vehicleApi } from '@/lib/api';
 import { Booking, Staff } from '@/types';
-import { AssignDriverModal } from '@/components/bookings/AssignDriverModal';
+import { AssignConfirmModal, type MatchedVehicle } from '@/components/bookings/AssignConfirmModal';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { CreateBookingModal } from '@/components/bookings/CreateBookingModal';
@@ -34,13 +34,6 @@ function fmtDate(ts?: string): string {
   const mon = d.toLocaleString('en', { month: 'short' });
   const yr = String(d.getFullYear()).slice(2);
   return `${day}-${mon}-${yr}`;
-}
-
-function tatHours(from?: string, to?: string): string {
-  if (!from) return '—';
-  const end = to ? new Date(to) : new Date();
-  const diff = (end.getTime() - new Date(from).getTime()) / 3600000;
-  return diff < 0 ? '—' : diff.toFixed(1);
 }
 
 function statusColor(status: string): string {
@@ -328,7 +321,7 @@ function ManageIndentModal({
       .catch(() => {});
     // Traffic staff
     staffApi
-      .getAll({ department: 'traffic', limit: 100 })
+      .getAll({ role: 'traffic-controller', limit: 100 })
       .then((res: any) => setTrafficStaff(res.data.data.staff || []))
       .catch(() => {});
   }, []);
@@ -351,7 +344,7 @@ function ManageIndentModal({
         truckTypeNeeded: truckTypeNeeded || undefined,
         expiryTime: expiryTime || undefined,
         postToSupplier,
-      } as any);
+      } as Partial<Booking>);
       toast.success('Indent updated successfully');
       onSuccess();
       onClose();
@@ -835,7 +828,9 @@ function BiddingModal({
     try {
       await bookingApi.assignDriver(booking._id, { driverId: supplierId, vehicleId });
       if (bidPrice) {
-        await bookingApi.update(booking._id, { supplierPrice: Number(bidPrice) } as any);
+        await bookingApi.update(booking._id, {
+          supplierPrice: Number(bidPrice),
+        } as Partial<Booking>);
       }
       toast.success('Bid submitted successfully');
       onSuccess();
@@ -1058,7 +1053,7 @@ function MatchedTrucksModal({
   booking: Booking;
   initialTab: TruckTab;
   onClose: () => void;
-  onAssign: () => void;
+  onAssign: (vehicle: MatchedVehicle) => void;
 }) {
   const [tab, setTab] = useState<TruckTab>(initialTab);
   const [ownVehicles, setOwnVehicles] = useState<any[]>([]);
@@ -1077,6 +1072,13 @@ function MatchedTrucksModal({
       vehicleApi.getAll({
         limit: 50,
         ...(booking.truckTypeNeeded ? { truckType: booking.truckTypeNeeded } : {}),
+        ...(booking.bodyType ? { bodyType: booking.bodyType } : {}),
+        ...(booking.weight?.value
+          ? {
+              minCapacity:
+                booking.weight.unit === 'kg' ? booking.weight.value / 1000 : booking.weight.value,
+            }
+          : {}),
       }),
       // Full booking for interestedDrivers + statusHistory
       bApi.getById(booking._id),
@@ -1084,11 +1086,17 @@ function MatchedTrucksModal({
       booking.pickup?.city
         ? bApi.getUnloadingTrucks({ dropCity: booking.pickup.city, limit: 50 })
         : Promise.resolve(null),
+      // Placeholder to keep Promise.all arity — supplier now derived from booking.supplierEntity
+      Promise.resolve(null),
     ])
       .then(([vRes, bRes, uRes]: any[]) => {
         const vehicles: any[] = vRes?.data?.data?.vehicles || [];
-        setOwnVehicles(vehicles.filter((v: any) => v.availability === 'available'));
-        setMarketVehicles(vehicles);
+        setOwnVehicles(
+          vehicles.filter((v: any) => v.ownershipType === 'own' && v.availability === 'available')
+        );
+        setMarketVehicles(
+          vehicles.filter((v: any) => v.ownershipType !== 'own' && v.availability === 'available')
+        );
 
         const full = bRes?.data?.data;
         // Bidding: interestedDrivers populated or just IDs
@@ -1102,9 +1110,16 @@ function MatchedTrucksModal({
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [booking._id, booking.truckTypeNeeded, booking.pickup?.city]);
+  }, [
+    booking._id,
+    booking.truckTypeNeeded,
+    booking.pickup?.city,
+    booking.bodyType,
+    booking.weight?.value,
+    booking.weight?.unit,
+  ]);
 
-  const TABS: { key: TruckTab; label: string; icon: React.ReactNode }[] = [
+  const TABS: { key: TruckTab; label: string; count?: number; icon: React.ReactNode }[] = [
     {
       key: 'bidding',
       label: 'Bidding',
@@ -1144,13 +1159,41 @@ function MatchedTrucksModal({
     },
   ];
 
-  function AssignBtn() {
+  function AssignBtn({ row, rowType }: { row: any; rowType: 'vehicle' | 'unloading' | 'other' }) {
+    const handleClick = () => {
+      let vehicle: MatchedVehicle;
+      if (rowType === 'unloading') {
+        // Unloading truck row: { bookingDbId, vehicle: { _id, vehicleNumber, truckType, ownerRef, supplierOwner }, driver }
+        const vRef = row.vehicle?.ownerRef;
+        vehicle = {
+          _id: row.vehicle?._id || '',
+          vehicleNumber: row.vehicle?.vehicleNumber || '',
+          truckType: row.vehicle?.truckType,
+          // ownerRef.item may be a populated object — normalize to plain ID string
+          ownerRef: vRef ? { kind: vRef.kind, item: vRef.item?._id ?? vRef.item } : null,
+          supplierOwner: row.vehicle?.supplierOwner || null,
+          driver: row.driver || null,
+        };
+      } else {
+        // Own/market vehicle row
+        const vRef = row.ownerRef;
+        vehicle = {
+          _id: row._id || '',
+          vehicleNumber: row.vehicleNumber || '',
+          truckType: row.truckType,
+          // ownerRef.item may be a populated object — normalize to plain ID string
+          ownerRef: vRef ? { kind: vRef.kind, item: vRef.item?._id ?? vRef.item } : null,
+          supplierOwner: row.supplierOwner || null,
+          driver: null,
+        };
+      }
+      onAssign(vehicle);
+      onClose();
+    };
+
     return (
       <button
-        onClick={() => {
-          onAssign();
-          onClose();
-        }}
+        onClick={handleClick}
         className="flex items-center justify-center h-6 w-6 rounded-full bg-green-100 hover:bg-green-200 text-green-600 transition-colors"
         title="Assign"
       >
@@ -1237,10 +1280,7 @@ function MatchedTrucksModal({
                 Destination
               </th>
               <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase">
-                TAT(hrs)
-              </th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase">
-                Distance(km)
+                Indent Expiry
               </th>
             </tr>
           </thead>
@@ -1248,10 +1288,14 @@ function MatchedTrucksModal({
             {rows.map((v: any, i: number) => (
               <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                 <td className="px-4 py-2.5">
-                  <AssignBtn />
+                  <AssignBtn row={v} rowType="vehicle" />
                 </td>
                 <td className="px-4 py-2.5 text-gray-600">
-                  {v.owner?.name || v.driver?.name || '—'}
+                  {v.ownerRef?.item?.companyName ||
+                    v.ownerRef?.item?.displayName ||
+                    v.ownerRef?.item?.name ||
+                    v.owner?.name ||
+                    '—'}
                 </td>
                 <td className="px-4 py-2.5 text-gray-700 font-medium">{v.vehicleNumber || '—'}</td>
                 <td className="px-4 py-2.5 text-gray-600">{v.truckType || '—'}</td>
@@ -1259,10 +1303,7 @@ function MatchedTrucksModal({
                   {v.lastKnownLocation?.city || v.registrationCity || '—'}
                 </td>
                 <td className="px-4 py-2.5 text-gray-600">
-                  {tatHours(booking.createdAt, booking.expiryTime)}
-                </td>
-                <td className="px-4 py-2.5 text-gray-600">
-                  {booking.actualKm ? `${booking.actualKm} km` : '—'}
+                  {timeLeftStr(booking.expiryTime) || '—'}
                 </td>
               </tr>
             ))}
@@ -1297,7 +1338,7 @@ function MatchedTrucksModal({
             {rows.map((row: any, i: number) => (
               <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                 <td className="px-4 py-2.5">
-                  <AssignBtn />
+                  <AssignBtn row={row} rowType="other" />
                 </td>
                 <td className="px-4 py-2.5 text-gray-700 font-medium">
                   {row.name || row.user?.name || '—'}
@@ -1343,7 +1384,7 @@ function MatchedTrucksModal({
             {rows.map((row: any, i: number) => (
               <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                 <td className="px-4 py-2.5">
-                  <AssignBtn />
+                  <AssignBtn row={row} rowType="unloading" />
                 </td>
                 <td className="px-4 py-2.5 text-gray-700 font-medium">
                   {row.vehicle?.vehicleNumber || '—'}
@@ -1362,7 +1403,7 @@ function MatchedTrucksModal({
         </table>
       );
 
-    // Own tab — Actions, Truck No, TAT, Distance
+    // Own tab — Actions, Truck No, Indent Expiry
     return (
       <table className="w-full text-xs">
         <thead>
@@ -1374,10 +1415,7 @@ function MatchedTrucksModal({
               Truck No
             </th>
             <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase">
-              TAT(hrs)
-            </th>
-            <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase">
-              Distance(km)
+              Indent Expiry
             </th>
           </tr>
         </thead>
@@ -1385,14 +1423,11 @@ function MatchedTrucksModal({
           {rows.map((row: any, i: number) => (
             <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
               <td className="px-4 py-2.5">
-                <AssignBtn />
+                <AssignBtn row={row} rowType="vehicle" />
               </td>
               <td className="px-4 py-2.5 text-gray-700 font-medium">{row.vehicleNumber || '—'}</td>
               <td className="px-4 py-2.5 text-gray-600">
-                {tatHours(booking.createdAt, booking.expiryTime)}
-              </td>
-              <td className="px-4 py-2.5 text-gray-600">
-                {booking.actualKm ? `${booking.actualKm} km` : '—'}
+                {timeLeftStr(booking.expiryTime) || '—'}
               </td>
             </tr>
           ))}
@@ -1445,7 +1480,7 @@ function MatchedTrucksModal({
             )}
             {booking.customer && (
               <span className="text-gray-500">
-                Customer: {(booking.customer as any)?.companyName || 'Indent'}
+                Customer: {booking.customer?.companyName || 'Indent'}
               </span>
             )}
           </div>
@@ -1469,6 +1504,11 @@ function MatchedTrucksModal({
             >
               {t.icon}
               {t.label}
+              {t.count != null && t.count > 0 && (
+                <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold">
+                  {t.count}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -1514,6 +1554,8 @@ export default function IndentsPage() {
   const router = useRouter();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [unloadingCounts, setUnloadingCounts] = useState<Record<string, number>>({});
+  const [ownCounts, setOwnCounts] = useState<Record<string, number>>({});
+  const [marketCounts, setMarketCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('all');
@@ -1523,28 +1565,31 @@ export default function IndentsPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null);
   const [commentTarget, setCommentTarget] = useState<Booking | null>(null);
-  const [confirmTarget, setConfirmTarget] = useState<Booking | null>(null);
   const [editTarget, setEditTarget] = useState<Booking | null>(null);
   const [bidTarget, setBidTarget] = useState<Booking | null>(null);
   const [truckModalTarget, setTruckModalTarget] = useState<{
     booking: Booking;
     tab: TruckTab;
   } | null>(null);
+  const [vehicleAssignTarget, setVehicleAssignTarget] = useState<{
+    booking: Booking;
+    vehicle: MatchedVehicle;
+  } | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [indentTypeEditId, setIndentTypeEditId] = useState<string | null>(null);
-  const [savingIndentType, setSavingIndentType] = useState<string | null>(null);
+  const [loadTypeEditId, setLoadTypeEditId] = useState<string | null>(null);
+  const [savingLoadType, setSavingLoadType] = useState<string | null>(null);
 
-  const updateIndentType = async (id: string, value: 'FTL' | 'PTL' | 'LCL') => {
-    setSavingIndentType(id);
+  const updateLoadType = async (id: string, value: 'FTL' | 'LTL' | 'PTL') => {
+    setSavingLoadType(id);
     try {
-      await bookingApi.update(id, { indentType: value });
-      setBookings((prev) => prev.map((b) => (b._id === id ? { ...b, indentType: value } : b)));
-      toast.success('Transaction type updated');
+      await bookingApi.update(id, { loadType: value });
+      setBookings((prev) => prev.map((b) => (b._id === id ? { ...b, loadType: value } : b)));
+      toast.success('Load type updated');
     } catch {
-      toast.error('Failed to update transaction type');
+      toast.error('Failed to update load type');
     } finally {
-      setSavingIndentType(null);
-      setIndentTypeEditId(null);
+      setSavingLoadType(null);
+      setLoadTypeEditId(null);
     }
   };
 
@@ -1577,12 +1622,13 @@ export default function IndentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, page]);
 
-  // Fetch unloading truck counts for all visible indents
+  // Fetch unloading truck counts — only re-fetch when the set of pickup cities changes
+  const citiesKey = [...new Set(bookings.map((b) => b.pickup?.city).filter(Boolean))]
+    .sort()
+    .join(',');
   useEffect(() => {
-    if (bookings.length === 0) return;
-    const uniqueCities = [
-      ...new Set(bookings.map((b) => b.pickup?.city).filter(Boolean)),
-    ] as string[];
+    if (!citiesKey) return;
+    const uniqueCities = citiesKey.split(',');
     Promise.all(
       uniqueCities.map((city) =>
         bookingApi
@@ -1595,13 +1641,43 @@ export default function IndentsPage() {
       results.forEach(({ city, count }) => {
         cityCountMap[city] = count;
       });
-      const counts: Record<string, number> = {};
-      bookings.forEach((b) => {
-        if (b.pickup?.city) counts[b._id] = cityCountMap[b.pickup.city] ?? 0;
+      setUnloadingCounts((prev) => {
+        const counts: Record<string, number> = { ...prev };
+        bookings.forEach((b) => {
+          if (b.pickup?.city) counts[b._id] = cityCountMap[b.pickup.city] ?? 0;
+        });
+        return counts;
       });
-      setUnloadingCounts(counts);
     });
-  }, [bookings]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [citiesKey]);
+
+  // Compute own/market matched truck counts — one fetch per unique truck type set
+  const truckTypesKey = [...new Set(bookings.map((b) => b.truckTypeNeeded).filter(Boolean))]
+    .sort()
+    .join(',');
+  useEffect(() => {
+    if (bookings.length === 0) return;
+    vehicleApi
+      .getAll({ limit: 200, status: 'available' } as any)
+      .then((res: any) => {
+        const vehicles: any[] = res?.data?.data?.vehicles || [];
+        // Build counts per booking based on matching truckType
+        const own: Record<string, number> = {};
+        const market: Record<string, number> = {};
+        bookings.forEach((b) => {
+          const matched = vehicles.filter(
+            (v: any) => !b.truckTypeNeeded || v.truckType === b.truckTypeNeeded
+          );
+          own[b._id] = matched.filter((v: any) => v.ownershipType === 'own').length;
+          market[b._id] = matched.filter((v: any) => v.ownershipType !== 'own').length;
+        });
+        setOwnCounts(own);
+        setMarketCounts(market);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [truckTypesKey, bookings.length]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -1612,10 +1688,6 @@ export default function IndentsPage() {
   function handleTabChange(key: string) {
     setActiveTab(key);
     setPage(1);
-  }
-
-  function handleApprove(b: Booking) {
-    setConfirmTarget(b);
   }
 
   const activeTabLabel = STATUS_TABS.find((t) => t.key === activeTab)?.label || 'All';
@@ -1766,14 +1838,6 @@ export default function IndentsPage() {
                   <Td>
                     <div className="flex items-center gap-1.5">
                       <button
-                        aria-label="Approve / View"
-                        onClick={() => handleApprove(b)}
-                        className="text-green-500 hover:text-green-700 p-0.5"
-                        title="Load Confirmation"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
                         aria-label="Delete"
                         onClick={() => setDeleteTarget(b)}
                         className="text-red-400 hover:text-red-600 p-0.5"
@@ -1826,17 +1890,17 @@ export default function IndentsPage() {
                     </span>
                   </Td>
 
-                  {/* Indent Type */}
+                  {/* Load Type */}
                   <Td>
-                    {indentTypeEditId === b._id ? (
+                    {loadTypeEditId === b._id ? (
                       <select
                         autoFocus
-                        defaultValue={b.indentType || ''}
+                        defaultValue={b.loadType || ''}
                         onChange={(e) =>
-                          updateIndentType(b._id, e.target.value as 'FTL' | 'PTL' | 'LCL')
+                          updateLoadType(b._id, e.target.value as 'FTL' | 'LTL' | 'PTL')
                         }
-                        onBlur={() => setIndentTypeEditId(null)}
-                        disabled={savingIndentType === b._id}
+                        onBlur={() => setLoadTypeEditId(null)}
+                        disabled={savingLoadType === b._id}
                         className="text-xs font-medium text-gray-700 border border-blue-400 rounded px-1.5 py-0.5 bg-white focus:outline-none disabled:opacity-50"
                       >
                         <option value="">—</option>
@@ -1846,11 +1910,11 @@ export default function IndentsPage() {
                       </select>
                     ) : (
                       <span className="flex items-center gap-1 group">
-                        <span className="font-medium text-gray-700">{b.indentType || '—'}</span>
+                        <span className="font-medium text-gray-700">{b.loadType || '—'}</span>
                         <button
-                          onClick={() => setIndentTypeEditId(b._id)}
+                          onClick={() => setLoadTypeEditId(b._id)}
                           className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-500"
-                          title="Edit transaction type"
+                          title="Edit load type"
                         >
                           <Pencil className="h-3 w-3" />
                         </button>
@@ -1937,7 +2001,7 @@ export default function IndentsPage() {
                           <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zm-.5 1.5 1.96 2.5H17V9.5h2.5zM6 18c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm13 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" />
                         </svg>
                         <span className="text-xs font-medium text-gray-700">
-                          {b.vehicle ? 1 : 0}
+                          {ownCounts[b._id] ?? 0}
                         </span>
                       </button>
                       {/* Market */}
@@ -1953,7 +2017,7 @@ export default function IndentsPage() {
                           <path d="M18 2H6L2 8h20L18 2zm-8 4 1-3h2l1 3H10zm-4 0 1.5-3H9L8 6H6zm8 0-1-3h1.5L16 6h-2zM2 9v11h9v-4h2v4h9V9H2zm14 7h-3v-3h3v3z" />
                         </svg>
                         <span className="text-xs font-medium text-gray-700">
-                          {b.marketTrucks ?? 0}
+                          {marketCounts[b._id] ?? 0}
                         </span>
                       </button>
                       {/* Bidding */}
@@ -2097,18 +2161,6 @@ export default function IndentsPage() {
         />
       )}
 
-      {confirmTarget && (
-        <AssignDriverModal
-          isOpen={!!confirmTarget}
-          booking={confirmTarget}
-          onCloseAction={() => setConfirmTarget(null)}
-          onSuccessAction={() => {
-            setConfirmTarget(null);
-            fetchBookings();
-          }}
-        />
-      )}
-
       {deleteTarget && (
         <DeleteModal
           booking={deleteTarget}
@@ -2126,9 +2178,22 @@ export default function IndentsPage() {
           booking={truckModalTarget.booking}
           initialTab={truckModalTarget.tab}
           onClose={() => setTruckModalTarget(null)}
-          onAssign={() => {
+          onAssign={(vehicle) => {
+            setVehicleAssignTarget({ booking: truckModalTarget!.booking, vehicle });
             setTruckModalTarget(null);
-            setConfirmTarget(truckModalTarget!.booking);
+          }}
+        />
+      )}
+
+      {vehicleAssignTarget && (
+        <AssignConfirmModal
+          isOpen={!!vehicleAssignTarget}
+          indent={vehicleAssignTarget.booking}
+          vehicle={vehicleAssignTarget.vehicle}
+          onClose={() => setVehicleAssignTarget(null)}
+          onAssigned={() => {
+            setVehicleAssignTarget(null);
+            fetchBookings();
           }}
         />
       )}

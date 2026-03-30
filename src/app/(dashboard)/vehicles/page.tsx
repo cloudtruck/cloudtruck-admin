@@ -13,26 +13,31 @@ import {
 import { VehicleTable } from '@/components/vehicles/VehicleTable';
 import { MarketTable } from '@/components/vehicles/MarketTable';
 import { DriverTabTable } from '@/components/vehicles/DriverTabTable';
-import { FuelTabTable } from '@/components/vehicles/FuelTabTable';
-import { MaintenanceTabTable } from '@/components/vehicles/MaintenanceTabTable';
 import { VehicleMapView } from '@/components/vehicles/VehicleMapView';
 import { AddVehicleModal } from '@/components/vehicles/AddVehicleModal';
 import { vehicleApi, driverApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Vehicle, Pagination, VehicleFilters, Driver } from '@/types';
 import { useMasterData } from '@/hooks/useMasterData';
-import { Search, X, Map, Table2, FileSpreadsheet, UserPlus, Fuel, Plus, Calendar, ChevronDown, Upload } from 'lucide-react';
+import {
+  Search,
+  X,
+  Map,
+  Table2,
+  FileSpreadsheet,
+  UserPlus,
+  ChevronDown,
+  Upload,
+} from 'lucide-react';
 
 // ─── Tab definition ───────────────────────────────────────────────────────────
 
-type Tab = 'trucks' | 'market' | 'driver' | 'fuel' | 'maintenance';
+type Tab = 'trucks' | 'market' | 'driver';
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'trucks',      label: 'Trucks' },
-  { key: 'market',      label: 'Market' },
-  { key: 'driver',      label: 'Driver' },
-  { key: 'fuel',        label: 'Fuel' },
-  { key: 'maintenance', label: 'Maintenance' },
+  { key: 'trucks', label: 'Trucks' },
+  { key: 'market', label: 'Market' },
+  { key: 'driver', label: 'Driver' },
 ];
 
 // ─── Placeholder for unimplemented tabs ──────────────────────────────────────
@@ -87,10 +92,6 @@ export default function VehiclesPage() {
     totalItems: 0,
     itemsPerPage: 20,
   });
-
-  // ── Maintenance date range ────────────────────────────────────────────────
-  const [maintStartDate, setMaintStartDate] = useState('');
-  const [maintEndDate, setMaintEndDate] = useState('');
 
   // ── Drivers state (Driver tab) ────────────────────────────────────────────
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -187,14 +188,27 @@ export default function VehiclesPage() {
     }
   };
 
-  const hasActiveFilters = filters.search || filters.status || filters.truckType || filters.verificationStatus;
+  const hasActiveFilters =
+    filters.search || filters.status || filters.truckType || filters.verificationStatus;
 
   const downloadTruckReport = async () => {
     try {
       toast.info('Preparing report…');
       const response = await vehicleApi.getAll({ limit: 10000 });
       const rows = response.data.data.vehicles;
-      const headers = ['Vehicle No', 'Truck Type', 'Body Type', 'Capacity', 'Ownership', 'Driver', 'KYC Status', 'Availability', 'City', 'Insurance Expiry', 'Trips'];
+      const headers = [
+        'Vehicle No',
+        'Truck Type',
+        'Body Type',
+        'Capacity',
+        'Ownership',
+        'Driver',
+        'KYC Status',
+        'Availability',
+        'City',
+        'Insurance Expiry',
+        'Trips',
+      ];
       const lines = [
         headers.join(','),
         ...rows.map((v) => {
@@ -212,7 +226,9 @@ export default function VehiclesPage() {
             v.registrationCity || '',
             v.expiryDates?.insurance || '',
             v.stats?.completedTrips ?? 0,
-          ].map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',');
+          ]
+            .map((c) => `"${String(c).replace(/"/g, '""')}"`)
+            .join(',');
         }),
       ];
       const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
@@ -238,7 +254,7 @@ export default function VehiclesPage() {
   };
 
   // Badge counts
-  const trucksBadge = (activeTab === 'trucks' || activeTab === 'market') ? pagination.totalItems : 0;
+  const trucksBadge = activeTab === 'trucks' || activeTab === 'market' ? pagination.totalItems : 0;
   const driversBadge = driverPagination.totalItems;
 
   return (
@@ -249,18 +265,22 @@ export default function VehiclesPage() {
         <div className="flex items-end gap-0">
           {TABS.map((tab) => {
             const badge =
-              tab.key === 'trucks' ? pagination.totalItems
-              : tab.key === 'market' ? trucksBadge
-              : tab.key === 'driver' ? driversBadge
-              : 0;
+              tab.key === 'trucks'
+                ? pagination.totalItems
+                : tab.key === 'market'
+                  ? trucksBadge
+                  : tab.key === 'driver'
+                    ? driversBadge
+                    : 0;
             return (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={`relative px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-1.5
-                  ${activeTab === tab.key
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
+                  ${
+                    activeTab === tab.key
+                      ? 'text-blue-600 border-b-2 border-blue-600'
+                      : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
                   }`}
               >
                 {tab.label}
@@ -276,28 +296,6 @@ export default function VehiclesPage() {
 
         {/* Action buttons */}
         <div className="flex items-center gap-2">
-          {/* Date range — only shown on Maintenance tab */}
-          {activeTab === 'maintenance' && (
-            <div className="flex items-center gap-1 border rounded h-8 px-2 text-sm text-gray-400 bg-white">
-              <input
-                type="date"
-                value={maintStartDate}
-                onChange={(e) => setMaintStartDate(e.target.value)}
-                className="border-none outline-none text-xs text-gray-500 w-[90px] bg-transparent"
-                placeholder="Start date"
-              />
-              <span className="text-gray-300 mx-1">→</span>
-              <input
-                type="date"
-                value={maintEndDate}
-                onChange={(e) => setMaintEndDate(e.target.value)}
-                className="border-none outline-none text-xs text-gray-500 w-[90px] bg-transparent"
-                placeholder="End date"
-              />
-              <Calendar className="h-3.5 w-3.5 text-gray-400 ml-1" />
-            </div>
-          )}
-
           {/* Trucks tab: single toggle button + Fastag */}
           {activeTab === 'trucks' && (
             <>
@@ -305,12 +303,17 @@ export default function VehiclesPage() {
                 variant="outline"
                 size="sm"
                 className="h-8 text-sm gap-1.5"
-                onClick={() => setViewMode((v) => v === 'table' ? 'map' : 'table')}
+                onClick={() => setViewMode((v) => (v === 'table' ? 'map' : 'table'))}
               >
-                {viewMode === 'table'
-                  ? <><Map className="h-3.5 w-3.5" /> Map</>
-                  : <><Table2 className="h-3.5 w-3.5" /> Table</>
-                }
+                {viewMode === 'table' ? (
+                  <>
+                    <Map className="h-3.5 w-3.5" /> Map
+                  </>
+                ) : (
+                  <>
+                    <Table2 className="h-3.5 w-3.5" /> Table
+                  </>
+                )}
               </Button>
               {/* Fastag split button */}
               <div className="relative flex">
@@ -362,23 +365,16 @@ export default function VehiclesPage() {
             </>
           )}
 
-          {/* Non-trucks, non-maintenance: Excel only */}
-          {activeTab !== 'maintenance' && activeTab !== 'trucks' && (
-            <TruckReportButton onClick={downloadTruckReport} />
-          )}
+          {/* Non-trucks: Excel only */}
+          {activeTab !== 'trucks' && <TruckReportButton onClick={downloadTruckReport} />}
 
           {/* Primary CTA — varies by tab */}
           {activeTab === 'driver' ? (
-            <Button size="sm" className="h-8 text-sm gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
+            <Button
+              size="sm"
+              className="h-8 text-sm gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+            >
               <UserPlus className="h-3.5 w-3.5" /> Add Driver
-            </Button>
-          ) : activeTab === 'fuel' ? (
-            <Button size="sm" className="h-8 text-sm gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
-              <Fuel className="h-3.5 w-3.5" /> Add Fuel Station
-            </Button>
-          ) : activeTab === 'maintenance' ? (
-            <Button size="sm" className="h-8 text-sm gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
-              <Plus className="h-3.5 w-3.5" /> Add
             </Button>
           ) : (
             <AddVehicleModal onSuccess={fetchVehicles} />
@@ -396,9 +392,7 @@ export default function VehiclesPage() {
       <div className="border-b mb-4" />
 
       {/* ── Trucks tab ──────────────────────────────────────────────────── */}
-      {activeTab === 'trucks' && viewMode === 'map' && (
-        <VehicleMapView vehicles={vehicles} />
-      )}
+      {activeTab === 'trucks' && viewMode === 'map' && <VehicleMapView vehicles={vehicles} />}
 
       {activeTab === 'trucks' && viewMode === 'table' && (
         <div className="space-y-3">
@@ -426,9 +420,13 @@ export default function VehiclesPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                {truckTypes.filter((t) => t.isActive).map((t) => (
-                  <SelectItem key={t._id} value={t.key}>{t.displayName}</SelectItem>
-                ))}
+                {truckTypes
+                  .filter((t) => t.isActive)
+                  .map((t) => (
+                    <SelectItem key={t._id} value={t.key}>
+                      {t.displayName}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             <Select
@@ -479,9 +477,7 @@ export default function VehiclesPage() {
       )}
 
       {/* ── Market tab ──────────────────────────────────────────────────── */}
-      {activeTab === 'market' && (
-        <MarketTable {...sharedVehicleProps} />
-      )}
+      {activeTab === 'market' && <MarketTable {...sharedVehicleProps} />}
 
       {/* ── Driver tab ──────────────────────────────────────────────────── */}
       {activeTab === 'driver' && (
@@ -493,12 +489,6 @@ export default function VehiclesPage() {
           onRejectKyc={handleRejectDriverKyc}
         />
       )}
-
-      {/* ── Fuel tab ────────────────────────────────────────────────────── */}
-      {activeTab === 'fuel' && <FuelTabTable />}
-
-      {/* ── Maintenance tab ─────────────────────────────────────────────── */}
-      {activeTab === 'maintenance' && <MaintenanceTabTable />}
     </div>
   );
 }

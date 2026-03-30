@@ -61,9 +61,7 @@ function RoleTemplateSection({
 }: RoleTemplateSectionProps) {
   const matchCategory = department ? DEPT_TO_CATEGORY[department] : null;
 
-  const suggested = matchCategory
-    ? roleTemplates.filter((t) => t.category === matchCategory)
-    : [];
+  const suggested = matchCategory ? roleTemplates.filter((t) => t.category === matchCategory) : [];
   const others = matchCategory
     ? roleTemplates.filter((t) => t.category !== matchCategory)
     : roleTemplates;
@@ -74,11 +72,7 @@ function RoleTemplateSection({
   return (
     <div className="space-y-2 col-span-2">
       <Label htmlFor="roleTemplate">Role Template</Label>
-      <Select
-        value={selectedTemplateId}
-        onValueChange={onSelect}
-        disabled={loadingTemplates}
-      >
+      <Select value={selectedTemplateId} onValueChange={onSelect} disabled={loadingTemplates}>
         <SelectTrigger>
           <SelectValue
             placeholder={loadingTemplates ? 'Loading...' : 'Select role template (optional)'}
@@ -227,7 +221,12 @@ export function EditEmployeeModal({
 
     try {
       setLoading(true);
-      const response = await employeeApi.update(employee._id, formData);
+      const { status, ...rest } = formData;
+      const payload: UpdateStaffData = {
+        ...rest,
+        isActive: status === 'active',
+      };
+      const response = await employeeApi.update(employee._id, payload);
 
       if (response.data.success) {
         toast.success('Employee updated successfully');
@@ -290,10 +289,7 @@ export function EditEmployeeModal({
 
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>
-              <Select
-                value={formData.department}
-                onValueChange={handleDepartmentChange}
-              >
+              <Select value={formData.department} onValueChange={handleDepartmentChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>

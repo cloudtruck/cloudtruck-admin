@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useBookings } from '@/hooks/useBookings';
 import { useBookingStore } from '@/store/bookingStore';
 import { bookingApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
 import { AssignDriverModal } from '@/components/bookings/AssignDriverModal';
@@ -30,7 +31,7 @@ export default function AllBookingsPage() {
         const response = await bookingApi.getStats();
         setStats(response.data.data);
       } catch (error) {
-        console.error('Failed to fetch booking stats:', error);
+        logger.error('Failed to fetch booking stats:', error);
       }
     };
     fetchStats();
@@ -49,7 +50,7 @@ export default function AllBookingsPage() {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     let status: string | undefined = undefined;
-    
+
     if (value === 'new') {
       status = 'created,under-review';
     } else if (value === 'assigned') {
@@ -61,7 +62,7 @@ export default function AllBookingsPage() {
     } else if (value === 'cancelled') {
       status = 'cancelled';
     }
-    
+
     setFilters({ ...filters, status });
   };
 
@@ -171,7 +172,7 @@ export default function AllBookingsPage() {
               {pagination.totalPages > 1 && (
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">
-                    Showing {((pagination.currentPage - 1) * 20) + 1} to{' '}
+                    Showing {(pagination.currentPage - 1) * 20 + 1} to{' '}
                     {Math.min(pagination.currentPage * 20, pagination.totalItems)} of{' '}
                     {pagination.totalItems} results
                   </div>

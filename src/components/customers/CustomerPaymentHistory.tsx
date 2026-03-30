@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable } from '@/components/common/DataTable';
 import { PaymentStatusBadge } from '@/components/payments/PaymentStatusBadge';
@@ -40,7 +41,7 @@ export function CustomerPaymentHistory({ customerId }: CustomerPaymentHistoryPro
       setPayments(response.data.data.payments);
       setPagination(response.data.data.pagination);
     } catch (error) {
-      console.error('Failed to fetch payments:', error);
+      logger.error('Failed to fetch payments:', error);
       toast.error('Failed to fetch payment history');
     } finally {
       setLoading(false);
@@ -52,10 +53,7 @@ export function CustomerPaymentHistory({ customerId }: CustomerPaymentHistoryPro
       header: 'Booking ID',
       accessor: 'bookingId',
       cell: (payment: Payment) => (
-        <Link
-          href={`/bookings/${payment.booking._id}`}
-          className="font-medium hover:underline"
-        >
+        <Link href={`/bookings/${payment.booking._id}`} className="font-medium hover:underline">
           {payment.booking.bookingId}
         </Link>
       ),
@@ -92,9 +90,7 @@ export function CustomerPaymentHistory({ customerId }: CustomerPaymentHistoryPro
       header: 'Date',
       accessor: 'createdAt',
       cell: (payment: Payment) => (
-        <span className="text-sm">
-          {format(new Date(payment.createdAt), 'MMM dd, yyyy')}
-        </span>
+        <span className="text-sm">{format(new Date(payment.createdAt), 'MMM dd, yyyy')}</span>
       ),
     },
   ];

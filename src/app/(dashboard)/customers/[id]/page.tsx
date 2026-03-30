@@ -408,7 +408,7 @@ function AllTripsTab({ customerId }: { customerId: string }) {
 
   useEffect(() => {
     bookingApi
-      .getAll({ customerId, limit: 50 } as any)
+      .getAll({ customerId, limit: 50 })
       .then((res) => setBookings(res.data.data?.bookings || []))
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -550,8 +550,8 @@ function PaymentTermsTab({ customer }: { customer: Customer }) {
 
 function AddressTab({ customer }: { customer: Customer }) {
   const addr = customer.address;
-  const locations = (customer.locations || []) as any[];
-  const locationOptions = locations.map((l: any) => l.locationName || l.source || l._id);
+  const locations = customer.locations || [];
+  const locationOptions = locations.map((l) => l.locationName || l.source || l._id);
 
   return (
     <div>
@@ -561,7 +561,7 @@ function AddressTab({ customer }: { customer: Customer }) {
           <span className="text-xs text-gray-500">From</span>
           <select className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white outline-none focus:border-blue-500 min-w-[160px]">
             <option value="">Select Address</option>
-            {locationOptions.map((l: string, i: number) => (
+            {locationOptions.map((l, i) => (
               <option key={i} value={l}>
                 {l}
               </option>
@@ -570,7 +570,7 @@ function AddressTab({ customer }: { customer: Customer }) {
           <span className="text-xs text-gray-500">To</span>
           <select className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white outline-none focus:border-blue-500 min-w-[160px]">
             <option value="">Select Address</option>
-            {locationOptions.map((l: string, i: number) => (
+            {locationOptions.map((l, i) => (
               <option key={i} value={l}>
                 {l}
               </option>
@@ -622,8 +622,8 @@ function AddressTab({ customer }: { customer: Customer }) {
               <td className="py-2.5 px-2 text-gray-500">—</td>
               <td className="py-2.5 px-2 text-gray-500">—</td>
               <td className="py-2.5 px-2 text-gray-700">{addr.city || '—'}</td>
-              <td className="py-2.5 px-2 text-gray-500">{(customer as any).gstNumber || '—'}</td>
-              <td className="py-2.5 px-2 text-gray-500">{(customer as any).pan || '—'}</td>
+              <td className="py-2.5 px-2 text-gray-500">{customer.gstNumber || '—'}</td>
+              <td className="py-2.5 px-2 text-gray-500">{customer.pan || '—'}</td>
               <td className="py-2.5 px-2 flex items-center gap-2">
                 <button
                   className="text-red-400 hover:text-red-600 opacity-40 cursor-not-allowed"
@@ -665,7 +665,7 @@ function UsersTab({
   customer: Customer;
   onRefresh: () => Promise<void>;
 }) {
-  const contacts = (customer as any).contactPerson ? [(customer as any).contactPerson] : [];
+  const contacts = customer.contactPerson ? [customer.contactPerson] : [];
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', email: '' });
   const [saving, setSaving] = useState(false);
@@ -677,7 +677,7 @@ function UsersTab({
     }
     setSaving(true);
     try {
-      await customerApi.update(customerId, { contactPerson: form } as any);
+      await customerApi.update(customerId, { contactPerson: form } as Partial<Customer>);
       await onRefresh();
       setShowForm(false);
       setForm({ name: '', phone: '', email: '' });
@@ -755,7 +755,7 @@ function UsersTab({
               </td>
             </tr>
           ) : (
-            contacts.map((c: any, i: number) => (
+            contacts.map((c, i) => (
               <tr key={i} className="border-b border-gray-50">
                 <td className="py-2.5 px-3 text-gray-700">{c.name || '—'}</td>
                 <td className="py-2.5 px-3 text-gray-700">{c.phone || '—'}</td>
@@ -927,7 +927,7 @@ export default function CustomerDetailPage({ params }: Props) {
   }, [fetchCustomer]);
 
   async function saveField(field: string, value: string) {
-    await customerApi.update(id, { [field]: value } as any);
+    await customerApi.update(id, { [field]: value } as Partial<Customer>);
     await fetchCustomer();
     toast.success('Saved');
   }

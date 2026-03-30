@@ -2,7 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Booking } from '@/types';
-import { Building2, User, Phone, MapPin } from 'lucide-react';
+import { Building2, User, MapPin } from 'lucide-react';
+import { ContactNumber } from '@/components/common/ContactNumber';
 
 interface CustomerInfoProps {
   booking: Booking;
@@ -37,10 +38,9 @@ export function CustomerInfo({ booking }: CustomerInfoProps) {
 
         {customer.phone && (
           <div className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-muted-foreground" />
             <div>
               <p className="text-sm font-medium text-muted-foreground">Phone</p>
-              <p className="font-medium">{customer.phone}</p>
+              <ContactNumber phone={customer.phone} />
             </div>
           </div>
         )}

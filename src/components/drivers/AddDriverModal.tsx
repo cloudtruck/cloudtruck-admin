@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,7 @@ interface AddDriverModalProps {
 export function AddDriverModal({ onSuccess }: AddDriverModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+
   // Fetch master data
   const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
   const [formData, setFormData] = useState({
@@ -71,7 +72,7 @@ export function AddDriverModal({ onSuccess }: AddDriverModalProps) {
       onSuccess();
       resetForm();
     } catch (error: unknown) {
-      console.error('Failed to create driver:', error);
+      logger.error('Failed to create driver:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to create driver');
     } finally {
@@ -209,12 +210,14 @@ export function AddDriverModal({ onSuccess }: AddDriverModalProps) {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {truckTypes
-                  .filter(type => type.isActive)
+                  .filter((type) => type.isActive)
                   .map((type) => (
                     <Button
                       key={type._id}
                       type="button"
-                      variant={formData.preferredTruckTypes.includes(type.key) ? 'default' : 'outline'}
+                      variant={
+                        formData.preferredTruckTypes.includes(type.key) ? 'default' : 'outline'
+                      }
                       size="sm"
                       onClick={() => handleTruckTypeChange(type.key)}
                     >

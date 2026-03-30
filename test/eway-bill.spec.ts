@@ -9,12 +9,12 @@ describe('ewayBillApi', () => {
 
   it('sync calls correct endpoint', async () => {
     const mockId = '123456789012';
-    const mockResponse = { data: { data: { ewayBillNo: mockId }, success: true } };
+    const mockResponse = { data: { data: { ewayBillNumber: mockId }, success: true } };
     vi.spyOn(api, 'post').mockResolvedValueOnce(mockResponse as any);
 
     const res = await ewayBillApi.sync(mockId);
     expect(api.post).toHaveBeenCalledWith(`/eway-bills/${mockId}/sync`, {});
-    expect(res.data.data.ewayBillNo).toBe(mockId);
+    expect(res.data.data.ewayBillNumber).toBe(mockId);
   });
 
   it('getAll calls correct endpoint with params', async () => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import { useEwayBillStore } from '@/store/ewayBillStore';
 import { ewayBillApi, bookingApi } from '@/lib/api';
 import {
@@ -30,8 +31,7 @@ interface CreateEwayBillModalProps {
 }
 
 export default function CreateEwayBillModal({ onSuccessAction }: CreateEwayBillModalProps) {
-  const { createModalOpen, closeCreateModal, prefilledBookingId, addEwayBill } =
-    useEwayBillStore();
+  const { createModalOpen, closeCreateModal, prefilledBookingId, addEwayBill } = useEwayBillStore();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -107,7 +107,7 @@ export default function CreateEwayBillModal({ onSuccessAction }: CreateEwayBillM
         }
       }
     } catch (error) {
-      console.error('Failed to fetch booking:', error);
+      logger.error('Failed to fetch booking:', error);
     }
   };
 

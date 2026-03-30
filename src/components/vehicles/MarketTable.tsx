@@ -28,23 +28,29 @@ import {
 
 function KycBadge({ status }: { status?: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    verified:  { label: 'Verified',      cls: 'bg-green-100 text-green-700' },
-    pending:   { label: 'Verification',  cls: 'bg-yellow-100 text-yellow-700' },
-    rejected:  { label: 'Rejected',      cls: 'bg-red-100 text-red-600' },
-    expired:   { label: 'Expired',       cls: 'bg-orange-100 text-orange-600' },
+    verified: { label: 'Verified', cls: 'bg-green-100 text-green-700' },
+    pending: { label: 'Verification', cls: 'bg-yellow-100 text-yellow-700' },
+    rejected: { label: 'Rejected', cls: 'bg-red-100 text-red-600' },
+    expired: { label: 'Expired', cls: 'bg-orange-100 text-orange-600' },
   };
-  const { label, cls } = map[status ?? ''] ?? { label: status ?? '—', cls: 'bg-gray-100 text-gray-500' };
+  const { label, cls } = map[status ?? ''] ?? {
+    label: status ?? '—',
+    cls: 'bg-gray-100 text-gray-500',
+  };
   return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls}`}>{label}</span>;
 }
 
 function StatusBadge({ status }: { status?: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    available:        { label: 'Waiting for Load', cls: 'bg-blue-50 text-blue-600' },
-    'on-trip':        { label: 'Loading',           cls: 'bg-green-100 text-green-700' },
-    maintenance:      { label: 'Maintenance',        cls: 'bg-orange-100 text-orange-600' },
-    offline:          { label: 'Offline',            cls: 'bg-gray-100 text-gray-500' },
+    available: { label: 'Waiting for Load', cls: 'bg-blue-50 text-blue-600' },
+    'on-trip': { label: 'Loading', cls: 'bg-green-100 text-green-700' },
+    maintenance: { label: 'Maintenance', cls: 'bg-orange-100 text-orange-600' },
+    offline: { label: 'Offline', cls: 'bg-gray-100 text-gray-500' },
   };
-  const { label, cls } = map[status ?? ''] ?? { label: status ?? '—', cls: 'bg-gray-100 text-gray-500' };
+  const { label, cls } = map[status ?? ''] ?? {
+    label: status ?? '—',
+    cls: 'bg-gray-100 text-gray-500',
+  };
   return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls}`}>{label}</span>;
 }
 
@@ -225,11 +231,7 @@ export function MarketTable({
               <TableRow key={vehicle._id} className="hover:bg-gray-50">
                 {/* Action */}
                 <TableCell className="py-2">
-                  <VehicleActions
-                    vehicle={vehicle}
-                    onDelete={onDelete}
-                    onRejectKyc={onRejectKyc}
-                  />
+                  <VehicleActions vehicle={vehicle} onDelete={onDelete} onRejectKyc={onRejectKyc} />
                 </TableCell>
 
                 {/* Truck */}
@@ -248,9 +250,7 @@ export function MarketTable({
                 </TableCell>
 
                 {/* Truck Type */}
-                <TableCell className="text-sm text-gray-700">
-                  {vehicle.truckType || '—'}
-                </TableCell>
+                <TableCell className="text-sm text-gray-700">{vehicle.truckType || '—'}</TableCell>
 
                 {/* Status */}
                 <TableCell>
@@ -278,7 +278,7 @@ export function MarketTable({
 
                 {/* Supplier Count — placeholder (no model field yet) */}
                 <TableCell className="text-sm text-gray-700 text-center">
-                  {(vehicle as any).supplierCount ?? 0}
+                  {vehicle.supplierCount ?? 0}
                 </TableCell>
 
                 {/* City */}
@@ -287,13 +287,11 @@ export function MarketTable({
                 </TableCell>
 
                 {/* Region — placeholder */}
-                <TableCell className="text-sm text-gray-700">
-                  {(vehicle as any).region || '—'}
-                </TableCell>
+                <TableCell className="text-sm text-gray-700">{vehicle.region || '—'}</TableCell>
 
                 {/* Remarks */}
                 <TableCell className="text-sm text-gray-600">
-                  {(vehicle as any).remarks || vehicle.verificationStatus === 'pending'
+                  {vehicle.remarks || vehicle.verificationStatus === 'pending'
                     ? 'Verification'
                     : '—'}
                 </TableCell>

@@ -5,6 +5,7 @@ import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/common/PageHeader';
 import { trackingApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import type { Booking } from '@/types';
@@ -29,7 +30,7 @@ export default function MapViewPage() {
       const data = response.data?.data || [];
       setTrips(data);
     } catch (error) {
-      console.error('Failed to fetch live trips:', error);
+      logger.error('Failed to fetch live trips:', error);
       toast.error('Failed to fetch live trips');
     } finally {
       setLoading(false);
@@ -65,22 +66,30 @@ export default function MapViewPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {trips.map((trip) => (
-          <div key={trip._id} className="border rounded-lg p-4 bg-card hover:bg-accent/5 transition-colors cursor-pointer">
+          <div
+            key={trip._id}
+            className="border rounded-lg p-4 bg-card hover:bg-accent/5 transition-colors cursor-pointer"
+          >
             <div className="flex justify-between items-start mb-1">
               <p className="font-semibold text-primary">{trip.bookingId}</p>
-              <div className={`h-2 w-2 rounded-full ${trip.lastLocation ? 'bg-green-500' : 'bg-gray-300'}`} title={trip.lastLocation ? 'Live' : 'Offline'} />
+              <div
+                className={`h-2 w-2 rounded-full ${trip.lastLocation ? 'bg-green-500' : 'bg-gray-300'}`}
+                title={trip.lastLocation ? 'Live' : 'Offline'}
+              />
             </div>
             <p className="text-sm font-medium">
               {trip.pickup.city} → {trip.drop.city}
             </p>
             {trip.driver && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Driver: {trip.driver.name}
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Driver: {trip.driver.name}</p>
             )}
             {trip.lastLocation && (
               <div className="mt-2 text-[10px] text-muted-foreground">
-                Last seen: {format(new Date(trip.lastLocation.timestamp || trip.lastLocation.createdAt), 'HH:mm')}
+                Last seen:{' '}
+                {format(
+                  new Date(trip.lastLocation.timestamp || trip.lastLocation.createdAt),
+                  'HH:mm'
+                )}
                 {trip.lastLocation.speed ? ` • ${Math.round(trip.lastLocation.speed)} km/h` : ''}
               </div>
             )}

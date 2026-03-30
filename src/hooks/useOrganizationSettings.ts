@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { organizationSettingsApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { OrganizationSettings, ApiErrorResponse } from '@/types';
@@ -18,7 +19,7 @@ export function useOrganizationSettings() {
     } catch (error: unknown) {
       const err = error as ApiErrorResponse;
       toast.error(err.response?.data?.message || 'Failed to fetch organization settings');
-      console.error('Error fetching settings:', error);
+      logger.error('Error fetching settings:', error);
     } finally {
       setLoading(false);
     }
@@ -37,7 +38,7 @@ export function useOrganizationSettings() {
     } catch (error: unknown) {
       const err = error as ApiErrorResponse;
       toast.error(err.response?.data?.message || 'Failed to update settings');
-      console.error('Error updating settings:', error);
+      logger.error('Error updating settings:', error);
       return false;
     }
   };

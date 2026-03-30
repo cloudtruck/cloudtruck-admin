@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { Truck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +28,7 @@ export function DriverVehicles({ driverId }: DriverVehiclesProps) {
       const response = await vehicleApi.getByDriver(driverId);
       setVehicles(response.data.data);
     } catch (error: unknown) {
-      console.error('Failed to fetch vehicles:', error);
+      logger.error('Failed to fetch vehicles:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to fetch vehicles');
     } finally {
@@ -79,8 +80,8 @@ export function DriverVehicles({ driverId }: DriverVehiclesProps) {
                       vehicle.availability === 'available'
                         ? 'bg-green-100 text-green-800 border-green-200'
                         : vehicle.availability === 'on-trip'
-                        ? 'bg-blue-100 text-blue-800 border-blue-200'
-                        : 'bg-gray-100 text-gray-800 border-gray-200'
+                          ? 'bg-blue-100 text-blue-800 border-blue-200'
+                          : 'bg-gray-100 text-gray-800 border-gray-200'
                     }
                   >
                     {vehicle.availability}

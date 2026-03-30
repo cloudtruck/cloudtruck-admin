@@ -1,13 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import { MapPin, Clock, Phone, Navigation, MessageSquare, Edit } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,7 +25,12 @@ interface TrackingDetailModalProps {
   onBookingUpdate?: () => void;
 }
 
-export function TrackingDetailModal({ booking, open, onCloseAction, onBookingUpdate }: TrackingDetailModalProps) {
+export function TrackingDetailModal({
+  booking,
+  open,
+  onCloseAction,
+  onBookingUpdate,
+}: TrackingDetailModalProps) {
   const [latestLocation, setLatestLocation] = useState<TrackingLocation | null>(null);
   const [loading, setLoading] = useState(false);
   const [noteModalOpen, setNoteModalOpen] = useState(false);
@@ -45,7 +46,7 @@ export function TrackingDetailModal({ booking, open, onCloseAction, onBookingUpd
       const response = await trackingApi.getLatest(booking._id);
       setLatestLocation(response.data.data);
     } catch (error) {
-      console.error('Failed to fetch location:', error);
+      logger.error('Failed to fetch location:', error);
       // toast.error('Failed to fetch latest location');
     } finally {
       setLoading(false);
@@ -69,7 +70,14 @@ export function TrackingDetailModal({ booking, open, onCloseAction, onBookingUpd
         if (unsubscribe) unsubscribe();
       };
     }
-  }, [booking, open, fetchLatestLocation, subscribeToBooking, unsubscribeFromBooking, onLocationUpdate]);
+  }, [
+    booking,
+    open,
+    fetchLatestLocation,
+    subscribeToBooking,
+    unsubscribeFromBooking,
+    onLocationUpdate,
+  ]);
 
   if (!booking) return null;
 
@@ -80,19 +88,11 @@ export function TrackingDetailModal({ booking, open, onCloseAction, onBookingUpd
           <DialogTitle className="flex items-center justify-between">
             <span>Track Shipment: {booking.bookingId}</span>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setNoteModalOpen(true)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setNoteModalOpen(true)}>
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Add Note
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setStatusModalOpen(true)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setStatusModalOpen(true)}>
                 <Edit className="h-4 w-4 mr-2" />
                 Update Status
               </Button>
@@ -104,10 +104,10 @@ export function TrackingDetailModal({ booking, open, onCloseAction, onBookingUpd
         <div className="space-y-6">
           {/* Map Visualization */}
           <div className="rounded-lg overflow-hidden border bg-muted/20">
-            <ShipmentRouteMap 
-              booking={booking} 
-              currentLocation={latestLocation || undefined} 
-              height="300px" 
+            <ShipmentRouteMap
+              booking={booking}
+              currentLocation={latestLocation || undefined}
+              height="300px"
             />
           </div>
 
@@ -186,9 +186,11 @@ export function TrackingDetailModal({ booking, open, onCloseAction, onBookingUpd
                     </h3>
                     <Badge variant="outline">
                       <Clock className="h-3 w-3 mr-1" />
-                      {latestLocation.timestamp ? formatDistance(new Date(latestLocation.timestamp), new Date(), {
-                        addSuffix: true,
-                      }) : 'N/A'}
+                      {latestLocation.timestamp
+                        ? formatDistance(new Date(latestLocation.timestamp), new Date(), {
+                            addSuffix: true,
+                          })
+                        : 'N/A'}
                     </Badge>
                   </div>
                   {latestLocation.city && (
@@ -205,7 +207,11 @@ export function TrackingDetailModal({ booking, open, onCloseAction, onBookingUpd
                   <div className="flex gap-2 pt-2">
                     <Button variant="outline" size="sm" asChild>
                       <a
-                        href={latestLocation.location?.coordinates ? `https://www.google.com/maps?q=${latestLocation.location.coordinates[1]},${latestLocation.location.coordinates[0]}` : '#'}
+                        href={
+                          latestLocation.location?.coordinates
+                            ? `https://www.google.com/maps?q=${latestLocation.location.coordinates[1]},${latestLocation.location.coordinates[0]}`
+                            : '#'
+                        }
                         target="_blank"
                         rel="noopener noreferrer"
                       >

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable } from '@/components/common/DataTable';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -41,7 +42,7 @@ export function CustomerBookingHistory({ customerId }: CustomerBookingHistoryPro
       setBookings(response.data.data.bookings);
       setPagination(response.data.data.pagination);
     } catch (error) {
-      console.error('Failed to fetch bookings:', error);
+      logger.error('Failed to fetch bookings:', error);
       toast.error('Failed to fetch booking history');
     } finally {
       setLoading(false);
@@ -53,10 +54,7 @@ export function CustomerBookingHistory({ customerId }: CustomerBookingHistoryPro
       header: 'Booking ID',
       accessor: 'bookingId',
       cell: (booking: Booking) => (
-        <Link
-          href={`/bookings/${booking._id}`}
-          className="font-medium hover:underline"
-        >
+        <Link href={`/bookings/${booking._id}`} className="font-medium hover:underline">
           {booking.bookingId}
         </Link>
       ),
@@ -84,9 +82,7 @@ export function CustomerBookingHistory({ customerId }: CustomerBookingHistoryPro
       header: 'Date',
       accessor: 'createdAt',
       cell: (booking: Booking) => (
-        <span className="text-sm">
-          {format(new Date(booking.createdAt), 'MMM dd, yyyy')}
-        </span>
+        <span className="text-sm">{format(new Date(booking.createdAt), 'MMM dd, yyyy')}</span>
       ),
     },
     {

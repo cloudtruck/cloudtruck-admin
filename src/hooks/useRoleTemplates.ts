@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { roleTemplateApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { RoleTemplate, ApiErrorResponse } from '@/types';
@@ -18,7 +19,7 @@ export function useRoleTemplates(filters?: { category?: string; isActive?: boole
     } catch (error: unknown) {
       const err = error as ApiErrorResponse;
       toast.error(err.response?.data?.message || 'Failed to fetch role templates');
-      console.error('Error fetching templates:', error);
+      logger.error('Error fetching templates:', error);
     } finally {
       setLoading(false);
     }

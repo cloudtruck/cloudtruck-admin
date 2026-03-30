@@ -9,15 +9,37 @@ interface StatusBadgeProps {
 const statusConfig = {
   booking: {
     created: { variant: 'secondary', className: 'bg-blue-100 text-blue-800 border-blue-200' },
-    'under-review': { variant: 'secondary', className: 'bg-blue-100 text-blue-800 border-blue-200' },
-    assigned: { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-    'driver-en-route': { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-    'reached-pickup': { variant: 'secondary', className: 'bg-orange-100 text-orange-800 border-orange-200' },
+    'under-review': {
+      variant: 'secondary',
+      className: 'bg-blue-100 text-blue-800 border-blue-200',
+    },
+    assigned: {
+      variant: 'secondary',
+      className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    },
+    'driver-en-route': {
+      variant: 'secondary',
+      className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    },
+    'reached-pickup': {
+      variant: 'secondary',
+      className: 'bg-orange-100 text-orange-800 border-orange-200',
+    },
     loaded: { variant: 'secondary', className: 'bg-purple-100 text-purple-800 border-purple-200' },
-    'in-transit': { variant: 'secondary', className: 'bg-purple-100 text-purple-800 border-purple-200' },
-    'reached-destination': { variant: 'secondary', className: 'bg-green-100 text-green-800 border-green-200' },
+    'in-transit': {
+      variant: 'secondary',
+      className: 'bg-purple-100 text-purple-800 border-purple-200',
+    },
+    'reached-destination': {
+      variant: 'secondary',
+      className: 'bg-green-100 text-green-800 border-green-200',
+    },
+    unloading: { variant: 'secondary', className: 'bg-amber-100 text-amber-800 border-amber-200' },
     delivered: { variant: 'secondary', className: 'bg-green-100 text-green-800 border-green-200' },
-    'pod-received': { variant: 'secondary', className: 'bg-green-100 text-green-800 border-green-200' },
+    'pod-received': {
+      variant: 'secondary',
+      className: 'bg-green-100 text-green-800 border-green-200',
+    },
     closed: { variant: 'secondary', className: 'bg-zinc-100 text-zinc-800 border-zinc-200' },
     cancelled: { variant: 'secondary', className: 'bg-red-100 text-red-800 border-red-200' },
   },
@@ -42,7 +64,9 @@ const statusConfig = {
 
 export function StatusBadge({ status, type = 'booking' }: StatusBadgeProps) {
   const typeConfig = statusConfig[type];
-  const config = (typeConfig as Record<string, { variant: 'secondary'; className: string }>)[status] || {
+  const config = (typeConfig as Record<string, { variant: 'secondary'; className: string }>)[
+    status
+  ] || {
     variant: 'secondary' as const,
     className: 'bg-zinc-100 text-zinc-800 border-zinc-200',
   };

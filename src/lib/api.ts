@@ -31,11 +31,28 @@ import type {
   MasterData,
   Account,
   OrganizationSettings,
+  OrgAddress,
+  DeleteRequestPagination,
   Branch,
   PlannedRoute,
   WalletTransaction,
   UnloadingTruck,
+  Supplier,
+  SupplierFilters,
+  SupplierPaymentRecord,
+  CreateSupplierPayload,
+  SupplierAvailableDriver,
 } from '@/types';
+
+interface BankAccountPayload {
+  _id?: string;
+  accountHolderName: string;
+  accountNumber: string;
+  ifscCode: string;
+  bankName?: string;
+  branchName?: string;
+  isPrimary?: boolean;
+}
 
 // ============================================================================
 // Authentication APIs
@@ -76,6 +93,11 @@ export const bookingApi = {
     api.get<ApiResponse<TrendData[]>>('/bookings/dashboard/trends', { params }),
   getStatusBreakdown: () =>
     api.get<ApiResponse<Record<string, number>>>('/bookings/dashboard/status'),
+  getBranchKpi: () =>
+    api.get<ApiResponse<{ live: unknown[]; history: unknown[] }>>('/bookings/dashboard/branch-kpi'),
+  getDriverStats: () => api.get<ApiResponse<unknown[]>>('/bookings/dashboard/driver-stats'),
+  getRingCounts: () =>
+    api.get<ApiResponse<Record<string, number>>>('/bookings/dashboard/ring-counts'),
 
   create: (data: CreateBookingPayload) => api.post<ApiResponse<Booking>>('/bookings', data),
 
@@ -167,8 +189,15 @@ export const documentApi = {
 // ============================================================================
 
 export const driverApi = {
-  getAll: (params?: DriverFilters & { page?: number; limit?: number }) =>
-    api.get<ApiResponse<{ drivers: Driver[]; pagination: Pagination }>>('/drivers', { params }),
+  getAll: (
+    params?: DriverFilters & {
+      page?: number;
+      limit?: number;
+      driverRole?: 'individual' | 'employee';
+      supplierOwner?: string;
+      kycStatus?: string;
+    }
+  ) => api.get<ApiResponse<{ drivers: Driver[]; pagination: Pagination }>>('/drivers', { params }),
 
   getById: (id: string) => api.get<ApiResponse<Driver>>(`/drivers/${id}`),
 
@@ -204,6 +233,15 @@ export const driverApi = {
       `/drivers/${id}/trip-history`,
       { params }
     ),
+
+  addBankAccount: (id: string, data: Omit<BankAccountPayload, '_id'>) =>
+    api.post<ApiResponse<Driver>>(`/drivers/${id}/bank-accounts`, data),
+
+  updateBankAccount: (id: string, accountId: string, data: Partial<BankAccountPayload>) =>
+    api.patch<ApiResponse<Driver>>(`/drivers/${id}/bank-accounts/${accountId}`, data),
+
+  removeBankAccount: (id: string, accountId: string) =>
+    api.delete<ApiResponse<Driver>>(`/drivers/${id}/bank-accounts/${accountId}`),
 };
 
 // ============================================================================
@@ -333,6 +371,8 @@ export const customerApi = {
     state?: string;
     pincode?: string;
   }) => api.post<ApiResponse<Customer>>('/customers', data),
+
+  delete: (id: string) => api.delete<ApiResponse<null>>(`/customers/${id}`),
 };
 
 // ============================================================================
@@ -533,6 +573,22 @@ export const masterDataApi = {
     ),
 };
 
+// Org Address APIs
+export const addressApi = {
+  list: () => api.get<ApiResponse<OrgAddress[]>>('/organization/addresses'),
+
+  create: (data: Omit<OrgAddress, '_id' | 'isPrimary' | 'isActive'>) =>
+    api.post<ApiResponse<OrgAddress>>('/organization/addresses', data),
+
+  update: (id: string, data: Partial<OrgAddress>) =>
+    api.patch<ApiResponse<OrgAddress>>(`/organization/addresses/${id}`, data),
+
+  setPrimary: (id: string) =>
+    api.patch<ApiResponse<OrgAddress>>(`/organization/addresses/${id}/primary`, {}),
+
+  delete: (id: string) => api.delete<ApiResponse<null>>(`/organization/addresses/${id}`),
+};
+
 // Account APIs
 export const accountApi = {
   list: () => api.get<ApiResponse<Account[]>>('/accounts'),
@@ -575,6 +631,12 @@ export const organizationSettingsApi = {
 
   getNextBookingNumber: () =>
     api.get<ApiResponse<{ bookingNumber: string }>>('/organization/settings/next-booking-number'),
+
+  updateDeletionPolicy: (data: { requireApprovalFor: string[] }) =>
+    api.patch<ApiResponse<{ requireApprovalFor: string[] }>>(
+      '/organization/settings/deletion-policy',
+      data
+    ),
 };
 
 // Branch APIs
@@ -596,6 +658,12 @@ export const branchApi = {
 
   removeEmployee: (branchId: string, staffId: string) =>
     api.delete<ApiResponse<Branch>>(`/branches/${branchId}/employees/${staffId}`),
+
+  setBranchManager: (branchId: string, staffId: string) =>
+    api.patch<ApiResponse<Branch>>(`/branches/${branchId}`, { branchManager: staffId }),
+
+  setTrafficCoordinator: (branchId: string, staffId: string) =>
+    api.patch<ApiResponse<Branch>>(`/branches/${branchId}`, { trafficCoordinator: staffId }),
 
   getMetrics: (id: string) => api.get<ApiResponse<unknown>>(`/branches/${id}/metrics`),
 };
@@ -663,4 +731,144 @@ export const walletApi = {
 
   rejectPayout: (transactionId: string, data: { reason: string }) =>
     api.patch<ApiResponse<WalletTransaction>>(`/wallet/payouts/${transactionId}/reject`, data),
+};
+
+// ============================================================================
+// Supplier APIs
+// ============================================================================
+
+export const supplierApi = {
+  getAll: (params?: SupplierFilters) =>
+    api.get<ApiResponse<{ items: Supplier[]; pagination: Pagination }>>('/suppliers', { params }),
+
+  getById: (id: string) => api.get<ApiResponse<Supplier>>(`/suppliers/${id}`),
+
+  create: (data: CreateSupplierPayload) => api.post<ApiResponse<Supplier>>('/suppliers', data),
+
+  update: (id: string, data: Partial<Supplier>) =>
+    api.patch<ApiResponse<Supplier>>(`/suppliers/${id}`, data),
+
+  delete: (id: string) => api.delete<ApiResponse<null>>(`/suppliers/${id}`),
+
+  verify: (id: string) => api.post<ApiResponse<Supplier>>(`/suppliers/${id}/verify`),
+
+  reject: (id: string, reason: string) =>
+    api.post<ApiResponse<Supplier>>(`/suppliers/${id}/reject`, { reason }),
+
+  blacklist: (id: string, reason: string) =>
+    api.post<ApiResponse<Supplier>>(`/suppliers/${id}/blacklist`, { reason }),
+
+  removeBlacklist: (id: string) =>
+    api.post<ApiResponse<Supplier>>(`/suppliers/${id}/remove-blacklist`),
+
+  getFleetDrivers: (id: string, params?: { page?: number; limit?: number }) =>
+    api.get<ApiResponse<{ items: Driver[]; pagination: Pagination }>>(
+      `/suppliers/${id}/fleet/drivers`,
+      { params }
+    ),
+
+  addDriver: (id: string, driverId: string) =>
+    api.post<ApiResponse<Driver>>(`/suppliers/${id}/fleet/drivers`, { driverId }),
+
+  removeDriver: (id: string, driverId: string) =>
+    api.delete<ApiResponse<null>>(`/suppliers/${id}/fleet/drivers/${driverId}`),
+
+  addVehicle: (id: string, vehicleId: string) =>
+    api.post<ApiResponse<any>>(`/suppliers/${id}/fleet/vehicles`, { vehicleId }),
+
+  removeVehicle: (id: string, vehicleId: string) =>
+    api.delete<ApiResponse<null>>(`/suppliers/${id}/fleet/vehicles/${vehicleId}`),
+
+  getFleetVehicles: (id: string, params?: { page?: number; limit?: number }) =>
+    api.get<ApiResponse<{ items: any[]; pagination: Pagination }>>(
+      `/suppliers/${id}/fleet/vehicles`,
+      { params }
+    ),
+
+  getBookings: (id: string, params?: { page?: number; limit?: number; status?: string }) =>
+    api.get<ApiResponse<{ items: any[]; pagination: Pagination }>>(`/suppliers/${id}/bookings`, {
+      params,
+    }),
+
+  getDashboard: (id: string) => api.get<ApiResponse<any>>(`/suppliers/${id}/dashboard`),
+
+  addBankAccount: (id: string, data: Omit<BankAccountPayload, '_id'>) =>
+    api.post<ApiResponse<Supplier>>(`/suppliers/${id}/bank-accounts`, data),
+
+  updateBankAccount: (id: string, accountId: string, data: Partial<BankAccountPayload>) =>
+    api.patch<ApiResponse<Supplier>>(`/suppliers/${id}/bank-accounts/${accountId}`, data),
+
+  removeBankAccount: (id: string, accountId: string) =>
+    api.delete<ApiResponse<Supplier>>(`/suppliers/${id}/bank-accounts/${accountId}`),
+
+  getAvailableDrivers: (id: string) =>
+    api.get<ApiResponse<SupplierAvailableDriver[]>>(`/suppliers/${id}/available-drivers`),
+
+  // Supplier payments
+  getPayments: (params?: {
+    supplierId?: string;
+    bookingId?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }) =>
+    api.get<ApiResponse<{ items: SupplierPaymentRecord[]; pagination: Pagination }>>(
+      '/supplier-payments',
+      { params }
+    ),
+
+  getPaymentById: (paymentId: string) =>
+    api.get<ApiResponse<SupplierPaymentRecord>>(`/supplier-payments/${paymentId}`),
+
+  createPayment: (data: {
+    supplierId: string;
+    bookingId: string;
+    amount: number;
+    paymentType: string;
+    paymentMethod: string;
+    remarks?: string;
+  }) => api.post<ApiResponse<SupplierPaymentRecord>>('/supplier-payments', data),
+
+  approvePayment: (paymentId: string) =>
+    api.post<ApiResponse<SupplierPaymentRecord>>(`/supplier-payments/${paymentId}/approve`),
+
+  markPaid: (paymentId: string, data: { referenceNumber: string; transactionDate?: string }) =>
+    api.post<ApiResponse<SupplierPaymentRecord>>(`/supplier-payments/${paymentId}/mark-paid`, data),
+
+  rejectPayment: (paymentId: string, reason: string) =>
+    api.post<ApiResponse<SupplierPaymentRecord>>(`/supplier-payments/${paymentId}/reject`, {
+      reason,
+    }),
+
+  getSupplierLedger: (supplierId: string, params?: { page?: number; limit?: number }) =>
+    api.get<ApiResponse<any>>(`/supplier-payments/supplier/${supplierId}/ledger`, { params }),
+
+  uploadDocument: (id: string, docType: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post<ApiResponse<Supplier>>(`/suppliers/${id}/documents/${docType}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
+// Delete Request APIs
+export const deleteRequestsApi = {
+  create: (data: {
+    resource: string;
+    resourceId: string;
+    resourceModel: string;
+    reason?: string;
+  }) => api.post<ApiResponse<null>>('/delete-requests', data),
+
+  listPending: (params?: { status?: string; resource?: string; page?: number; limit?: number }) =>
+    api.get<ApiResponse<DeleteRequestPagination>>('/delete-requests', { params }),
+
+  listMine: (params?: { status?: string; page?: number; limit?: number }) =>
+    api.get<ApiResponse<DeleteRequestPagination>>('/delete-requests/mine', { params }),
+
+  approve: (id: string) => api.post<ApiResponse<null>>(`/delete-requests/${id}/approve`),
+
+  reject: (id: string, rejectionReason: string) =>
+    api.post<ApiResponse<null>>(`/delete-requests/${id}/reject`, { rejectionReason }),
 };

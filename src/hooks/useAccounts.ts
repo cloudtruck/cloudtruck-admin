@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { accountApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Account, ApiErrorResponse } from '@/types';
@@ -18,7 +19,7 @@ export function useAccounts() {
     } catch (error: unknown) {
       const err = error as ApiErrorResponse;
       toast.error(err.response?.data?.message || 'Failed to fetch accounts');
-      console.error('Error fetching accounts:', error);
+      logger.error('Error fetching accounts:', error);
     } finally {
       setLoading(false);
     }

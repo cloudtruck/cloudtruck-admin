@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { branchApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Branch, ApiErrorResponse } from '@/types';
@@ -18,7 +19,7 @@ export function useBranches(filters?: { region?: string; isActive?: boolean }) {
     } catch (error: unknown) {
       const err = error as ApiErrorResponse;
       toast.error(err.response?.data?.message || 'Failed to fetch branches');
-      console.error('Error fetching branches:', error);
+      logger.error('Error fetching branches:', error);
     } finally {
       setLoading(false);
     }
@@ -109,6 +110,38 @@ export function useBranches(filters?: { region?: string; isActive?: boolean }) {
     }
   };
 
+  const setBranchManager = async (branchId: string, staffId: string) => {
+    try {
+      const response = await branchApi.setBranchManager(branchId, staffId);
+      if (response.data.success) {
+        toast.success('Branch manager assigned');
+        await fetchBranches();
+        return true;
+      }
+      return false;
+    } catch (error: unknown) {
+      const err = error as ApiErrorResponse;
+      toast.error(err.response?.data?.message || 'Failed to assign branch manager');
+      return false;
+    }
+  };
+
+  const setTrafficCoordinator = async (branchId: string, staffId: string) => {
+    try {
+      const response = await branchApi.setTrafficCoordinator(branchId, staffId);
+      if (response.data.success) {
+        toast.success('Traffic coordinator assigned');
+        await fetchBranches();
+        return true;
+      }
+      return false;
+    } catch (error: unknown) {
+      const err = error as ApiErrorResponse;
+      toast.error(err.response?.data?.message || 'Failed to assign traffic coordinator');
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchBranches();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,5 +156,7 @@ export function useBranches(filters?: { region?: string; isActive?: boolean }) {
     deleteBranch,
     assignEmployee,
     removeEmployee,
+    setBranchManager,
+    setTrafficCoordinator,
   };
 }

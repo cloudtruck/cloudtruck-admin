@@ -31,6 +31,7 @@ interface EmployeeTableProps {
   pagination: Pagination;
   onPageChange: (page: number) => void;
   onRefresh: () => void;
+  onDeactivate?: (id: string) => void;
 }
 
 export function EmployeeTable({
@@ -39,6 +40,7 @@ export function EmployeeTable({
   pagination,
   onPageChange,
   onRefresh,
+  onDeactivate,
 }: EmployeeTableProps) {
   const [selectedEmployee, setSelectedEmployee] = useState<Staff | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -110,64 +112,70 @@ export function EmployeeTable({
             {employees && Array.isArray(employees) ? (
               employees.map((employee) => (
                 <TableRow key={employee._id}>
-                <TableCell className="font-medium">{employee.name}</TableCell>
-                <TableCell>{employee.email}</TableCell>
-                <TableCell>{employee.phone || 'N/A'}</TableCell>
-                <TableCell>
-                  {employee.department
-                    ? employee.department.charAt(0).toUpperCase() + employee.department.slice(1)
-                    : 'N/A'}
-                </TableCell>
-                <TableCell>{getRoleBadge(employee.role)}</TableCell>
-                <TableCell>{getStatusBadge(employee.status)}</TableCell>
-                <TableCell>
-                  {employee.createdAt
-                    ? format(new Date(employee.createdAt), 'MMM d, yyyy')
-                    : 'N/A'}
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setSelectedEmployee(employee);
-                          setIsDrawerOpen(true);
-                        }}
-                      >
-                        <Eye className="mr-2 h-4 w-4" />
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setSelectedEmployee(employee);
-                          setIsEditModalOpen(true);
-                        }}
-                      >
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600">
-                        <UserX className="mr-2 h-4 w-4" />
-                        Deactivate
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <TableCell className="font-medium">{employee.name}</TableCell>
+                  <TableCell>{employee.email}</TableCell>
+                  <TableCell>{employee.phone || 'N/A'}</TableCell>
+                  <TableCell>
+                    {employee.department
+                      ? employee.department.charAt(0).toUpperCase() + employee.department.slice(1)
+                      : 'N/A'}
+                  </TableCell>
+                  <TableCell>{getRoleBadge(employee.role)}</TableCell>
+                  <TableCell>{getStatusBadge(employee.status)}</TableCell>
+                  <TableCell>
+                    {employee.createdAt
+                      ? format(new Date(employee.createdAt), 'MMM d, yyyy')
+                      : 'N/A'}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedEmployee(employee);
+                            setIsDrawerOpen(true);
+                          }}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedEmployee(employee);
+                            setIsEditModalOpen(true);
+                          }}
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onClick={() => {
+                            if (window.confirm('Deactivate this employee?'))
+                              onDeactivate?.(employee._id);
+                          }}
+                        >
+                          <UserX className="mr-2 h-4 w-4" />
+                          Deactivate
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                  No employees found or failed to load.
                 </TableCell>
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                No employees found or failed to load.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
+            )}
+          </TableBody>
         </Table>
       </div>
 

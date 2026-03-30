@@ -11,9 +11,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SideSelect } from '@/components/ui/side-select';
 import type { SideSelectOption } from '@/components/ui/side-select';
-import { bookingApi, customerApi, vehicleApi, driverApi, staffApi } from '@/lib/api';
+import { bookingApi, customerApi, vehicleApi, driverApi, staffApi, supplierApi } from '@/lib/api';
 import { toast } from 'sonner';
-import type { Customer, CreateBookingPayload, MasterData, Vehicle, Driver, Staff } from '@/types';
+import type {
+  Customer,
+  CreateBookingPayload,
+  MasterData,
+  Vehicle,
+  Driver,
+  Staff,
+  Supplier,
+} from '@/types';
 import { useMasterData } from '@/hooks/useMasterData';
 
 type ActiveTab = 'Indent' | 'Direct Load' | 'Direct Invoice';
@@ -88,7 +96,7 @@ const EXPIRY_HOURS = [24, 36, 48];
 const emptyForm = {
   customerId: '',
   laneCode: '',
-  indentType: 'FTL' as 'FTL' | 'PTL' | 'LCL',
+  loadType: 'FTL' as 'FTL' | 'LTL' | 'PTL',
   exim: 'domestic' as 'domestic' | 'import' | 'export',
   sourceCode: '',
   destinationCode: '',
@@ -99,7 +107,7 @@ const emptyForm = {
   materialType: '',
   numberOfTrucks: '1',
   bodyType: '',
-  supplier: '',
+  supplierEntity: '',
   trafficController: '',
   customerPrice: '',
   supplierPrice: '',
@@ -122,6 +130,7 @@ export default function CreateIndentPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [supplierList, setSupplierList] = useState<Supplier[]>([]);
   const [formData, setFormData] = useState({ ...emptyForm });
   const [dlForm, setDlForm] = useState({ ...emptyDirectLoad });
   const [diForm, setDiForm] = useState({ ...emptyDirectInvoice });
@@ -130,7 +139,6 @@ export default function CreateIndentPage() {
   const { data: materialTypes } = useMasterData('material-type');
   const { data: locations, loading: locationsLoading } = useMasterData('location');
   const { data: lanes } = useMasterData('lane');
-  const { data: suppliers } = useMasterData('supplier');
 
   const set = (key: keyof typeof emptyForm, value: unknown) =>
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -146,6 +154,7 @@ export default function CreateIndentPage() {
     fetchVehicles();
     fetchDrivers();
     fetchStaff();
+    fetchSuppliers();
   }, []);
 
   const fetchCustomers = async () => {
@@ -179,6 +188,15 @@ export default function CreateIndentPage() {
     try {
       const res = await staffApi.getAll({ limit: 100 });
       setStaffList(res.data.data.staff);
+    } catch {
+      /* silent */
+    }
+  };
+
+  const fetchSuppliers = async () => {
+    try {
+      const res = await supplierApi.getAll({ verificationStatus: 'verified', limit: 100 });
+      setSupplierList(res.data.data.items || []);
     } catch {
       /* silent */
     }
@@ -231,14 +249,12 @@ export default function CreateIndentPage() {
     .filter((t) => t.isActive)
     .map((t) => ({ value: t.key, label: t.displayName }));
 
-  // Fix 4: supplierOptions used for Supplier field, separate from Traffic
-  const supplierOptions: SideSelectOption[] = suppliers
-    .filter((s) => s.isActive)
-    .map((s: MasterData) => ({
-      value: s.key,
-      label: s.displayName,
-      sublabel: s.metadata?.city as string | undefined,
-    }));
+  // Supplier options from Supplier entity (not MasterData)
+  const supplierOptions: SideSelectOption[] = supplierList.map((s: Supplier) => ({
+    value: s._id,
+    label: s.displayName,
+    sublabel: s.city ?? s.companyName,
+  }));
 
   const vehicleOptions: SideSelectOption[] = vehicles.map((v) => ({
     value: v._id,
@@ -376,8 +392,8 @@ export default function CreateIndentPage() {
         laneCode: formData.laneCode || undefined,
         sourceCode: formData.sourceCode,
         destinationCode: formData.destinationCode,
-        supplier: formData.supplier || undefined,
-        indentType: formData.indentType,
+        supplierEntity: formData.supplierEntity || undefined,
+        loadType: formData.loadType,
         exim: formData.exim,
         trafficController: formData.trafficController || undefined,
         supplierPrice: (() => {
@@ -483,7 +499,6 @@ export default function CreateIndentPage() {
         accountNo: dlForm.accountNo || undefined,
         podType: (dlForm.podType as 'Hard' | 'Soft') || undefined,
         tripKm: dlForm.tripKm ? parseFloat(dlForm.tripKm) : undefined,
-        supplier: dlForm.supplierRef || undefined,
         remarks:
           dlForm.customerRef || dlForm.supplierRef
             ? `CustRef: ${dlForm.customerRef} SupRef: ${dlForm.supplierRef}`.trim()
@@ -577,7 +592,6 @@ export default function CreateIndentPage() {
         accountNo: diForm.accountNo || undefined,
         podType: (diForm.podType as 'Hard' | 'Soft') || undefined,
         tripKm: diForm.tripKm ? parseFloat(diForm.tripKm) : undefined,
-        supplier: diForm.supplierRef || undefined,
         remarks:
           diForm.customerRef || diForm.supplierRef
             ? `CustRef: ${diForm.customerRef} SupRef: ${diForm.supplierRef}`.trim()
@@ -1495,8 +1509,8 @@ export default function CreateIndentPage() {
                 panelTitle="Select Supplier"
                 placeholder="Select supplier"
                 options={supplierOptions}
-                value={formData.supplier}
-                onChange={(v) => set('supplier', v)}
+                value={formData.supplierEntity}
+                onChange={(v) => set('supplierEntity', v)}
               />
             </FormField>
 
@@ -1508,8 +1522,8 @@ export default function CreateIndentPage() {
                   panelTitle="Select Indent Type"
                   placeholder="FTL"
                   options={indentTypeOptions}
-                  value={formData.indentType}
-                  onChange={(v) => set('indentType', v)}
+                  value={formData.loadType}
+                  onChange={(v) => set('loadType', v)}
                   searchable={false}
                 />
               </FormField>

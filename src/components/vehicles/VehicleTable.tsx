@@ -12,39 +12,58 @@ import {
 import { Button } from '@/components/ui/button';
 import type { Vehicle, Pagination } from '@/types';
 import { format } from 'date-fns';
-import { ChevronDown, FileText, Trash2, Pencil, Phone, MessageCircle, FileCheck, XCircle, Settings2 } from 'lucide-react';
+import {
+  ChevronDown,
+  FileText,
+  Trash2,
+  Pencil,
+  Phone,
+  MessageCircle,
+  FileCheck,
+  XCircle,
+  Settings2,
+} from 'lucide-react';
 
 // ─── Badges ──────────────────────────────────────────────────────────────────
 
 function VerificationBadge({ status }: { status?: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    verified: { label: 'Verified',  cls: 'bg-green-100 text-green-700' },
-    pending:  { label: 'Pending',   cls: 'bg-yellow-100 text-yellow-700' },
-    rejected: { label: 'Rejected',  cls: 'bg-red-100 text-red-600' },
-    expired:  { label: 'Expired',   cls: 'bg-orange-100 text-orange-600' },
+    verified: { label: 'Verified', cls: 'bg-green-100 text-green-700' },
+    pending: { label: 'Pending', cls: 'bg-yellow-100 text-yellow-700' },
+    rejected: { label: 'Rejected', cls: 'bg-red-100 text-red-600' },
+    expired: { label: 'Expired', cls: 'bg-orange-100 text-orange-600' },
   };
-  const { label, cls } = map[status ?? ''] ?? { label: status ?? '—', cls: 'bg-gray-100 text-gray-500' };
+  const { label, cls } = map[status ?? ''] ?? {
+    label: status ?? '—',
+    cls: 'bg-gray-100 text-gray-500',
+  };
   return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls}`}>{label}</span>;
 }
 
 function AvailabilityBadge({ status }: { status?: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    available:   { label: 'Available',    cls: 'bg-green-100 text-green-700' },
-    'on-trip':   { label: 'On Trip',      cls: 'bg-blue-100 text-blue-700' },
-    maintenance: { label: 'Maintenance',  cls: 'bg-orange-100 text-orange-600' },
-    offline:     { label: 'Offline',      cls: 'bg-gray-100 text-gray-500' },
+    available: { label: 'Available', cls: 'bg-green-100 text-green-700' },
+    'on-trip': { label: 'On Trip', cls: 'bg-blue-100 text-blue-700' },
+    maintenance: { label: 'Maintenance', cls: 'bg-orange-100 text-orange-600' },
+    offline: { label: 'Offline', cls: 'bg-gray-100 text-gray-500' },
   };
-  const { label, cls } = map[status ?? ''] ?? { label: status ?? '—', cls: 'bg-gray-100 text-gray-500' };
+  const { label, cls } = map[status ?? ''] ?? {
+    label: status ?? '—',
+    cls: 'bg-gray-100 text-gray-500',
+  };
   return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls}`}>{label}</span>;
 }
 
 function OwnershipBadge({ type }: { type?: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    own:      { label: 'Own',      cls: 'bg-indigo-100 text-indigo-700' },
-    leased:   { label: 'Leased',   cls: 'bg-purple-100 text-purple-700' },
+    own: { label: 'Own', cls: 'bg-indigo-100 text-indigo-700' },
+    leased: { label: 'Leased', cls: 'bg-purple-100 text-purple-700' },
     attached: { label: 'Attached', cls: 'bg-teal-100 text-teal-700' },
   };
-  const { label, cls } = map[type ?? ''] ?? { label: type ?? '—', cls: 'bg-gray-100 text-gray-500' };
+  const { label, cls } = map[type ?? ''] ?? {
+    label: type ?? '—',
+    cls: 'bg-gray-100 text-gray-500',
+  };
   return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls}`}>{label}</span>;
 }
 
@@ -55,7 +74,11 @@ import { useState } from 'react';
 function Tooltip({ label, children }: { label: string; children: React.ReactNode }) {
   const [show, setShow] = useState(false);
   return (
-    <span className="relative inline-flex" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+    <span
+      className="relative inline-flex"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
       {children}
       {show && (
         <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap z-50 pointer-events-none">
@@ -68,7 +91,11 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
 
 // ─── Action Cell ─────────────────────────────────────────────────────────────
 
-function VehicleActions({ vehicle, onDelete, onRejectKyc }: {
+function VehicleActions({
+  vehicle,
+  onDelete,
+  onRejectKyc,
+}: {
   vehicle: Vehicle;
   onDelete?: (id: string) => void;
   onRejectKyc?: (id: string) => void;
@@ -137,10 +164,19 @@ interface VehicleTableProps {
   onRejectKyc?: (id: string) => void;
 }
 
-export function VehicleTable({ vehicles, loading, pagination, onPageChange, onDelete, onRejectKyc }: VehicleTableProps) {
+export function VehicleTable({
+  vehicles,
+  loading,
+  pagination,
+  onPageChange,
+  onDelete,
+  onRejectKyc,
+}: VehicleTableProps) {
   if (loading) {
     return (
-      <div className="bg-white rounded border p-8 text-center text-sm text-gray-400">Loading...</div>
+      <div className="bg-white rounded border p-8 text-center text-sm text-gray-400">
+        Loading...
+      </div>
     );
   }
 
@@ -159,23 +195,33 @@ export function VehicleTable({ vehicles, loading, pagination, onPageChange, onDe
         <TableHeader>
           <TableRow className="bg-gray-50 border-b">
             <TableHead className="text-xs font-semibold text-gray-600 w-24">
-              <span className="flex items-center gap-1"><Settings2 className="h-3.5 w-3.5" /> Action</span>
+              <span className="flex items-center gap-1">
+                <Settings2 className="h-3.5 w-3.5" /> Action
+              </span>
             </TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">Truck</TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">ID</TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">
-              <span className="flex items-center gap-1">Truck Type <ChevronDown className="h-3 w-3" /></span>
+              <span className="flex items-center gap-1">
+                Truck Type <ChevronDown className="h-3 w-3" />
+              </span>
             </TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">Capacity</TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">
-              <span className="flex items-center gap-1">Ownership <ChevronDown className="h-3 w-3" /></span>
+              <span className="flex items-center gap-1">
+                Ownership <ChevronDown className="h-3 w-3" />
+              </span>
             </TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">Driver</TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">
-              <span className="flex items-center gap-1">KYC Status <ChevronDown className="h-3 w-3" /></span>
+              <span className="flex items-center gap-1">
+                KYC Status <ChevronDown className="h-3 w-3" />
+              </span>
             </TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">
-              <span className="flex items-center gap-1">Status <ChevronDown className="h-3 w-3" /></span>
+              <span className="flex items-center gap-1">
+                Status <ChevronDown className="h-3 w-3" />
+              </span>
             </TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">City</TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">Insurance Exp.</TableHead>
@@ -184,7 +230,14 @@ export function VehicleTable({ vehicles, loading, pagination, onPageChange, onDe
         </TableHeader>
         <TableBody>
           {vehicles.map((vehicle) => {
-            const owner = typeof vehicle.owner === 'object' ? vehicle.owner : null;
+            // Resolve owner: prefer ownerRef.item (populated), fall back to legacy owner
+            const ownerRefItem =
+              vehicle.ownerRef?.item && typeof vehicle.ownerRef.item === 'object'
+                ? vehicle.ownerRef.item
+                : null;
+            const ownerKind = vehicle.ownerRef?.kind ?? 'Driver';
+            const legacyOwner = typeof vehicle.owner === 'object' ? vehicle.owner : null;
+            const resolvedOwner = ownerRefItem ?? legacyOwner;
             const driver = typeof vehicle.driver === 'object' ? vehicle.driver : null;
             const insuranceExpiry = vehicle.expiryDates?.insurance;
             const isExpiringSoon = insuranceExpiry
@@ -193,7 +246,6 @@ export function VehicleTable({ vehicles, loading, pagination, onPageChange, onDe
 
             return (
               <TableRow key={vehicle._id} className="hover:bg-gray-50">
-
                 {/* Action */}
                 <TableCell className="py-2">
                   <VehicleActions vehicle={vehicle} onDelete={onDelete} onRejectKyc={onRejectKyc} />
@@ -232,18 +284,36 @@ export function VehicleTable({ vehicles, loading, pagination, onPageChange, onDe
                   <OwnershipBadge type={vehicle.ownershipType} />
                 </TableCell>
 
-                {/* Driver (owner name since driver = owner in our model) */}
+                {/* Owner — links to supplier page for company-owned, driver page otherwise */}
                 <TableCell>
-                  {owner ? (
+                  {resolvedOwner ? (
                     <div className="flex flex-col">
-                      <Link href={`/drivers/${owner._id}`} className="text-sm font-medium hover:underline text-blue-600">
-                        {owner.name}
+                      <Link
+                        href={
+                          ownerKind === 'Supplier'
+                            ? `/suppliers/${resolvedOwner._id}`
+                            : `/drivers/${resolvedOwner._id}`
+                        }
+                        className="text-sm font-medium hover:underline text-blue-600"
+                      >
+                        {resolvedOwner.name ??
+                          (resolvedOwner as { displayName?: string }).displayName ??
+                          (resolvedOwner as { companyName?: string }).companyName ??
+                          '—'}
                       </Link>
-                      {owner.phone && <span className="text-xs text-gray-400">{owner.phone}</span>}
+                      {'phone' in resolvedOwner && resolvedOwner.phone && (
+                        <span className="text-xs text-gray-400">{resolvedOwner.phone}</span>
+                      )}
+                      {ownerKind === 'Supplier' && (
+                        <span className="text-xs text-purple-500">Company</span>
+                      )}
                     </div>
                   ) : driver ? (
                     <div className="flex flex-col">
-                      <Link href={`/drivers/${driver._id}`} className="text-sm font-medium hover:underline text-blue-600">
+                      <Link
+                        href={`/drivers/${driver._id}`}
+                        className="text-sm font-medium hover:underline text-blue-600"
+                      >
                         {driver.name}
                       </Link>
                     </div>
@@ -268,17 +338,16 @@ export function VehicleTable({ vehicles, loading, pagination, onPageChange, onDe
                 </TableCell>
 
                 {/* Insurance Expiry */}
-                <TableCell className={`text-sm ${isExpiringSoon ? 'text-red-500 font-medium' : 'text-gray-600'}`}>
-                  {insuranceExpiry
-                    ? format(new Date(insuranceExpiry), 'dd-MMM-yy')
-                    : '—'}
+                <TableCell
+                  className={`text-sm ${isExpiringSoon ? 'text-red-500 font-medium' : 'text-gray-600'}`}
+                >
+                  {insuranceExpiry ? format(new Date(insuranceExpiry), 'dd-MMM-yy') : '—'}
                 </TableCell>
 
                 {/* Total Trips */}
                 <TableCell className="text-sm text-gray-700 text-right">
                   {vehicle.stats?.completedTrips ?? 0}
                 </TableCell>
-
               </TableRow>
             );
           })}
@@ -288,14 +357,24 @@ export function VehicleTable({ vehicles, loading, pagination, onPageChange, onDe
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-3 border-t text-sm text-gray-600">
-          <span>Page {pagination.currentPage} of {pagination.totalPages}</span>
+          <span>
+            Page {pagination.currentPage} of {pagination.totalPages}
+          </span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={pagination.currentPage <= 1}
-              onClick={() => onPageChange?.(pagination.currentPage - 1)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pagination.currentPage <= 1}
+              onClick={() => onPageChange?.(pagination.currentPage - 1)}
+            >
               Previous
             </Button>
-            <Button variant="outline" size="sm" disabled={pagination.currentPage >= pagination.totalPages}
-              onClick={() => onPageChange?.(pagination.currentPage + 1)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pagination.currentPage >= pagination.totalPages}
+              onClick={() => onPageChange?.(pagination.currentPage + 1)}
+            >
               Next
             </Button>
           </div>

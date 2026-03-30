@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import Link from 'next/link';
 import { Package, MapPin, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,7 +41,7 @@ export function DriverTripHistory({ driverId }: DriverTripHistoryProps) {
       setTrips(response.data.data.trips);
       setPagination(response.data.data.pagination);
     } catch (error: unknown) {
-      console.error('Failed to fetch trip history:', error);
+      logger.error('Failed to fetch trip history:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to fetch trip history');
     } finally {

@@ -10,6 +10,9 @@ import { RouteMap } from '@/components/bookings/RouteMap';
 import { StatusTimeline } from '@/components/bookings/StatusTimeline';
 import { PaymentInfo } from '@/components/bookings/PaymentInfo';
 import { DocumentsSection } from '@/components/bookings/DocumentsSection';
+import { PricingDetails } from '@/components/bookings/PricingDetails';
+import { LRDetails } from '@/components/bookings/LRDetails';
+import { MilestoneTimestamps } from '@/components/bookings/MilestoneTimestamps';
 import EwayBillSection from '@/components/ewayBills/EwayBillSection';
 import { EditBookingModal } from '@/components/bookings/EditBookingModal';
 import { AssignDriverModal } from '@/components/bookings/AssignDriverModal';
@@ -18,19 +21,12 @@ import { AddNoteModal } from '@/components/bookings/AddNoteModal';
 import { CancelBookingModal } from '@/components/bookings/CancelBookingModal';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { bookingApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { formatDate } from '@/lib/date-utils';
 import { Booking } from '@/types';
-import {
-  Package,
-  Truck,
-  Calendar,
-  Weight,
-  FileText,
-  UserCheck,
-  Ban,
-  Edit,
-} from 'lucide-react';
+import { Package, Truck, Calendar, Weight, FileText, UserCheck, Ban, Edit } from 'lucide-react';
 import { toast } from 'sonner';
+import { ContactNumber } from '@/components/common/ContactNumber';
 
 export default function BookingDetailPage() {
   const params = useParams();
@@ -52,7 +48,7 @@ export default function BookingDetailPage() {
       const response = await bookingApi.getById(bookingId);
       setBooking(response.data.data);
     } catch (err: unknown) {
-      console.error('Failed to fetch booking details:', err);
+      logger.error('Failed to fetch booking details:', err);
       const error = err as { response?: { data?: { message?: string } } };
       setError(error.response?.data?.message || 'Failed to load booking details');
       toast.error('Failed to load booking details');
@@ -194,9 +190,7 @@ export default function BookingDetailPage() {
               <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
                 <p className="text-sm text-muted-foreground">Load Date/Time</p>
-                <p className="font-medium">
-                  {formatDate(booking.loadDateTime)}
-                </p>
+                <p className="font-medium">{formatDate(booking.loadDateTime)}</p>
               </div>
             </div>
           </div>
@@ -210,8 +204,8 @@ export default function BookingDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Driver & Vehicle Info (if assigned) */}
-      {booking.driver && booking.vehicle && (
+      {/* Driver, Supplier & Vehicle Info */}
+      {(booking.driver || booking.supplierEntity) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -220,22 +214,48 @@ export default function BookingDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-2">Driver Details</p>
-                <p className="text-lg font-semibold">{booking.driver.name}</p>
-                {booking.driver.phone && (
-                  <p className="text-sm text-muted-foreground">{booking.driver.phone}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-2">Vehicle Details</p>
-                <p className="text-lg font-semibold">{booking.vehicle.vehicleNumber}</p>
-                <p className="text-sm text-muted-foreground">{booking.vehicle.truckType}</p>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Driver */}
+              {booking.driver && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Driver
+                  </p>
+                  <p className="font-semibold">{booking.driver.name}</p>
+                  {booking.driver.phone ? (
+                    <ContactNumber phone={booking.driver.phone} />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No phone on record</p>
+                  )}
+                </div>
+              )}
+              {/* Supplier */}
+              {booking.supplierEntity && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Supplier
+                  </p>
+                  <p className="font-semibold">{booking.supplierEntity.displayName}</p>
+                  {booking.supplierEntity.phone ? (
+                    <ContactNumber phone={booking.supplierEntity.phone} />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No phone on record</p>
+                  )}
+                </div>
+              )}
+              {/* Vehicle */}
+              {booking.vehicle && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Vehicle
+                  </p>
+                  <p className="font-semibold">{booking.vehicle.vehicleNumber}</p>
+                  <p className="text-sm text-muted-foreground">{booking.vehicle.truckType}</p>
+                </div>
+              )}
             </div>
             {booking.assignedAt && (
-              <p className="text-sm text-muted-foreground mt-4">
+              <p className="text-sm text-muted-foreground mt-4 pt-4 border-t">
                 Assigned on {formatDate(booking.assignedAt)}
               </p>
             )}
@@ -244,19 +264,22 @@ export default function BookingDetailPage() {
       )}
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Customer Info and Status */}
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column */}
+        <div className="space-y-6">
           <CustomerInfo booking={booking} />
+          <PricingDetails booking={booking} />
+          <LRDetails booking={booking} />
           <RouteMap booking={booking} />
           <EwayBillSection bookingId={booking._id} />
-          <DocumentsSection booking={booking} />
         </div>
 
-        {/* Right Column - Timeline and Payment */}
+        {/* Right Column */}
         <div className="space-y-6">
-          <StatusTimeline booking={booking} />
+          <MilestoneTimestamps booking={booking} />
           <PaymentInfo booking={booking} />
+          <StatusTimeline booking={booking} />
+          <DocumentsSection booking={booking} />
         </div>
       </div>
 

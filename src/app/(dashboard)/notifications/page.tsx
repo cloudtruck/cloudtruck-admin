@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { notificationApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 import { CheckCheck, RefreshCw } from 'lucide-react';
 
@@ -56,7 +57,7 @@ export default function NotificationsPage() {
       setNotifications(response.data.data.notifications);
       setPagination(response.data.data.pagination);
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      logger.error('Failed to fetch notifications:', error);
       toast.error('Failed to fetch notifications');
     } finally {
       setLoading(false);
@@ -68,7 +69,7 @@ export default function NotificationsPage() {
       await notificationApi.markAsRead(id);
       fetchNotifications();
     } catch (error) {
-      console.error('Failed to mark as read:', error);
+      logger.error('Failed to mark as read:', error);
       toast.error('Failed to mark notification as read');
     }
   };
@@ -79,7 +80,7 @@ export default function NotificationsPage() {
       toast.success('All notifications marked as read');
       fetchNotifications();
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
+      logger.error('Failed to mark all as read:', error);
       toast.error('Failed to mark all as read');
     }
   };
@@ -108,7 +109,10 @@ export default function NotificationsPage() {
       />
 
       <div className="flex items-center justify-between">
-        <Select value={filter} onValueChange={(value) => setFilter(value as 'all' | 'unread' | 'read')}>
+        <Select
+          value={filter}
+          onValueChange={(value) => setFilter(value as 'all' | 'unread' | 'read')}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter" />
           </SelectTrigger>
@@ -149,7 +153,9 @@ export default function NotificationsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPagination({ ...pagination, currentPage: pagination.currentPage - 1 })}
+                  onClick={() =>
+                    setPagination({ ...pagination, currentPage: pagination.currentPage - 1 })
+                  }
                   disabled={pagination.currentPage === 1}
                 >
                   Previous
@@ -157,7 +163,9 @@ export default function NotificationsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPagination({ ...pagination, currentPage: pagination.currentPage + 1 })}
+                  onClick={() =>
+                    setPagination({ ...pagination, currentPage: pagination.currentPage + 1 })
+                  }
                   disabled={pagination.currentPage === pagination.totalPages}
                 >
                   Next
@@ -173,9 +181,7 @@ export default function NotificationsPage() {
           </div>
           <h3 className="text-lg font-semibold mb-2">No notifications</h3>
           <p className="text-sm text-muted-foreground">
-            {filter === 'unread'
-              ? "You're all caught up!"
-              : 'You have no notifications yet'}
+            {filter === 'unread' ? "You're all caught up!" : 'You have no notifications yet'}
           </p>
         </div>
       )}

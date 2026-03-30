@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { Plus, CalendarIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,18 +31,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { vehicleApi, driverApi } from '@/lib/api';
+import { vehicleApi, driverApi, supplierApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useMasterData } from '@/hooks/useMasterData';
 import { cn } from '@/lib/utils';
-import type { Driver } from '@/types';
+import type { Driver, Supplier } from '@/types';
 
 const addVehicleSchema = z.object({
   vehicleNumber: z.string().min(5, 'Vehicle number must be at least 5 characters'),
@@ -53,7 +50,8 @@ const addVehicleSchema = z.object({
   capacityValue: z.string().min(1, 'Capacity is required'),
   capacityUnit: z.enum(['kg', 'tons']),
   bodyType: z.string().min(1, 'Body type is required'),
-  owner: z.string().min(1, 'Owner is required'),
+  ownerKind: z.enum(['Driver', 'Supplier']),
+  ownerItem: z.string().min(1, 'Owner is required'),
   insuranceExpiry: z.date(),
 });
 
@@ -66,7 +64,8 @@ interface AddVehicleModalProps {
 export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
   const [open, setOpen] = useState(false);
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+
   // Fetch master data
   const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
   const { data: bodyTypes } = useMasterData('body-type');
@@ -83,21 +82,28 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
       capacityValue: '',
       capacityUnit: 'tons',
       bodyType: '',
-      owner: '',
+      ownerKind: 'Driver',
+      ownerItem: '',
     },
   });
 
+  const ownerKind = form.watch('ownerKind');
+
   useEffect(() => {
     if (open) {
-      const fetchDrivers = async () => {
+      const fetchData = async () => {
         try {
-          const response = await driverApi.getAll({ limit: 100 });
-          setDrivers(response.data.data.drivers);
+          const [driversRes, suppliersRes] = await Promise.all([
+            driverApi.getAll({ limit: 100 }),
+            supplierApi.getAll({ supplierType: 'company', limit: 100 }),
+          ]);
+          setDrivers(driversRes.data.data.drivers);
+          setSuppliers(suppliersRes.data.data.items ?? []);
         } catch (error) {
-          console.error('Failed to fetch drivers:', error);
+          logger.error('Failed to fetch owners:', error);
         }
       };
-      fetchDrivers();
+      fetchData();
     }
   }, [open]);
 
@@ -121,7 +127,8 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
           unit: data.capacityUnit,
         },
         bodyType: data.bodyType,
-        owner: data.owner,
+        ownerRef: { kind: data.ownerKind, item: data.ownerItem },
+        ...(data.ownerKind === 'Driver' ? { owner: data.ownerItem } : {}),
         expiryDates: {
           insurance: data.insuranceExpiry.toISOString(),
         },
@@ -134,7 +141,7 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
       setOpen(false);
       onSuccess();
     } catch (error: unknown) {
-      console.error('Failed to add vehicle:', error);
+      logger.error('Failed to add vehicle:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to add vehicle');
     }
@@ -151,9 +158,7 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add New Vehicle</DialogTitle>
-          <DialogDescription>
-            Enter the vehicle details to add it to the fleet
-          </DialogDescription>
+          <DialogDescription>Enter the vehicle details to add it to the fleet</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -179,22 +184,62 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
 
               <FormField
                 control={form.control}
-                name="owner"
+                name="ownerKind"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Owner (Driver)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <FormLabel>Owner Type</FormLabel>
+                    <Select
+                      onValueChange={(v) => {
+                        field.onChange(v);
+                        form.setValue('ownerItem', '');
+                      }}
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select owner" />
+                          <SelectValue placeholder="Select owner type" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {drivers.map((driver) => (
-                          <SelectItem key={driver._id} value={driver._id}>
-                            {driver.name} ({driver.phone})
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="Driver">Driver (Individual RC holder)</SelectItem>
+                        <SelectItem value="Supplier">Company (Supplier owns RC)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="ownerItem"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {ownerKind === 'Supplier' ? 'Supplier (RC Holder)' : 'Driver (RC Holder)'}
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={
+                              ownerKind === 'Supplier' ? 'Select supplier' : 'Select driver'
+                            }
+                          />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {ownerKind === 'Driver'
+                          ? drivers.map((d) => (
+                              <SelectItem key={d._id} value={d._id}>
+                                {d.name} ({d.phone})
+                              </SelectItem>
+                            ))
+                          : suppliers.map((s) => (
+                              <SelectItem key={s._id} value={s._id}>
+                                {s.companyName || s.displayName}
+                              </SelectItem>
+                            ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -210,15 +255,21 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Truck Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={truckTypesLoading}>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      disabled={truckTypesLoading}
+                    >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={truckTypesLoading ? "Loading..." : "Select truck type"} />
+                          <SelectValue
+                            placeholder={truckTypesLoading ? 'Loading...' : 'Select truck type'}
+                          />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {truckTypes
-                          .filter(type => type.isActive)
+                          .filter((type) => type.isActive)
                           .map((type) => (
                             <SelectItem key={type._id} value={type.key}>
                               {type.displayName}
@@ -245,7 +296,7 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
                       </FormControl>
                       <SelectContent>
                         {bodyTypes
-                          .filter(type => type.isActive)
+                          .filter((type) => type.isActive)
                           .map((type) => (
                             <SelectItem key={type._id} value={type.key}>
                               {type.displayName}
@@ -385,17 +436,13 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
-                          variant={"outline"}
+                          variant={'outline'}
                           className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
+                            'w-full pl-3 text-left font-normal',
+                            !field.value && 'text-muted-foreground'
                           )}
                         >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
+                          {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
@@ -405,9 +452,7 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={(date) =>
-                          date < new Date()
-                        }
+                        disabled={(date) => date < new Date()}
                         initialFocus
                       />
                     </PopoverContent>

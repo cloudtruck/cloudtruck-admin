@@ -8,9 +8,9 @@ describe('Organization Management APIs', () => {
   });
 
   describe('branchApi', () => {
-    it('getAll calls /branches', async () => {
+    it('list calls /branches', async () => {
       vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { success: true } } as any);
-      await branchApi.getAll({ isActive: true });
+      await branchApi.list({ isActive: true });
       expect(api.get).toHaveBeenCalledWith('/branches', { params: { isActive: true } });
     });
 
@@ -22,9 +22,9 @@ describe('Organization Management APIs', () => {
   });
 
   describe('accountApi', () => {
-    it('getAll calls /accounts', async () => {
+    it('list calls /accounts', async () => {
       vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { success: true } } as any);
-      await accountApi.getAll();
+      await accountApi.list();
       expect(api.get).toHaveBeenCalledWith('/accounts');
     });
   });

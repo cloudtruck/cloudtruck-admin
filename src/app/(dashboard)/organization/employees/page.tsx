@@ -20,15 +20,23 @@ import { useEmployeeStore } from '@/store/employeeStore';
 import { DEPARTMENTS } from '@/lib/constants';
 
 export default function EmployeesPage() {
-  const { employees, loading, refetch } = useEmployees();
+  const { employees, loading, refetch, updateEmployee } = useEmployees();
   const { filters, setFilters, clearFilters, pagination } = useEmployeeStore();
   const [searchInput, setSearchInput] = useState(filters.search || '');
 
+  const resetPage = () => {
+    useEmployeeStore.setState((state) => ({
+      pagination: { ...state.pagination, currentPage: 1 },
+    }));
+  };
+
   const handleSearch = () => {
+    resetPage();
     setFilters({ ...filters, search: searchInput });
   };
 
   const handleClearFilters = () => {
+    resetPage();
     clearFilters();
     setSearchInput('');
   };
@@ -78,9 +86,10 @@ export default function EmployeesPage() {
               <div className="flex gap-2">
                 <Select
                   value={filters.department || 'all'}
-                  onValueChange={(value) =>
-                    setFilters({ ...filters, department: value === 'all' ? undefined : value })
-                  }
+                  onValueChange={(value) => {
+                    resetPage();
+                    setFilters({ ...filters, department: value === 'all' ? undefined : value });
+                  }}
                 >
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Department" />
@@ -97,9 +106,10 @@ export default function EmployeesPage() {
 
                 <Select
                   value={filters.status || 'all'}
-                  onValueChange={(value) =>
-                    setFilters({ ...filters, status: value === 'all' ? undefined : value })
-                  }
+                  onValueChange={(value) => {
+                    resetPage();
+                    setFilters({ ...filters, status: value === 'all' ? undefined : value });
+                  }}
                 >
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Status" />
@@ -129,6 +139,7 @@ export default function EmployeesPage() {
         pagination={pagination}
         onPageChange={handlePageChange}
         onRefresh={refetch}
+        onDeactivate={(id) => updateEmployee(id, { status: 'inactive' })}
       />
     </div>
   );

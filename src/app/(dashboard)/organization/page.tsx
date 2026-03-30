@@ -1,20 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { AddBranchModal } from '@/components/organization/AddBranchModal';
 import { AddEmployeeModal } from '@/components/organization/AddEmployeeModal';
 import { AddAccountModal } from '@/components/organization/AddAccountModal';
+import { EditAccountModal } from '@/components/organization/EditAccountModal';
 import { EditEmployeeModal } from '@/components/organization/EditEmployeeModal';
 import { EmployeeDetailDrawer } from '@/components/organization/EmployeeDetailDrawer';
 import { AddLaneModal } from '@/components/organization/AddLaneModal';
 import { EditLaneModal } from '@/components/organization/EditLaneModal';
+import { EditAddressModal } from '@/components/organization/EditAddressModal';
+import { EditBranchModal } from '@/components/organization/EditBranchModal';
 import { useBranches } from '@/hooks/useBranches';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useAccounts } from '@/hooks/useAccounts';
+import { useAddress } from '@/hooks/useAddress';
 import { useMasterData } from '@/hooks/useMasterData';
+import { useOrganizationSettings } from '@/hooks/useOrganizationSettings';
+import { useDeleteRequests } from '@/hooks/useDeleteRequests';
 import { useEmployeeStore } from '@/store/employeeStore';
-import type { Staff, Branch, Account, MasterData } from '@/types';
+import type { Staff, Branch, Account, MasterData, OrgAddress, RoleTemplate } from '@/types';
 import {
   Table,
   TableBody,
@@ -33,6 +39,7 @@ import {
 import {
   Pencil,
   XCircle,
+  Trash2,
   Plus,
   Search,
   ArrowUpDown,
@@ -41,6 +48,8 @@ import {
   Settings2,
   X,
 } from 'lucide-react';
+import { DeleteRequestQueue } from '@/components/organization/DeleteRequestQueue';
+import { EditSettingModal } from '@/components/organization/EditSettingModal';
 
 // ─── Tab definition ───────────────────────────────────────────────────────────
 
@@ -91,13 +100,15 @@ function ComingSoon({ label }: { label: string }) {
 function AccountsTab({
   accounts,
   loading,
+  onEdit,
   onSetPrimary,
   onDelete,
 }: {
   accounts: Account[];
   loading: boolean;
+  onEdit: (account: Account) => void;
   onSetPrimary: (id: string) => Promise<boolean>;
-  onDelete: (id: string) => Promise<boolean>;
+  onDelete: (id: string) => void;
 }) {
   if (loading) {
     return (
@@ -153,7 +164,10 @@ function AccountsTab({
                 <TableCell className="py-2">
                   <div className="flex items-center gap-1">
                     <Tooltip label="Edit">
-                      <button className="text-blue-400 hover:text-blue-600 p-0.5">
+                      <button
+                        className="text-blue-400 hover:text-blue-600 p-0.5"
+                        onClick={() => onEdit(account)}
+                      >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                     </Tooltip>
@@ -188,18 +202,19 @@ function AccountsTab({
 
 // ─── Address Tab ─────────────────────────────────────────────────────────────
 
-interface OrgAddress {
-  _id: string;
-  name: string;
-  address: string;
-  accountNo?: string;
-  gstin?: string;
-  pan?: string;
-  series?: string;
-  isPrimary?: boolean;
-}
-
-function AddressTab({ addresses, loading }: { addresses: OrgAddress[]; loading?: boolean }) {
+function AddressTab({
+  addresses,
+  loading,
+  onEdit,
+  onDelete,
+  onSetPrimary,
+}: {
+  addresses: OrgAddress[];
+  loading?: boolean;
+  onEdit: (addr: OrgAddress) => void;
+  onDelete: (id: string) => void;
+  onSetPrimary: (id: string) => void;
+}) {
   if (loading) {
     return (
       <div className="bg-white rounded border p-8 text-center text-sm text-gray-400">
@@ -238,6 +253,7 @@ function AddressTab({ addresses, loading }: { addresses: OrgAddress[]; loading?:
               <TableRow key={addr._id} className="hover:bg-gray-50">
                 <TableCell className="py-2">
                   <button
+                    onClick={() => onSetPrimary(addr._id)}
                     className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
                     ${addr.isPrimary ? 'border-blue-500 bg-blue-500' : 'border-gray-300 hover:border-blue-400'}`}
                   >
@@ -247,12 +263,18 @@ function AddressTab({ addresses, loading }: { addresses: OrgAddress[]; loading?:
                 <TableCell className="py-2">
                   <div className="flex items-center gap-1">
                     <Tooltip label="Edit">
-                      <button className="text-blue-400 hover:text-blue-600 p-0.5">
+                      <button
+                        className="text-blue-400 hover:text-blue-600 p-0.5"
+                        onClick={() => onEdit(addr)}
+                      >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                     </Tooltip>
                     <Tooltip label="Delete">
-                      <button className="text-red-400 hover:text-red-600 p-0.5">
+                      <button
+                        className="text-red-400 hover:text-red-600 p-0.5"
+                        onClick={() => onDelete(addr._id)}
+                      >
                         <XCircle className="h-3.5 w-3.5" />
                       </button>
                     </Tooltip>
@@ -277,16 +299,40 @@ function AddressTab({ addresses, loading }: { addresses: OrgAddress[]; loading?:
 
 // ─── Add Address Modal ────────────────────────────────────────────────────────
 
-function AddAddressModal({ onClose }: { onClose: () => void }) {
-  const [form, setForm] = useState({
+function AddAddressModal({
+  onClose,
+  onSubmit,
+}: {
+  onClose: () => void;
+  onSubmit: (data: Omit<OrgAddress, '_id' | 'isPrimary' | 'isActive'>) => Promise<boolean>;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<Record<string, string>>({
     name: '',
     address: '',
-    accountNo: '',
+    city: '',
+    state: '',
+    pincode: '',
     gstin: '',
     pan: '',
-    series: '',
   });
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.name || !form.address || !form.city || !form.state || !form.pincode) return;
+    setSaving(true);
+    const ok = await onSubmit({
+      name: form.name,
+      address: form.address,
+      city: form.city,
+      state: form.state,
+      pincode: form.pincode,
+      gstin: form.gstin || undefined,
+      pan: form.pan || undefined,
+    });
+    setSaving(false);
+    if (ok) onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -300,30 +346,38 @@ function AddAddressModal({ onClose }: { onClose: () => void }) {
         </div>
         <div className="px-6 py-4 grid grid-cols-2 gap-4">
           {[
-            { label: 'Name', key: 'name', placeholder: 'Branch / Company name' },
+            { label: 'Name *', key: 'name', placeholder: 'Branch / Company name' },
             { label: 'GSTIN', key: 'gstin', placeholder: 'GST number' },
-            { label: 'Address', key: 'address', placeholder: 'Full address', full: true },
+            { label: 'Address *', key: 'address', placeholder: 'Full address', full: true },
+            { label: 'City *', key: 'city', placeholder: 'City' },
+            { label: 'State *', key: 'state', placeholder: 'State' },
+            { label: 'Pincode *', key: 'pincode', placeholder: '6-digit pincode' },
             { label: 'PAN', key: 'pan', placeholder: 'PAN number' },
-            { label: 'Account No', key: 'accountNo', placeholder: 'Bank account number' },
-            { label: 'Series', key: 'series', placeholder: 'Booking series prefix' },
           ].map(({ label, key, placeholder, full }) => (
             <div key={key} className={`flex flex-col gap-1 ${full ? 'col-span-2' : ''}`}>
               <label className="text-xs font-medium text-gray-600">{label}</label>
               <input
                 className="border rounded px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400"
                 placeholder={placeholder}
-                value={(form as any)[key]}
+                value={form[key]}
                 onChange={(e) => set(key, e.target.value)}
               />
             </div>
           ))}
         </div>
         <div className="px-6 py-3 border-t flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={onClose}>
+          <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={onClose}>
-            Save
+          <Button
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={handleSave}
+            disabled={
+              saving || !form.name || !form.address || !form.city || !form.state || !form.pincode
+            }
+          >
+            {saving ? 'Saving…' : 'Save'}
           </Button>
         </div>
       </div>
@@ -548,6 +602,9 @@ function SettingRow({
   );
 }
 
+const DOC_FOR_OPTIONS = ['Truck', 'Driver', 'Supplier', 'Trip File'] as const;
+const KYC_FOR_OPTIONS = ['Truck', 'Driver', 'Supplier'] as const;
+
 function MasterTab({
   materialTypes,
   truckTypes,
@@ -557,6 +614,13 @@ function MasterTab({
   truckTypes: MasterData[];
   chargeTypes: MasterData[];
 }) {
+  const { settings, updateSettings, updateBookingConfig } = useOrganizationSettings();
+
+  // Prevent re-initialization on every settings save (only init once when _id first appears)
+  const initialized = useRef(false);
+
+  // ── Local state ───────────────────────────────────────────────────────────
+  // noPodOwn is inverted: checked = podMandatory false (no POD required for own trucks)
   const [noPodOwn, setNoPodOwn] = useState(false);
   const [noPodAttached, setNoPodAttached] = useState(false);
   const [noPodMarket, setNoPodMarket] = useState(false);
@@ -569,6 +633,8 @@ function MasterTab({
   const [bmAccess, setBmAccess] = useState<'none' | 'read' | 'full'>('full');
   const [paymentMamul, setPaymentMamul] = useState<'none' | 'custom' | 'slab'>('none');
   const [docsEnable, setDocsEnable] = useState(false);
+  const [docsMandatoryFor, setDocsMandatoryFor] = useState<string[]>([]);
+  const [advancePercentage, setAdvancePercentage] = useState<string>('');
   const [processAdvance, setProcessAdvance] = useState(false);
   const [tripConfirm, setTripConfirm] = useState(false);
   const [supplierAdvance, setSupplierAdvance] = useState<'price' | 'percent'>('price');
@@ -576,43 +642,74 @@ function MasterTab({
   const [deleteTrip, setDeleteTrip] = useState<string[]>([]);
   const [deleteLr, setDeleteLr] = useState<string[]>([]);
   const [kycDocsEnable, setKycDocsEnable] = useState(false);
+  const [kycDocsMandatoryFor, setKycDocsMandatoryFor] = useState<string[]>([]);
 
-  const chk = (checked: boolean, set: (v: boolean) => void) => (
+  // Edit modal open state
+  const [editSeriesOpen, setEditSeriesOpen] = useState(false);
+  const [editPartnerOpen, setEditPartnerOpen] = useState(false);
+  const [editPointChargeOpen, setEditPointChargeOpen] = useState(false);
+
+  // ── Initialize all state from fetched settings (once) ────────────────────
+  useEffect(() => {
+    if (!settings?._id || initialized.current) return;
+    initialized.current = true;
+
+    setNoPodOwn(settings.podMandatory === false);
+    setNoPodAttached(settings.noPodAttached ?? false);
+    setNoPodMarket(settings.noPodMarket ?? false);
+    setServiceCharges(settings.serviceChargesEnabled ?? false);
+    setLrNo(settings.lrMandatory?.lrNo ?? true);
+    setLrImage(settings.lrMandatory?.lrImage ?? false);
+    setEwayBill(settings.lrMandatory?.ewayBill ?? false);
+    setExim(settings.eximEnabled ?? false);
+    setBudgetLimit(settings.customerBudgetLimitEnabled ?? false);
+    setBmAccess(settings.bmAccess ?? 'full');
+    setPaymentMamul(settings.paymentMamul ?? 'none');
+    setDocsEnable(settings.documentsMandatory ?? false);
+    setDocsMandatoryFor(settings.documentsMandatoryFor ?? []);
+    setAdvancePercentage(String(settings.advancePaymentPercentage ?? ''));
+    setProcessAdvance(settings.processSupplierAdvance ?? false);
+    setTripConfirm(settings.tripConfirmationEnabled ?? false);
+    setSupplierAdvance(settings.supplierAdvanceEditMode ?? 'price');
+    setDeleteTripTime(settings.deleteTripTimeRoles ?? []);
+    setDeleteTrip(settings.deleteTripRoles ?? []);
+    setDeleteLr(settings.deleteLrRoles ?? []);
+    setKycDocsEnable(settings.kycDocsMandatoryEnabled ?? false);
+    setKycDocsMandatoryFor(settings.kycDocsMandatoryFor ?? []);
+  }, [settings?._id]);
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const chk = (checked: boolean, onChange: (v: boolean) => void) => (
     <input
       type="checkbox"
       checked={checked}
-      onChange={(e) => set(e.target.checked)}
+      onChange={(e) => onChange(e.target.checked)}
       className="h-4 w-4 rounded border-gray-300 text-blue-600 cursor-pointer"
     />
   );
 
-  const radio = <T extends string>(val: T, current: T, set: (v: T) => void, label: string) => (
+  const radio = <T extends string>(val: T, current: T, onChange: (v: T) => void, label: string) => (
     <label className="flex items-center gap-1.5 cursor-pointer text-sm text-gray-700">
       <input
         type="radio"
         checked={current === val}
-        onChange={() => set(val)}
+        onChange={() => onChange(val)}
         className="h-4 w-4 text-blue-600 cursor-pointer"
       />
       {label}
     </label>
   );
 
-  const link = (label: string) => (
-    <span key={label} className="text-blue-500 text-sm cursor-pointer hover:underline">
-      {label}
-    </span>
-  );
-  const linkRow = (labels: string[]) => (
-    <div className="flex items-center gap-1 text-sm text-gray-400">
-      {labels.map((l, i) => (
-        <span key={l} className="flex items-center gap-1">
-          {link(l)}
-          {i < labels.length - 1 && <span>/</span>}
-        </span>
-      ))}
-    </div>
-  );
+  const toggleArrayItem = (
+    opt: string,
+    current: string[],
+    setter: (v: string[]) => void,
+    key: 'documentsMandatoryFor' | 'kycDocsMandatoryFor'
+  ) => {
+    const next = current.includes(opt) ? current.filter((x) => x !== opt) : [...current, opt];
+    setter(next);
+    updateSettings({ [key]: next });
+  };
 
   return (
     <div className="bg-white rounded border px-6 py-2">
@@ -642,97 +739,256 @@ function MasterTab({
 
       <SettingRow label="No POD Applies to">
         <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(noPodOwn, setNoPodOwn)} Own
+          {chk(noPodOwn, (v) => {
+            setNoPodOwn(v);
+            // noPodOwn checked = POD not mandatory for own trucks
+            updateSettings({ podMandatory: !v });
+          })}{' '}
+          Own
         </label>
         <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(noPodAttached, setNoPodAttached)} Attached
+          {chk(noPodAttached, (v) => {
+            setNoPodAttached(v);
+            updateSettings({ noPodAttached: v });
+          })}{' '}
+          Attached
         </label>
         <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(noPodMarket, setNoPodMarket)} Market
+          {chk(noPodMarket, (v) => {
+            setNoPodMarket(v);
+            updateSettings({ noPodMarket: v });
+          })}{' '}
+          Market
         </label>
       </SettingRow>
 
       <SettingRow label="Service Charges">
         <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(serviceCharges, setServiceCharges)} Enable
+          {chk(serviceCharges, (v) => {
+            setServiceCharges(v);
+            updateSettings({ serviceChargesEnabled: v });
+          })}{' '}
+          Enable
         </label>
       </SettingRow>
 
       <SettingRow label="Series Prefix" sub="Max upto 4 characters">
-        <span className="text-sm font-semibold text-gray-800">SANTOSH MOVERS: SM</span>
-        <button className="text-blue-400 hover:text-blue-600">
+        <span className="text-sm font-semibold text-gray-800">
+          {settings?.companyName
+            ? `${settings.companyName}: ${settings.bookingSeriesPrefix || ''}`
+            : '—'}
+        </span>
+        <button
+          onClick={() => setEditSeriesOpen(true)}
+          className="text-blue-400 hover:text-blue-600"
+        >
           <Pencil className="h-3.5 w-3.5" />
         </button>
       </SettingRow>
 
       <SettingRow label="LR" sub="Mandatory before source out - S-Out">
         <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(lrNo, setLrNo)} LR No
+          {chk(lrNo, (v) => {
+            setLrNo(v);
+            updateSettings({ lrMandatory: { lrNo: v, lrImage, ewayBill } });
+          })}{' '}
+          LR No
         </label>
         <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(lrImage, setLrImage)} LR Image
+          {chk(lrImage, (v) => {
+            setLrImage(v);
+            updateSettings({ lrMandatory: { lrNo, lrImage: v, ewayBill } });
+          })}{' '}
+          LR Image
         </label>
         <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(ewayBill, setEwayBill)} Eway Bill
+          {chk(ewayBill, (v) => {
+            setEwayBill(v);
+            updateSettings({ lrMandatory: { lrNo, lrImage, ewayBill: v } });
+          })}{' '}
+          Eway Bill
         </label>
       </SettingRow>
 
       <SettingRow label="Partner Code">
-        <button className="text-blue-400 hover:text-blue-600">
+        <span className="text-sm text-gray-700">{settings?.partnerCode || '—'}</span>
+        <button
+          onClick={() => setEditPartnerOpen(true)}
+          className="text-blue-400 hover:text-blue-600"
+        >
           <Pencil className="h-3.5 w-3.5" />
         </button>
       </SettingRow>
 
       <SettingRow label="EXIM" sub="Export / Import in Indent Creation">
         <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(exim, setExim)} Allow Export / Import
+          {chk(exim, (v) => {
+            setExim(v);
+            updateSettings({ eximEnabled: v });
+          })}{' '}
+          Allow Export / Import
         </label>
       </SettingRow>
 
       <SettingRow label="Customer Budget Limit">
         <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(budgetLimit, setBudgetLimit)} Enable
+          {chk(budgetLimit, (v) => {
+            setBudgetLimit(v);
+            updateSettings({ customerBudgetLimitEnabled: v });
+          })}{' '}
+          Enable
         </label>
       </SettingRow>
 
       <SettingRow label="Addition Point Charge" sub="Charges for multipoint trips">
-        <button className="text-blue-400 hover:text-blue-600">
+        <span className="text-sm text-gray-700">
+          {settings?.additionPointCharge ? `₹${settings.additionPointCharge}` : '—'}
+        </span>
+        <button
+          onClick={() => setEditPointChargeOpen(true)}
+          className="text-blue-400 hover:text-blue-600"
+        >
           <Pencil className="h-3.5 w-3.5" />
         </button>
       </SettingRow>
 
       <SettingRow label="BM" sub="Accounts tab restriction for role BM">
-        {radio('none', bmAccess, setBmAccess, 'No Access')}
-        {radio('read', bmAccess, setBmAccess, 'Read Only')}
-        {radio('full', bmAccess, setBmAccess, 'Full Access')}
+        {radio(
+          'none',
+          bmAccess,
+          (v) => {
+            setBmAccess(v);
+            updateSettings({ bmAccess: v });
+          },
+          'No Access'
+        )}
+        {radio(
+          'read',
+          bmAccess,
+          (v) => {
+            setBmAccess(v);
+            updateSettings({ bmAccess: v });
+          },
+          'Read Only'
+        )}
+        {radio(
+          'full',
+          bmAccess,
+          (v) => {
+            setBmAccess(v);
+            updateSettings({ bmAccess: v });
+          },
+          'Full Access'
+        )}
       </SettingRow>
 
       <SettingRow label="PAYMENT Mamul" sub="In supplier advance deduction">
-        {radio('none', paymentMamul, setPaymentMamul, 'No Deduction')}
-        {radio('custom', paymentMamul, setPaymentMamul, 'Custom charges')}
-        {radio('slab', paymentMamul, setPaymentMamul, 'Slab Based')}
+        {radio(
+          'none',
+          paymentMamul,
+          (v) => {
+            setPaymentMamul(v);
+            updateSettings({ paymentMamul: v });
+          },
+          'No Deduction'
+        )}
+        {radio(
+          'custom',
+          paymentMamul,
+          (v) => {
+            setPaymentMamul(v);
+            updateSettings({ paymentMamul: v });
+          },
+          'Custom charges'
+        )}
+        {radio(
+          'slab',
+          paymentMamul,
+          (v) => {
+            setPaymentMamul(v);
+            updateSettings({ paymentMamul: v });
+          },
+          'Slab Based'
+        )}
       </SettingRow>
 
       <SettingRow label="Documents" sub="Mandatory before source out - S-Out">
         <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(docsEnable, setDocsEnable)} Enable
+          {chk(docsEnable, (v) => {
+            setDocsEnable(v);
+            updateSettings({ documentsMandatory: v });
+          })}{' '}
+          Enable
         </label>
-        {linkRow(['Truck', 'Driver', 'Supplier', 'Trip File'])}
+        <div className="flex flex-wrap gap-2">
+          {DOC_FOR_OPTIONS.map((opt) => (
+            <label
+              key={opt}
+              className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                checked={docsMandatoryFor.includes(opt)}
+                onChange={() =>
+                  toggleArrayItem(
+                    opt,
+                    docsMandatoryFor,
+                    setDocsMandatoryFor,
+                    'documentsMandatoryFor'
+                  )
+                }
+                className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
+              />
+              {opt}
+            </label>
+          ))}
+        </div>
       </SettingRow>
 
       <SettingRow label="Delete Trip Time" sub="S-in,S-out,D-in,D-out">
-        <RoleChips selected={deleteTripTime} onChange={setDeleteTripTime} />
+        <RoleChips
+          selected={deleteTripTime}
+          onChange={(v) => {
+            setDeleteTripTime(v);
+            updateSettings({ deleteTripTimeRoles: v });
+          }}
+        />
       </SettingRow>
 
       <SettingRow label="Process Supplier Advance" sub="after S-out">
         <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(processAdvance, setProcessAdvance)} Enable
+          {chk(processAdvance, (v) => {
+            setProcessAdvance(v);
+            updateSettings({ processSupplierAdvance: v });
+          })}{' '}
+          Enable
         </label>
+        <div className="flex items-center gap-1.5">
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={advancePercentage}
+            disabled={!processAdvance}
+            onChange={(e) => setAdvancePercentage(e.target.value)}
+            onBlur={() => {
+              const val = parseFloat(advancePercentage);
+              if (!isNaN(val)) updateSettings({ advancePaymentPercentage: val });
+            }}
+            className="w-16 border border-gray-300 rounded px-2 py-1 text-sm outline-none focus:border-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
+            placeholder="0"
+          />
+          <span className="text-sm text-gray-500">%</span>
+        </div>
       </SettingRow>
 
       <SettingRow label="Trip confirmation based on supplier type" sub="Truck Owner">
         <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(tripConfirm, setTripConfirm)} Enable
+          {chk(tripConfirm, (v) => {
+            setTripConfirm(v);
+            updateSettings({ tripConfirmationEnabled: v });
+          })}{' '}
+          Enable
         </label>
       </SettingRow>
 
@@ -750,33 +1006,135 @@ function MasterTab({
       </SettingRow>
 
       <SettingRow label="Supplier Advance Edit" sub="based on percentage or supplier price">
-        {radio('price', supplierAdvance, setSupplierAdvance, 'Supplier Price Based')}
+        {radio(
+          'price',
+          supplierAdvance,
+          (v) => {
+            setSupplierAdvance(v);
+            updateSettings({ supplierAdvanceEditMode: v });
+          },
+          'Supplier Price Based'
+        )}
         {radio(
           'percent',
           supplierAdvance,
-          setSupplierAdvance,
+          (v) => {
+            setSupplierAdvance(v);
+            updateSettings({ supplierAdvanceEditMode: v });
+          },
           "Supplier's configured advance percentage based"
         )}
       </SettingRow>
 
       <SettingRow label="Delete Trip" sub="Trip delete access before S-out">
-        <RoleChips selected={deleteTrip} onChange={setDeleteTrip} />
+        <RoleChips
+          selected={deleteTrip}
+          onChange={(v) => {
+            setDeleteTrip(v);
+            updateSettings({ deleteTripRoles: v });
+          }}
+        />
       </SettingRow>
 
       <SettingRow label="Delete LR" sub="LR delete access">
-        <RoleChips selected={deleteLr} onChange={setDeleteLr} />
+        <RoleChips
+          selected={deleteLr}
+          onChange={(v) => {
+            setDeleteLr(v);
+            updateSettings({ deleteLrRoles: v });
+          }}
+        />
       </SettingRow>
 
       <SettingRow label="Documents mandatory for KYC Approval">
         <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(kycDocsEnable, setKycDocsEnable)} Enable
+          {chk(kycDocsEnable, (v) => {
+            setKycDocsEnable(v);
+            updateSettings({ kycDocsMandatoryEnabled: v });
+          })}{' '}
+          Enable
         </label>
-        {linkRow(['Truck', 'Driver', 'Supplier'])}
+        <div className="flex flex-wrap gap-2">
+          {KYC_FOR_OPTIONS.map((opt) => (
+            <label
+              key={opt}
+              className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                checked={kycDocsMandatoryFor.includes(opt)}
+                onChange={() =>
+                  toggleArrayItem(
+                    opt,
+                    kycDocsMandatoryFor,
+                    setKycDocsMandatoryFor,
+                    'kycDocsMandatoryFor'
+                  )
+                }
+                className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
+              />
+              {opt}
+            </label>
+          ))}
+        </div>
       </SettingRow>
 
       <SettingRow label="Mandatory field for forms">
-        {linkRow(['Truck', 'Supplier', 'Customer'])}
+        <div className="flex items-center gap-1 text-sm text-gray-400">
+          {['Truck', 'Supplier', 'Customer'].map((l, i, arr) => (
+            <span key={l} className="flex items-center gap-1">
+              <span className="text-blue-400 opacity-50 cursor-not-allowed">{l}</span>
+              {i < arr.length - 1 && <span>/</span>}
+            </span>
+          ))}
+          <span className="text-xs ml-1">(coming soon)</span>
+        </div>
       </SettingRow>
+
+      {/* Delete Request Approvals Queue */}
+      <div className="py-4 border-t mt-4">
+        <h3 className="text-sm font-semibold text-gray-800 mb-3">Pending Delete Approvals</h3>
+        <DeleteRequestQueue />
+      </div>
+
+      {/* ── Edit Modals ──────────────────────────────────────────────────── */}
+      <EditSettingModal
+        open={editSeriesOpen}
+        onClose={() => setEditSeriesOpen(false)}
+        title="Edit Series Prefix"
+        label="Prefix (max 4 characters)"
+        value={settings?.bookingSeriesPrefix ?? ''}
+        inputType="text"
+        maxLength={4}
+        placeholder="e.g. BK"
+        hint="Uppercase letters only, max 4 characters"
+        transform={(v) => v.toUpperCase().replace(/[^A-Z0-9]/g, '')}
+        onSave={(v) => updateBookingConfig({ bookingSeriesPrefix: v })}
+      />
+
+      <EditSettingModal
+        open={editPartnerOpen}
+        onClose={() => setEditPartnerOpen(false)}
+        title="Edit Partner Code"
+        label="Partner Code"
+        value={settings?.partnerCode ?? ''}
+        inputType="text"
+        placeholder="Enter partner code"
+        onSave={(v) => updateSettings({ partnerCode: v.trim() })}
+      />
+
+      <EditSettingModal
+        open={editPointChargeOpen}
+        onClose={() => setEditPointChargeOpen(false)}
+        title="Edit Addition Point Charge"
+        label="Charge amount (₹)"
+        value={settings?.additionPointCharge ?? 0}
+        inputType="number"
+        min={0}
+        placeholder="0"
+        hint="Flat charge added for each additional trip point"
+        onSave={(v) => updateSettings({ additionPointCharge: parseFloat(v) })}
+      />
     </div>
   );
 }
@@ -797,9 +1155,10 @@ function BranchManagerModal({
   const [selected, setSelected] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const currentManagers = branch.employees
-    .map((e) => (typeof e === 'object' ? e : null))
-    .filter(Boolean) as Staff[];
+  const currentBM =
+    branch.branchManager && typeof branch.branchManager === 'object'
+      ? (branch.branchManager as Staff)
+      : null;
 
   const handleAssign = async () => {
     if (!selected) return;
@@ -815,7 +1174,7 @@ function BranchManagerModal({
       <div className="relative bg-white rounded-lg shadow-xl w-[480px] max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h2 className="text-base font-semibold text-gray-900">Branch Manager</h2>
+          <h2 className="text-base font-semibold text-gray-900">Assign Branch Manager</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="h-4 w-4" />
           </button>
@@ -850,27 +1209,25 @@ function BranchManagerModal({
             )}
           </div>
 
-          {/* Current managers table */}
+          {/* Current branch manager */}
           <div className="border rounded overflow-hidden">
             <div className="bg-gray-50 px-4 py-2 border-b">
-              <span className="text-xs font-semibold text-gray-600">Branch Manager</span>
+              <span className="text-xs font-semibold text-gray-600">Current Branch Manager</span>
             </div>
-            {currentManagers.length === 0 ? (
+            {!currentBM ? (
               <div className="flex flex-col items-center gap-2 py-10 text-gray-400">
                 <Inbox className="h-8 w-8 opacity-30" />
-                <span className="text-sm">No data</span>
+                <span className="text-sm">No branch manager assigned</span>
               </div>
             ) : (
-              <div className="divide-y">
-                {currentManagers.map((m) => (
-                  <div key={m._id} className="flex items-center justify-between px-4 py-2.5">
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{m.name}</p>
-                      <p className="text-xs text-gray-500">{m.email}</p>
-                    </div>
-                    <span className="text-xs text-green-600 font-medium capitalize">{m.role}</span>
-                  </div>
-                ))}
+              <div className="px-4 py-2.5 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{currentBM.name}</p>
+                  <p className="text-xs text-gray-500">{currentBM.email}</p>
+                </div>
+                <span className="text-xs text-green-600 font-medium capitalize">
+                  {currentBM.role}
+                </span>
               </div>
             )}
           </div>
@@ -887,11 +1244,17 @@ function BranchesTab({
   loading,
   employees,
   onAssign,
+  onEdit,
+  onDelete,
+  onSetTraffic,
 }: {
   branches: Branch[];
   loading: boolean;
   employees: Staff[];
   onAssign: (branchId: string, staffId: string) => Promise<boolean>;
+  onEdit: (branch: Branch) => void;
+  onDelete: (id: string) => void;
+  onSetTraffic: (branch: Branch) => void;
 }) {
   const [bmModal, setBmModal] = useState<Branch | null>(null);
 
@@ -939,17 +1302,27 @@ function BranchesTab({
                 return (
                   <TableRow key={branch._id} className="hover:bg-gray-50">
                     <TableCell className="py-2">
-                      <Tooltip label="Edit">
-                        <button className="text-blue-400 hover:text-blue-600 p-0.5">
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                      </Tooltip>
+                      <div className="flex items-center gap-1">
+                        <Tooltip label="Edit">
+                          <button
+                            className="text-blue-400 hover:text-blue-600 p-0.5"
+                            onClick={() => onEdit(branch)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        </Tooltip>
+                        <Tooltip label="Delete">
+                          <button
+                            className="text-red-400 hover:text-red-600 p-0.5"
+                            onClick={() => onDelete(branch._id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </Tooltip>
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <span className="flex items-center gap-1.5 text-sm font-medium text-gray-800">
-                        {branch.branchName}
-                        <Pencil className="h-3 w-3 text-blue-400" />
-                      </span>
+                      <span className="text-sm font-medium text-gray-800">{branch.branchName}</span>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
@@ -981,9 +1354,6 @@ function BranchesTab({
                                 +{branch.assignedCities.length - 3}
                               </span>
                             )}
-                            <button className="text-blue-400 hover:text-blue-600 p-0.5">
-                              <Pencil className="h-3 w-3" />
-                            </button>
                           </>
                         ) : (
                           <span className="text-sm text-gray-400">—</span>
@@ -992,7 +1362,17 @@ function BranchesTab({
                     </TableCell>
                     <TableCell>
                       <span className="flex items-center gap-1 text-sm text-gray-500">
-                        — <Pencil className="h-3 w-3 text-blue-400" />
+                        {(() => {
+                          const tc = (branch as Branch & { trafficCoordinator?: Staff | string })
+                            .trafficCoordinator;
+                          return typeof tc === 'object' && tc ? (tc as Staff).name : '—';
+                        })()}
+                        <button
+                          className="text-blue-400 hover:text-blue-600 p-0.5"
+                          onClick={() => onSetTraffic(branch)}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
                       </span>
                     </TableCell>
                   </TableRow>
@@ -1145,7 +1525,7 @@ function EmployeesTab({
                   <TableCell>
                     <span className="flex items-center gap-1 text-sm text-gray-700 capitalize">
                       {typeof emp.roleTemplate === 'object' && emp.roleTemplate !== null
-                        ? (emp.roleTemplate as any).templateName
+                        ? (emp.roleTemplate as RoleTemplate).templateName
                         : emp.role}
                       <button className="text-blue-400 hover:text-blue-600">
                         <Pencil className="h-3 w-3" />
@@ -1235,19 +1615,139 @@ function EmployeesTab({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+// ─── Traffic Coordinator Modal ────────────────────────────────────────────────
+
+function TrafficCoordinatorModal({
+  branch,
+  employees,
+  onClose,
+  onAssign,
+  refetch,
+}: {
+  branch: Branch;
+  employees: Staff[];
+  onClose: () => void;
+  onAssign: (branchId: string, staffId: string) => Promise<boolean>;
+  refetch: () => void;
+}) {
+  const [selected, setSelected] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const tc = (branch as Branch & { trafficCoordinator?: Staff | string }).trafficCoordinator;
+  const currentTC = typeof tc === 'object' && tc ? (tc as Staff) : null;
+
+  const handleAssign = async () => {
+    if (!selected) return;
+    setSaving(true);
+    const ok = await onAssign(branch._id, selected);
+    setSaving(false);
+    if (ok) {
+      refetch();
+      onClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-lg shadow-xl w-[480px] max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <h2 className="text-base font-semibold text-gray-900">Assign Traffic Coordinator</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="px-6 py-4 flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Select Employee</label>
+            <Select value={selected} onValueChange={setSelected}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Select Traffic Coordinator" />
+              </SelectTrigger>
+              <SelectContent>
+                {employees.map((emp) => (
+                  <SelectItem key={emp._id} value={emp._id}>
+                    {emp.name} {emp.role ? `(${emp.role})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selected && (
+              <Button
+                size="sm"
+                className="self-end h-8 mt-1"
+                onClick={handleAssign}
+                disabled={saving}
+              >
+                {saving ? 'Assigning…' : 'Assign'}
+              </Button>
+            )}
+          </div>
+          <div className="border rounded overflow-hidden">
+            <div className="bg-gray-50 px-4 py-2 border-b">
+              <span className="text-xs font-semibold text-gray-600">
+                Current Traffic Coordinator
+              </span>
+            </div>
+            {!currentTC ? (
+              <div className="flex flex-col items-center gap-2 py-8 text-gray-400">
+                <Inbox className="h-8 w-8 opacity-30" />
+                <span className="text-sm">No traffic coordinator assigned</span>
+              </div>
+            ) : (
+              <div className="px-4 py-2.5 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{currentTC.name}</p>
+                  <p className="text-xs text-gray-500">{currentTC.email}</p>
+                </div>
+                <span className="text-xs text-green-600 font-medium capitalize">
+                  {currentTC.role}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function OrganisationPage() {
   const [activeTab, setActiveTab] = useState<Tab>('branches');
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [editingLane, setEditingLane] = useState<MasterData | null>(null);
+  const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [editingAddress, setEditingAddress] = useState<OrgAddress | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: string;
+    id: string;
+    model: string;
+    name: string;
+  } | null>(null);
+  const [trafficBranch, setTrafficBranch] = useState<Branch | null>(null);
 
   const {
     branches,
     loading: branchesLoading,
     refetch: refetchBranches,
     assignEmployee,
+    updateBranch,
+    deleteBranch,
+    setBranchManager,
+    setTrafficCoordinator,
   } = useBranches();
   const { employees, loading: employeesLoading, refetch: refetchEmployees } = useEmployees();
-  const { accounts, loading: accountsLoading, setPrimaryAccount, deleteAccount } = useAccounts();
+  const { accounts, loading: accountsLoading, setPrimaryAccount, updateAccount } = useAccounts();
+  const {
+    addresses,
+    loading: addressesLoading,
+    createAddress,
+    updateAddress,
+    deleteAddress,
+    setPrimaryAddress,
+  } = useAddress();
+  const { createDeleteRequest } = useDeleteRequests({ autoFetch: false });
   const { data: materialTypes } = useMasterData('material-type');
   const { data: truckTypes } = useMasterData('truck-type');
   const { data: chargeTypes } = useMasterData('charge-type');
@@ -1262,6 +1762,10 @@ export default function OrganisationPage() {
 
   const branchCount = branches.length;
   const employeeCount = pagination.totalItems || employees.length;
+
+  const handleDeleteRequest = (type: string, id: string, model: string, name: string) => {
+    setDeleteTarget({ type, id, model, name });
+  };
 
   const headerButton = () => {
     if (activeTab === 'branches') return <AddBranchModal />;
@@ -1332,7 +1836,13 @@ export default function OrganisationPage() {
           branches={branches}
           loading={branchesLoading}
           employees={employees}
-          onAssign={assignEmployee}
+          onAssign={setBranchManager}
+          onEdit={setEditingBranch}
+          onDelete={(id) => {
+            const branch = branches.find((b) => b._id === id);
+            handleDeleteRequest('branch', id, 'Branch', branch?.branchName || id);
+          }}
+          onSetTraffic={setTrafficBranch}
         />
       )}
       {activeTab === 'employees' && (
@@ -1347,14 +1857,34 @@ export default function OrganisationPage() {
         <AccountsTab
           accounts={accounts}
           loading={accountsLoading}
+          onEdit={setEditingAccount}
           onSetPrimary={setPrimaryAccount}
-          onDelete={deleteAccount}
+          onDelete={(id) => {
+            const account = accounts.find((a) => a._id === id);
+            handleDeleteRequest(
+              'account',
+              id,
+              'Account',
+              account?.accountHolderName || account?.bankName || id
+            );
+          }}
         />
       )}
       {activeTab === 'address' && (
         <>
-          <AddressTab addresses={[]} />
-          {showAddAddress && <AddAddressModal onClose={() => setShowAddAddress(false)} />}
+          <AddressTab
+            addresses={addresses}
+            loading={addressesLoading}
+            onEdit={setEditingAddress}
+            onDelete={(id) => {
+              const addr = addresses.find((a) => a._id === id);
+              handleDeleteRequest('account', id, 'OrganizationSettings', addr?.name || id);
+            }}
+            onSetPrimary={setPrimaryAddress}
+          />
+          {showAddAddress && (
+            <AddAddressModal onClose={() => setShowAddAddress(false)} onSubmit={createAddress} />
+          )}
         </>
       )}
       {activeTab === 'lane' && (
@@ -1362,8 +1892,8 @@ export default function OrganisationPage() {
           <LaneTab
             lanes={lanes}
             loading={lanesLoading}
-            locations={locations}
-            truckTypes={truckTypes}
+            locations={locations.filter((item) => item.isActive !== false)}
+            truckTypes={truckTypes.filter((item) => item.isActive !== false)}
             onEdit={setEditingLane}
             onDelete={deleteLane}
           />
@@ -1384,6 +1914,55 @@ export default function OrganisationPage() {
           materialTypes={materialTypes}
           truckTypes={truckTypes}
           chargeTypes={chargeTypes}
+        />
+      )}
+
+      {/* ── Modals ──────────────────────────────────────────────────────── */}
+      {editingBranch && (
+        <EditBranchModal
+          branch={editingBranch}
+          open={!!editingBranch}
+          onClose={() => setEditingBranch(null)}
+          onSave={async (id, data) => !!(await updateBranch(id, data))}
+        />
+      )}
+
+      {editingAccount && (
+        <EditAccountModal
+          account={editingAccount}
+          open={!!editingAccount}
+          onClose={() => setEditingAccount(null)}
+        />
+      )}
+
+      {editingAddress && (
+        <EditAddressModal
+          address={editingAddress}
+          open={!!editingAddress}
+          onClose={() => setEditingAddress(null)}
+          onSave={updateAddress}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteRequestModal
+          open={!!deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          resourceType={deleteTarget.type}
+          resourceId={deleteTarget.id}
+          resourceModel={deleteTarget.model}
+          resourceName={deleteTarget.name}
+          onSubmit={createDeleteRequest}
+        />
+      )}
+
+      {trafficBranch && (
+        <TrafficCoordinatorModal
+          branch={trafficBranch}
+          employees={employees}
+          onClose={() => setTrafficBranch(null)}
+          onAssign={setTrafficCoordinator}
+          refetch={refetchBranches}
         />
       )}
     </div>

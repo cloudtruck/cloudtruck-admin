@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import {
   Dialog,
   DialogContent,
@@ -24,9 +25,14 @@ interface EditDriverModalProps {
   driver: Driver;
 }
 
-export function EditDriverModal({ isOpen, onCloseAction, onSuccessAction, driver }: EditDriverModalProps) {
+export function EditDriverModal({
+  isOpen,
+  onCloseAction,
+  onSuccessAction,
+  driver,
+}: EditDriverModalProps) {
   const [loading, setLoading] = useState(false);
-  
+
   // Fetch master data
   const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
   const [formData, setFormData] = useState({
@@ -43,7 +49,9 @@ export function EditDriverModal({ isOpen, onCloseAction, onSuccessAction, driver
       setFormData({
         name: driver.name || '',
         licenseNumber: driver.licenseNumber || '',
-        licenseExpiry: driver.licenseExpiry ? new Date(driver.licenseExpiry).toISOString().split('T')[0] : '',
+        licenseExpiry: driver.licenseExpiry
+          ? new Date(driver.licenseExpiry).toISOString().split('T')[0]
+          : '',
         aadhaarNumber: driver.aadhaarNumber || '',
         panNumber: driver.panNumber || '',
         preferredTruckTypes: driver.preferredTruckTypes || [],
@@ -59,7 +67,9 @@ export function EditDriverModal({ isOpen, onCloseAction, onSuccessAction, driver
       const updateData = {
         name: formData.name,
         // licenseNumber is typically not editable in some systems once verified, but we'll see
-        licenseExpiry: formData.licenseExpiry ? new Date(formData.licenseExpiry).toISOString() : undefined,
+        licenseExpiry: formData.licenseExpiry
+          ? new Date(formData.licenseExpiry).toISOString()
+          : undefined,
         aadhaarNumber: formData.aadhaarNumber || undefined,
         panNumber: formData.panNumber || undefined,
         preferredTruckTypes: formData.preferredTruckTypes,
@@ -70,7 +80,7 @@ export function EditDriverModal({ isOpen, onCloseAction, onSuccessAction, driver
       onSuccessAction();
       onCloseAction();
     } catch (error: unknown) {
-      console.error('Failed to update driver:', error);
+      logger.error('Failed to update driver:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to update driver');
     } finally {
@@ -114,7 +124,9 @@ export function EditDriverModal({ isOpen, onCloseAction, onSuccessAction, driver
                 disabled
                 className="bg-muted"
               />
-              <p className="text-[10px] text-muted-foreground">License number cannot be changed once registered.</p>
+              <p className="text-[10px] text-muted-foreground">
+                License number cannot be changed once registered.
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -157,12 +169,14 @@ export function EditDriverModal({ isOpen, onCloseAction, onSuccessAction, driver
             ) : (
               <div className="flex flex-wrap gap-2">
                 {truckTypes
-                  .filter(type => type.isActive)
+                  .filter((type) => type.isActive)
                   .map((type) => (
                     <Button
                       key={type._id}
                       type="button"
-                      variant={formData.preferredTruckTypes.includes(type.key) ? 'default' : 'outline'}
+                      variant={
+                        formData.preferredTruckTypes.includes(type.key) ? 'default' : 'outline'
+                      }
                       size="sm"
                       onClick={() => handleTruckTypeChange(type.key)}
                     >

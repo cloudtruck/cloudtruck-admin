@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { MoreVertical, CheckCircle, Pencil, XCircle } from 'lucide-react';
 import {
   DropdownMenu,
@@ -48,7 +49,7 @@ export function VehicleActions({ vehicle, onSuccessAction }: VehicleActionsProps
       onSuccessAction?.();
       setApproveDialogOpen(false);
     } catch (error: unknown) {
-      console.error('Failed to approve vehicle:', error);
+      logger.error('Failed to approve vehicle:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to approve vehicle');
     } finally {
@@ -70,7 +71,7 @@ export function VehicleActions({ vehicle, onSuccessAction }: VehicleActionsProps
       setRejectDialogOpen(false);
       setReason('');
     } catch (error: unknown) {
-      console.error('Failed to reject vehicle:', error);
+      logger.error('Failed to reject vehicle:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to reject vehicle');
     } finally {
@@ -89,7 +90,7 @@ export function VehicleActions({ vehicle, onSuccessAction }: VehicleActionsProps
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          
+
           {!vehicle.isVerified && (
             <>
               <DropdownMenuItem onClick={() => setApproveDialogOpen(true)}>
@@ -122,7 +123,8 @@ export function VehicleActions({ vehicle, onSuccessAction }: VehicleActionsProps
           <AlertDialogHeader>
             <AlertDialogTitle>Approve Vehicle</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to approve this vehicle? This will mark the vehicle as verified and allow it to be used for bookings.
+              Are you sure you want to approve this vehicle? This will mark the vehicle as verified
+              and allow it to be used for bookings.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -154,7 +156,11 @@ export function VehicleActions({ vehicle, onSuccessAction }: VehicleActionsProps
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReject} disabled={loading} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleReject}
+              disabled={loading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               {loading ? 'Rejecting...' : 'Reject'}
             </AlertDialogAction>
           </AlertDialogFooter>

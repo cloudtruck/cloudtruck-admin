@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -78,7 +79,7 @@ export function MarkAsReceivedModal({
       onSuccess();
       onClose();
     } catch (error) {
-      console.error('Failed to mark payment as received:', error);
+      logger.error('Failed to mark payment as received:', error);
       toast.error('Failed to update payment');
     } finally {
       setLoading(false);
@@ -127,11 +128,7 @@ export function MarkAsReceivedModal({
                             !field.value && 'text-muted-foreground'
                           )}
                         >
-                          {field.value ? (
-                            format(field.value, 'PPP')
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
+                          {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
@@ -141,9 +138,7 @@ export function MarkAsReceivedModal({
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={(date) =>
-                          date > new Date() || date < new Date('2020-01-01')
-                        }
+                        disabled={(date) => date > new Date() || date < new Date('2020-01-01')}
                         initialFocus
                       />
                     </PopoverContent>

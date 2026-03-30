@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import {
   Dialog,
   DialogContent,
@@ -23,12 +24,7 @@ interface AddNoteModalProps {
   onSuccess: () => void;
 }
 
-export function AddNoteModal({
-  isOpen,
-  onClose,
-  booking,
-  onSuccess,
-}: AddNoteModalProps) {
+export function AddNoteModal({ isOpen, onClose, booking, onSuccess }: AddNoteModalProps) {
   const [loading, setLoading] = useState(false);
   const [note, setNote] = useState('');
 
@@ -46,11 +42,14 @@ export function AddNoteModal({
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      console.error('Failed to add note:', err);
-      const error = err as { response?: { data?: { errors?: Array<{ message?: string }>; message?: string } } };
-      const errorMessage = error.response?.data?.errors?.[0]?.message || 
-                           error.response?.data?.message || 
-                           'Failed to add note';
+      logger.error('Failed to add note:', err);
+      const error = err as {
+        response?: { data?: { errors?: Array<{ message?: string }>; message?: string } };
+      };
+      const errorMessage =
+        error.response?.data?.errors?.[0]?.message ||
+        error.response?.data?.message ||
+        'Failed to add note';
       toast.error(errorMessage);
     } finally {
       setLoading(false);

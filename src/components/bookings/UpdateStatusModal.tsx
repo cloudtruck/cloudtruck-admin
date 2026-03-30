@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import {
   Dialog,
   DialogContent,
@@ -31,12 +32,7 @@ interface UpdateStatusModalProps {
   onSuccess: () => void;
 }
 
-export function UpdateStatusModal({
-  isOpen,
-  onClose,
-  booking,
-  onSuccess,
-}: UpdateStatusModalProps) {
+export function UpdateStatusModal({ isOpen, onClose, booking, onSuccess }: UpdateStatusModalProps) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string>(booking.status);
   const [notes, setNotes] = useState('');
@@ -59,11 +55,14 @@ export function UpdateStatusModal({
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      console.error('Failed to update status:', err);
-      const error = err as { response?: { data?: { errors?: Array<{ message?: string }>; message?: string } } };
-      const errorMessage = error.response?.data?.errors?.[0]?.message || 
-                           error.response?.data?.message || 
-                           'Failed to update status';
+      logger.error('Failed to update status:', err);
+      const error = err as {
+        response?: { data?: { errors?: Array<{ message?: string }>; message?: string } };
+      };
+      const errorMessage =
+        error.response?.data?.errors?.[0]?.message ||
+        error.response?.data?.message ||
+        'Failed to update status';
       toast.error(errorMessage);
     } finally {
       setLoading(false);

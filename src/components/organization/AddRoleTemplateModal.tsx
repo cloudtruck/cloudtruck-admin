@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -80,7 +81,7 @@ export function AddRoleTemplateModal({ onSuccess }: AddRoleTemplateModalProps) {
     } catch (error: unknown) {
       const err = error as ApiErrorResponse;
       toast.error(err.response?.data?.message || 'Failed to create role template');
-      console.error('Error creating role template:', error);
+      logger.error('Error creating role template:', error);
     } finally {
       setLoading(false);
     }
@@ -109,9 +110,7 @@ export function AddRoleTemplateModal({ onSuccess }: AddRoleTemplateModalProps) {
                   <Input
                     id="templateName"
                     value={formData.templateName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, templateName: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, templateName: e.target.value })}
                     placeholder="e.g., Operations Manager"
                     required
                   />
@@ -124,7 +123,10 @@ export function AddRoleTemplateModal({ onSuccess }: AddRoleTemplateModalProps) {
                   <Select
                     value={formData.category}
                     onValueChange={(value) =>
-                      setFormData({ ...formData, category: value as CreateRoleTemplateData['category'] })
+                      setFormData({
+                        ...formData,
+                        category: value as CreateRoleTemplateData['category'],
+                      })
                     }
                   >
                     <SelectTrigger>
@@ -148,9 +150,7 @@ export function AddRoleTemplateModal({ onSuccess }: AddRoleTemplateModalProps) {
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Brief description of this role and its responsibilities"
                   rows={3}
                   required
@@ -163,9 +163,7 @@ export function AddRoleTemplateModal({ onSuccess }: AddRoleTemplateModalProps) {
                 </Label>
                 <PermissionSelector
                   selectedPermissions={formData.permissions}
-                  onChange={(permissions: string[]) =>
-                    setFormData({ ...formData, permissions })
-                  }
+                  onChange={(permissions: string[]) => setFormData({ ...formData, permissions })}
                 />
                 <p className="text-xs text-gray-500">
                   Selected: {formData.permissions.length} permission(s)

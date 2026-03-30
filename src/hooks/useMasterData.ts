@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { masterDataApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { MasterData, ApiErrorResponse } from '@/types';
@@ -20,7 +21,7 @@ export function useMasterData(category?: string) {
     } catch (error: unknown) {
       const err = error as ApiErrorResponse;
       toast.error(err.response?.data?.message || 'Failed to fetch master data');
-      console.error('Error fetching master data:', error);
+      logger.error('Error fetching master data:', error);
     } finally {
       setLoading(false);
     }
@@ -79,16 +80,19 @@ export function useMasterData(category?: string) {
     try {
       const response = await masterDataApi.delete(id);
 
+      if (response.status === 200) {
+        return response;
+      }
+
       if (response.data.success) {
         toast.success('Master data deleted successfully');
         await fetchData();
-        return true;
       }
-      return false;
+      return response;
     } catch (error: unknown) {
       const err = error as ApiErrorResponse;
       toast.error(err.response?.data?.message || 'Failed to delete master data');
-      return false;
+      return null;
     }
   };
 

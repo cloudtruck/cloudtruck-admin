@@ -90,14 +90,20 @@ export interface Booking {
   lastLocationUpdate?: string;
   laneCode?: string;
   isAdhoc?: boolean;
-  indentType?: 'FTL' | 'PTL' | 'LCL' | null;
+  loadType?: 'FTL' | 'LTL' | 'PTL' | null;
   exim?: 'domestic' | 'import' | 'export';
   trafficController?: { _id: string; name: string; phone?: string | null };
   supervisor?: { _id: string; name: string; phone?: string | null };
   // Location master data
   sourceCode?: string;
   destinationCode?: string;
-  supplier?: string;
+  supplierEntity?: {
+    _id: string;
+    displayName: string;
+    companyName?: string;
+    supplierType?: string;
+    phone?: string;
+  };
   // Pricing
   supplierPrice?: number;
   customerPrice?: number;
@@ -111,6 +117,8 @@ export interface Booking {
   interestedDrivers?: string[];
   interestedCount?: number;
   marketTrucks?: number;
+  matchedOwnCount?: number;
+  matchedMarketCount?: number;
   // Post-creation operational
   lrNumber?: string;
   lrDetails?: {
@@ -118,7 +126,7 @@ export interface Booking {
     lrDate?: string;
     remarks?: string;
     uploadedAt?: string;
-    uploadedBy?: string;
+    uploadedBy?: string | { _id: string; name: string };
     documents?: Array<{ _id: string; url: string; fileType?: string; originalName?: string }>;
   } | null;
   boeNumber?: string;
@@ -128,6 +136,7 @@ export interface Booking {
   shipmentNo?: string;
   containerNo?: string;
   poNumber?: string;
+  supplier?: string | boolean;
   supplierType?: string;
   truckSubType?: string;
   bookedBy?: string | { _id: string; name: string };
@@ -186,8 +195,8 @@ export interface CreateBookingPayload {
   laneCode?: string;
   sourceCode?: string;
   destinationCode?: string;
-  supplier?: string;
-  indentType?: 'FTL' | 'PTL' | 'LCL' | null;
+  supplierEntity?: string; // Supplier ObjectId for create/update payload
+  loadType?: 'FTL' | 'LTL' | 'PTL' | null;
   exim?: 'domestic' | 'import' | 'export';
   trafficController?: string; // Staff ID for create/update payload
   supplierPrice?: number;

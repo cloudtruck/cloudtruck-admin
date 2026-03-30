@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { logger } from '@/lib/logger';
 import { Booking } from '@/types';
 import { FileText, Download, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ interface DocumentsSectionProps {
 export function DocumentsSection({ booking }: DocumentsSectionProps) {
   const handleDownload = (url: string, filename?: string) => {
     // TODO: Implement download logic
-    console.log('Download:', url, filename);
+    logger.debug('Download:', url, filename);
   };
 
   return (
@@ -42,11 +43,7 @@ export function DocumentsSection({ booking }: DocumentsSectionProps) {
                     className="object-cover"
                   />
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleDownload(image)}
-                    >
+                    <Button size="sm" variant="secondary" onClick={() => handleDownload(image)}>
                       <Download className="h-4 w-4 mr-1" />
                       Download
                     </Button>
@@ -74,20 +71,14 @@ export function DocumentsSection({ booking }: DocumentsSectionProps) {
                   <p className="text-xs text-muted-foreground">Uploaded 2 days ago</p>
                 </div>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleDownload('pod-url')}
-              >
+              <Button size="sm" variant="outline" onClick={() => handleDownload('pod-url')}>
                 <Download className="h-4 w-4 mr-1" />
                 Download
               </Button>
             </div>
           ) : (
             <div className="text-center py-6 border-2 border-dashed rounded-lg">
-              <p className="text-sm text-muted-foreground">
-                POD will be available after delivery
-              </p>
+              <p className="text-sm text-muted-foreground">POD will be available after delivery</p>
             </div>
           )}
         </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { CalendarIcon, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,11 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { vehicleApi, driverApi } from '@/lib/api';
 import { toast } from 'sonner';
@@ -65,10 +62,15 @@ interface EditVehicleModalProps {
   onSuccessAction: () => void;
 }
 
-export function EditVehicleModal({ vehicle, isOpen, onCloseAction, onSuccessAction }: EditVehicleModalProps) {
+export function EditVehicleModal({
+  vehicle,
+  isOpen,
+  onCloseAction,
+  onSuccessAction,
+}: EditVehicleModalProps) {
   const [loading, setLoading] = useState(false);
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  
+
   // Fetch master data
   const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
   const { data: bodyTypes, loading: bodyTypesLoading } = useMasterData('body-type');
@@ -95,7 +97,7 @@ export function EditVehicleModal({ vehicle, isOpen, onCloseAction, onSuccessActi
           const response = await driverApi.getAll({ limit: 100 });
           setDrivers(response.data.data.drivers);
         } catch (error) {
-          console.error('Failed to fetch drivers:', error);
+          logger.error('Failed to fetch drivers:', error);
         }
       };
       fetchDrivers();
@@ -111,8 +113,12 @@ export function EditVehicleModal({ vehicle, isOpen, onCloseAction, onSuccessActi
           capacityUnit: vehicle.capacity.unit === 'kg' ? 'kg' : 'tons',
           bodyType: vehicle.bodyType,
           owner: typeof vehicle.owner === 'string' ? vehicle.owner : vehicle.owner?._id || '',
-          insuranceExpiry: vehicle.expiryDates?.insurance ? new Date(vehicle.expiryDates.insurance) : undefined,
-          fitnessExpiry: vehicle.expiryDates?.fitness ? new Date(vehicle.expiryDates.fitness) : undefined,
+          insuranceExpiry: vehicle.expiryDates?.insurance
+            ? new Date(vehicle.expiryDates.insurance)
+            : undefined,
+          fitnessExpiry: vehicle.expiryDates?.fitness
+            ? new Date(vehicle.expiryDates.fitness)
+            : undefined,
           status: vehicle.status,
         });
       }
@@ -146,7 +152,7 @@ export function EditVehicleModal({ vehicle, isOpen, onCloseAction, onSuccessActi
       onSuccessAction();
       onCloseAction();
     } catch (error: unknown) {
-      console.error('Failed to update vehicle:', error);
+      logger.error('Failed to update vehicle:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to update vehicle');
     } finally {
@@ -159,9 +165,7 @@ export function EditVehicleModal({ vehicle, isOpen, onCloseAction, onSuccessActi
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Vehicle</DialogTitle>
-          <DialogDescription>
-            Update the vehicle details below
-          </DialogDescription>
+          <DialogDescription>Update the vehicle details below</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -218,15 +222,21 @@ export function EditVehicleModal({ vehicle, isOpen, onCloseAction, onSuccessActi
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Truck Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={truckTypesLoading}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={truckTypesLoading}
+                    >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={truckTypesLoading ? "Loading..." : "Select type"} />
+                          <SelectValue
+                            placeholder={truckTypesLoading ? 'Loading...' : 'Select type'}
+                          />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {truckTypes
-                          .filter(type => type.isActive)
+                          .filter((type) => type.isActive)
                           .map((type) => (
                             <SelectItem key={type._id} value={type.key}>
                               {type.displayName}
@@ -245,15 +255,21 @@ export function EditVehicleModal({ vehicle, isOpen, onCloseAction, onSuccessActi
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Body Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={bodyTypesLoading}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={bodyTypesLoading}
+                    >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={bodyTypesLoading ? "Loading..." : "Select body type"} />
+                          <SelectValue
+                            placeholder={bodyTypesLoading ? 'Loading...' : 'Select body type'}
+                          />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {bodyTypes
-                          .filter(type => type.isActive)
+                          .filter((type) => type.isActive)
                           .map((type) => (
                             <SelectItem key={type._id} value={type.key}>
                               {type.displayName}
@@ -342,7 +358,7 @@ export function EditVehicleModal({ vehicle, isOpen, onCloseAction, onSuccessActi
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-               <FormField
+              <FormField
                 control={form.control}
                 name="status"
                 render={({ field }) => (
@@ -376,17 +392,13 @@ export function EditVehicleModal({ vehicle, isOpen, onCloseAction, onSuccessActi
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
-                            variant={"outline"}
+                            variant={'outline'}
                             className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
+                              'w-full pl-3 text-left font-normal',
+                              !field.value && 'text-muted-foreground'
                             )}
                           >
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
+                            {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
                         </FormControl>
@@ -396,9 +408,7 @@ export function EditVehicleModal({ vehicle, isOpen, onCloseAction, onSuccessActi
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) =>
-                            date < new Date("1900-01-01")
-                          }
+                          disabled={(date) => date < new Date('1900-01-01')}
                           initialFocus
                         />
                       </PopoverContent>

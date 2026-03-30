@@ -8,12 +8,17 @@ import { LiveTripCard } from '@/components/tracking/LiveTripCard';
 import { LiveTripFilters } from '@/components/tracking/LiveTripFilters';
 import { TrackingDetailModal } from '@/components/tracking/TrackingDetailModal';
 import { trackingApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 import type { Booking, Pagination } from '@/types';
 import Link from 'next/link';
 
 export default function LiveTripsPage() {
-  const [bookings, setBookings] = useState<(Booking & { lastLocation?: { location?: { coordinates: [number, number] }; timestamp?: string } })[]>([]);
+  const [bookings, setBookings] = useState<
+    (Booking & {
+      lastLocation?: { location?: { coordinates: [number, number] }; timestamp?: string };
+    })[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -32,35 +37,36 @@ export default function LiveTripsPage() {
     try {
       const response = await trackingApi.getLiveTrips();
       let data = response.data?.data || [];
-      
+
       // Client-side filtering as this endpoint currently returns all live trips
       if (statusFilter !== 'all') {
-        data = data.filter(b => b.status === statusFilter);
+        data = data.filter((b) => b.status === statusFilter);
       }
-      
+
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        data = data.filter(b => 
-          b.bookingId.toLowerCase().includes(q) || 
-          b.customer?.companyName?.toLowerCase().includes(q) ||
-          b.driver?.name?.toLowerCase().includes(q)
+        data = data.filter(
+          (b) =>
+            b.bookingId.toLowerCase().includes(q) ||
+            b.customer?.companyName?.toLowerCase().includes(q) ||
+            b.driver?.name?.toLowerCase().includes(q)
         );
       }
 
       setBookings(data);
       // Update pagination
-      setPagination(prev => {
+      setPagination((prev) => {
         const totalItems = data.length;
         const totalPages = Math.max(1, Math.ceil(totalItems / prev.itemsPerPage));
         return {
           ...prev,
           totalItems,
           totalPages,
-          currentPage: prev.currentPage > totalPages ? totalPages : prev.currentPage
+          currentPage: prev.currentPage > totalPages ? totalPages : prev.currentPage,
         };
       });
     } catch (error) {
-      console.error('Failed to fetch live trips:', error);
+      logger.error('Failed to fetch live trips:', error);
       toast.error('Failed to fetch live trips');
     } finally {
       setLoading(false);

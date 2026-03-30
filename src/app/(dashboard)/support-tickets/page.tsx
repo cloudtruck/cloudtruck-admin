@@ -60,7 +60,8 @@ export default function SupportTicketsPage() {
       if (search) params.search = search;
       if (statusFilter) params.status = statusFilter;
       const res = await supportTicketApi.getAll(params);
-      setTickets((res.data.data as any)?.tickets ?? (res.data.data as any)?.items ?? []);
+      const ticketData = res.data.data as { tickets?: Ticket[]; items?: Ticket[] };
+      setTickets(ticketData?.tickets ?? ticketData?.items ?? []);
     } catch {
       toast.error('Failed to load support tickets');
     } finally {

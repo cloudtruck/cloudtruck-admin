@@ -8,6 +8,7 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Inbox,
   FileText,
   Trash2,
@@ -15,6 +16,7 @@ import {
   MessageSquare,
   Loader2,
   ChevronsUpDown,
+  Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,21 +33,18 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { StatusBadge } from '@/components/common/StatusBadge';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { formatDate } from '@/lib/date-utils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtDate(ts?: string): string {
-  if (!ts) return '—';
-  const d = new Date(ts);
-  return `${String(d.getDate()).padStart(2, '0')}-${d.toLocaleString('en', { month: 'short' })}-${String(d.getFullYear()).slice(2)}`;
+  return formatDate(ts, 'dd-MMM-yy', '—');
 }
 
 function fmtDateTime(ts?: string): string {
-  if (!ts) return '—';
-  const d = new Date(ts);
-  const date = `${String(d.getDate()).padStart(2, '0')}-${d.toLocaleString('en', { month: 'short' })}-${String(d.getFullYear()).slice(2)}`;
-  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  return `${date} ${time}`;
+  return formatDate(ts, 'dd-MMM-yy HH:mm', '—');
 }
 
 function tatHours(from?: string, to?: string): string {
@@ -64,23 +63,6 @@ function profitPct(b: Booking): string {
   const pl = profitLoss(b);
   if (pl == null || !b.customerPrice) return '—';
   return ((pl / b.customerPrice) * 100).toFixed(1) + '%';
-}
-
-function statusBadge(status: string) {
-  const s = status?.toLowerCase() || '';
-  let cls = 'bg-gray-100 text-gray-700';
-  if (s === 'created') cls = 'bg-gray-100 text-gray-600';
-  if (s === 'under-review') cls = 'bg-yellow-100 text-yellow-800';
-  if (s === 'assigned') cls = 'bg-blue-100 text-blue-800';
-  if (s === 'driver-en-route' || s === 'reached-pickup') cls = 'bg-orange-100 text-orange-700';
-  if (s === 'loaded' || s === 'in-transit') cls = 'bg-purple-100 text-purple-800';
-  if (s === 'reached-destination') cls = 'bg-indigo-100 text-indigo-700';
-  if (s === 'delivered') cls = 'bg-teal-100 text-teal-700';
-  if (s === 'pod-received') cls = 'bg-green-100 text-green-800';
-  if (s === 'closed') cls = 'bg-green-200 text-green-900';
-  if (s === 'cancelled') cls = 'bg-red-100 text-red-800';
-  const label = status.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-  return <span className={cn('px-2 py-0.5 rounded text-xs font-medium', cls)}>{label || '—'}</span>;
 }
 
 // ─── Timestamp multi-row cell (Indent / Confirmed / S-in / I-C / C-Sin / Sin-Sout) ──
@@ -151,13 +133,12 @@ const ALL_NON_SAPPROVAL = [
 ] as const;
 
 const TABS = [
-  { key: 's-approval', label: 'S Approval', statuses: ['under-review'] },
+  { key: 's-approval', label: 'S Approval', statuses: ['created', 'under-review'] },
   { key: 'confirmed', label: 'Confirmed', statuses: ['assigned'] },
   { key: 'loading', label: 'Loading', statuses: ['loaded', 'driver-en-route', 'reached-pickup'] },
   { key: 'intransit-o', label: 'Intransit(O)', statuses: ['in-transit'] },
   { key: 'intransit-i', label: 'Intransit(I)', statuses: ['reached-destination'] },
-  { key: 'unloading', label: 'Unloading', statuses: ['reached-destination'] },
-  { key: 'available', label: 'Available', statuses: ['created'] },
+  { key: 'unloading', label: 'Unloading', statuses: ['unloading'] },
   { key: 'pod-pending', label: 'POD Pending', statuses: ['delivered'] },
   { key: 'pod-received', label: 'POD Received', statuses: ['pod-received'] },
   { key: 'all', label: 'All', statuses: [] },
@@ -304,7 +285,7 @@ const COLS: Col[] = [
     header: 'Supplier',
     tabs: ['s-approval'] as const,
     searchable: true,
-    render: (b) => b.supplier || '—',
+    render: (b) => b.supplierEntity?.displayName || '—',
   },
   {
     key: 'truckSA',
@@ -320,13 +301,6 @@ const COLS: Col[] = [
   },
 
   // ── Non-S-Approval columns (Confirmed, Loading, …) in Digitify order ──
-  {
-    key: 'indentId',
-    header: 'Indent Id',
-    tabs: ALL_NON_SAPPROVAL,
-    searchable: true,
-    render: (b) => b.bookingId || '—',
-  },
   {
     key: 'laneCode',
     header: 'Lane Code',
@@ -370,7 +344,7 @@ const COLS: Col[] = [
     key: 'lType',
     header: 'Load Type',
     tabs: ALL_NON_SAPPROVAL,
-    render: (b) => b.indentType || '—',
+    render: (b) => b.loadType || '—',
   },
   {
     key: 'exim',
@@ -438,7 +412,7 @@ const COLS: Col[] = [
     header: 'Supplier',
     tabs: ALL_NON_SAPPROVAL,
     searchable: true,
-    render: (b) => b.supplier || '—',
+    render: (b) => b.supplierEntity?.displayName || '—',
   },
   {
     key: 'boeNo',
@@ -446,13 +420,6 @@ const COLS: Col[] = [
     tabs: ALL_NON_SAPPROVAL,
     searchable: true,
     render: (b) => b.boeNumber || '—',
-  },
-  {
-    key: 'jobNo',
-    header: 'Job No',
-    tabs: ALL_NON_SAPPROVAL,
-    searchable: true,
-    render: (b) => b.jobNo || '—',
   },
   {
     key: 'hireChallan',
@@ -980,7 +947,7 @@ const COLS: Col[] = [
     key: 'ppLoadType',
     header: 'Load Type',
     tabs: ['pod-pending'] as const,
-    render: (b) => b.indentType || '—',
+    render: (b) => b.loadType || '—',
   },
   {
     key: 'ppExim',
@@ -1043,7 +1010,7 @@ const COLS: Col[] = [
     tabs: ['pod-pending'] as const,
     render: (b) => {
       if (!b.podDetails) return '—';
-      const ub = (b.podDetails as any).uploadedBy;
+      const ub = b.podDetails.uploadedBy;
       return typeof ub === 'string' ? ub : ub?.name || '—';
     },
   },
@@ -1064,7 +1031,7 @@ const COLS: Col[] = [
     header: 'Supplier',
     tabs: ['pod-pending'] as const,
     searchable: true,
-    render: (b) => b.supplier || '—',
+    render: (b) => b.supplierEntity?.displayName || '—',
   },
   {
     key: 'ppBoeNo',
@@ -1072,13 +1039,6 @@ const COLS: Col[] = [
     tabs: ['pod-pending'] as const,
     searchable: true,
     render: (b) => b.boeNumber || '—',
-  },
-  {
-    key: 'ppJobNo',
-    header: 'Job No',
-    tabs: ['pod-pending'] as const,
-    searchable: true,
-    render: (b) => b.jobNo || '—',
   },
   {
     key: 'ppHireChallan',
@@ -1414,7 +1374,7 @@ const COLS: Col[] = [
     header: 'Supplier',
     tabs: ['pod-received'] as const,
     searchable: true,
-    render: (b) => b.supplier || '—',
+    render: (b) => b.supplierEntity?.displayName || '—',
   },
   {
     key: 'prDriverNo',
@@ -1618,70 +1578,6 @@ const COLS: Col[] = [
     tabs: ['all'] as const,
     render: (b) => b.bookingType || '—',
   },
-
-  // ── Available tab columns ──────────────────────────────────────────────────
-  {
-    key: 'avTruck',
-    header: 'Truck',
-    tabs: ['available'] as const,
-    render: (b) => b.vehicle?.vehicleNumber || '—',
-  },
-  {
-    key: 'avDriverNo',
-    header: 'Driver No',
-    tabs: ['available'] as const,
-    render: (b) => b.driver?.phone || '—',
-  },
-  {
-    key: 'avSupplier',
-    header: 'Supplier',
-    tabs: ['available'] as const,
-    searchable: true,
-    render: (b) => b.supplier || '—',
-  },
-  {
-    key: 'avTruckType',
-    header: 'Truck Type',
-    tabs: ['available'] as const,
-    render: (b) => b.truckTypeNeeded || b.vehicle?.truckType || '—',
-  },
-  {
-    key: 'avOwnership',
-    header: 'Ownership',
-    tabs: ['available'] as const,
-    render: () => '—',
-  },
-  {
-    key: 'avStatus',
-    header: 'Status',
-    tabs: ['available'] as const,
-    render: (b) => statusBadge(b.status),
-  },
-  {
-    key: 'avDriver',
-    header: 'Driver',
-    tabs: ['available'] as const,
-    searchable: true,
-    render: (b) => b.driver?.name || '—',
-  },
-  {
-    key: 'avCity',
-    header: 'City',
-    tabs: ['available'] as const,
-    render: (b) => b.pickup?.city || '—',
-  },
-  {
-    key: 'avRegion',
-    header: 'Region',
-    tabs: ['available'] as const,
-    render: () => '—',
-  },
-  {
-    key: 'avRemarks',
-    header: 'Remarks',
-    tabs: ['available'] as const,
-    render: (b) => b.remarks || '—',
-  },
 ];
 
 // ─── Tooltip wrapper ──────────────────────────────────────────────────────────
@@ -1881,9 +1777,135 @@ function TripCommentsModal({
   );
 }
 
+// ─── Update Status Modal ──────────────────────────────────────────────────────
+
+const STATUS_TRANSITIONS: Record<string, string[]> = {
+  created: ['under-review', 'cancelled'],
+  'under-review': ['assigned', 'cancelled'],
+  assigned: ['driver-en-route', 'cancelled'],
+  'driver-en-route': ['reached-pickup'],
+  'reached-pickup': ['loaded'],
+  loaded: ['in-transit'],
+  'in-transit': ['reached-destination'],
+  'reached-destination': ['unloading'],
+  unloading: ['delivered'],
+  delivered: ['pod-received'],
+  'pod-received': ['closed'],
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  created: 'Created',
+  'under-review': 'Under Review',
+  assigned: 'Driver Assigned',
+  'driver-en-route': 'Driver En Route',
+  'reached-pickup': 'Reached Pickup',
+  loaded: 'Loaded',
+  'in-transit': 'In Transit',
+  'reached-destination': 'Reached Destination',
+  unloading: 'Unloading',
+  delivered: 'Delivered',
+  'pod-received': 'POD Received',
+  closed: 'Closed',
+  cancelled: 'Cancelled',
+};
+
+function UpdateStatusModal({
+  booking,
+  onClose,
+  onSuccess,
+}: {
+  booking: Booking;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const nextStatuses = STATUS_TRANSITIONS[booking.status] ?? [];
+  const [selectedStatus, setSelectedStatus] = useState(nextStatuses[0] ?? '');
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!selectedStatus) return;
+    setSaving(true);
+    try {
+      await bookingApi.updateStatus(booking._id, {
+        status: selectedStatus,
+        notes: note || undefined,
+      });
+      toast.success(`Status updated to ${STATUS_LABELS[selectedStatus] ?? selectedStatus}`);
+      onSuccess();
+      onClose();
+    } catch {
+      toast.error('Failed to update status');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Update Status — {booking.bookingId}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <div>
+            <Label className="text-xs text-gray-500">Current Status</Label>
+            <p className="text-sm font-medium mt-0.5">
+              {STATUS_LABELS[booking.status] ?? booking.status}
+            </p>
+          </div>
+          {nextStatuses.length === 0 ? (
+            <p className="text-sm text-gray-500">No further status transitions available.</p>
+          ) : (
+            <>
+              <div>
+                <Label htmlFor="next-status">Move to</Label>
+                <select
+                  id="next-status"
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="mt-1 w-full rounded border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {nextStatuses.map((s) => (
+                    <option key={s} value={s}>
+                      {STATUS_LABELS[s] ?? s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="status-note">Note (optional)</Label>
+                <Textarea
+                  id="status-note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Add a note..."
+                  className="mt-1 text-sm resize-none"
+                  rows={2}
+                />
+              </div>
+            </>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          {nextStatuses.length > 0 && (
+            <Button onClick={handleSubmit} disabled={saving || !selectedStatus}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Update
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Action buttons cell ──────────────────────────────────────────────────────
 
-type ModalType = 'lr' | 'delete' | 'comment' | null;
+type ModalType = 'lr' | 'delete' | 'comment' | 'status' | null;
 
 function ActionCell({ booking, onRefresh }: { booking: Booking; onRefresh: () => void }) {
   const [modal, setModal] = useState<ModalType>(null);
@@ -1896,6 +1918,14 @@ function ActionCell({ booking, onRefresh }: { booking: Booking; onRefresh: () =>
   return (
     <>
       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <Tip label="Update Status">
+          <button
+            className="p-1 rounded hover:bg-orange-50 text-orange-500 transition-colors"
+            onClick={() => setModal('status')}
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+        </Tip>
         <Tip label="Update LR">
           <button
             className="p-1 rounded hover:bg-green-50 text-green-600 transition-colors"
@@ -1930,6 +1960,9 @@ function ActionCell({ booking, onRefresh }: { booking: Booking; onRefresh: () =>
         </Tip>
       </div>
 
+      {modal === 'status' && (
+        <UpdateStatusModal booking={booking} onClose={() => setModal(null)} onSuccess={onRefresh} />
+      )}
       {modal === 'lr' && (
         <UpdateLRModal booking={booking} onClose={() => setModal(null)} onSuccess={onRefresh} />
       )}
@@ -1956,7 +1989,36 @@ export default function TripsPage() {
     field: 'customerDetentionCharge' | 'supplierDetentionCharge';
   } | null>(null);
   const [savingDetention, setSavingDetention] = useState<string | null>(null);
+
+  type PodTextField = 'podCourier' | 'podDocketNo' | 'podAckNo';
+  const [podTextEdit, setPodTextEdit] = useState<{ id: string; field: PodTextField } | null>(null);
+  const [podTextValue, setPodTextValue] = useState('');
+  const [podTextOriginal, setPodTextOriginal] = useState('');
+  const [podTextOverrides, setPodTextOverrides] = useState<
+    Record<string, Partial<Record<PodTextField, string>>>
+  >({});
+
+  const startPodTextEdit = (id: string, field: PodTextField, current: string | undefined) => {
+    setPodTextEdit({ id, field });
+    setPodTextValue(current || '');
+    setPodTextOriginal(current || '');
+  };
+
+  const commitPodTextEdit = async () => {
+    if (!podTextEdit) return;
+    const { id, field } = podTextEdit;
+    setPodTextEdit(null);
+    if (podTextValue === podTextOriginal) return;
+    try {
+      await bookingApi.update(id, { [field]: podTextValue } as Partial<Booking>);
+      setPodTextOverrides((prev) => ({ ...prev, [id]: { ...prev[id], [field]: podTextValue } }));
+      toast.success('Saved');
+    } catch {
+      toast.error('Failed to save');
+    }
+  };
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -1974,7 +2036,7 @@ export default function TripsPage() {
     if (num !== null && isNaN(num)) return;
     setSavingDetention(id);
     try {
-      await bookingApi.update(id, { [field]: num } as any);
+      await bookingApi.update(id, { [field]: num } as Partial<Booking>);
       setBookings((prev) => prev.map((b) => (b._id === id ? { ...b, [field]: num } : b)));
       toast.success('Detention charge saved');
     } catch {
@@ -1999,15 +2061,20 @@ export default function TripsPage() {
   const fetchBookings = useCallback(
     async (pg = 1) => {
       setLoading(true);
+      setError(null);
       try {
         const res = await bookingApi.getAll({ status: statusParam, page: pg, limit: PAGE_SIZE });
-        const d = res.data.data as any;
+        const d = res.data.data as unknown as {
+          bookings?: Booking[];
+          items?: Booking[];
+          pagination?: { pages: number; total: number; totalPages?: number; totalItems?: number };
+        };
         const items: Booking[] = d.bookings ?? d.items ?? [];
-        const pagination = d.pagination ?? {};
         setBookings(items);
-        setTotalPages(pagination.totalPages ?? pagination.pages ?? 1);
-        setTotalItems(pagination.totalItems ?? pagination.total ?? items.length);
+        setTotalPages(d.pagination?.totalPages ?? d.pagination?.pages ?? 1);
+        setTotalItems(d.pagination?.totalItems ?? d.pagination?.total ?? items.length);
       } catch {
+        setError('Failed to load trips. Please try again.');
         toast.error('Failed to fetch trips');
       } finally {
         setLoading(false);
@@ -2020,7 +2087,15 @@ export default function TripsPage() {
     bookingApi
       .getStats()
       .then((r) => {
-        const s = r.data.data as any;
+        const s = r.data.data as {
+          statusBreakdown?: Record<string, number>;
+          newRequests?: number;
+          assigned?: number;
+          inTransit?: number;
+          podPending?: number;
+          cancelled?: number;
+          total?: number;
+        };
         const bd: Record<string, number> = s.statusBreakdown ?? {};
         setCounts({
           created: bd['created'] ?? 0,
@@ -2031,6 +2106,7 @@ export default function TripsPage() {
           loaded: bd['loaded'] ?? 0,
           'in-transit': bd['in-transit'] ?? s.inTransit ?? 0,
           'reached-destination': bd['reached-destination'] ?? 0,
+          unloading: bd['unloading'] ?? 0,
           delivered: bd['delivered'] ?? 0,
           'pod-received': bd['pod-received'] ?? s.podPending ?? 0,
           closed: bd['closed'] ?? 0,
@@ -2049,6 +2125,33 @@ export default function TripsPage() {
   const handlePageChange = (p: number) => {
     setPage(p);
     fetchBookings(p);
+  };
+
+  const handleExport = () => {
+    const cols = visibleCols;
+    const header = cols.map((c) => c.header).join(',');
+    const rows = filteredBookings.map((b) =>
+      cols
+        .map((c) => {
+          const rendered = c.render(b);
+          const text =
+            typeof rendered === 'string'
+              ? rendered
+              : typeof rendered === 'number'
+                ? String(rendered)
+                : b.bookingId || b._id;
+          return `"${text.replace(/"/g, '""')}"`;
+        })
+        .join(',')
+    );
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `trips-${activeTab}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const visibleCols = COLS.filter(
@@ -2284,7 +2387,14 @@ export default function TripsPage() {
             {/* Row 2: search inputs */}
             <tr className="bg-gray-50 border-b border-gray-200">
               <td className="px-2 py-1 border-r border-gray-100 sticky left-0 bg-gray-50 z-20">
-                <span className="text-gray-400 text-xs select-none">⬇ export</span>
+                <button
+                  onClick={handleExport}
+                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                  title={`Export ${filteredBookings.length} rows as CSV`}
+                >
+                  <ChevronDown className="h-3 w-3" />
+                  export
+                </button>
               </td>
               {visibleCols.map((col) => (
                 <td key={col.key} className="px-2 py-1 border-r border-gray-100">
@@ -2316,13 +2426,25 @@ export default function TripsPage() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={visibleCols.length + 1} className="py-16 text-center text-gray-400">
-                  <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
-                  Loading...
+                <td colSpan={visibleCols.length + 1} className="py-16 text-center">
+                  <div className="flex flex-col items-center gap-2 text-gray-400">
+                    <LoadingSpinner size="lg" />
+                    <span className="text-sm">Loading trips...</span>
+                  </div>
                 </td>
               </tr>
             )}
-            {!loading && filteredBookings.length === 0 && (
+            {!loading && error && (
+              <tr>
+                <td colSpan={visibleCols.length + 1} className="py-16 text-center">
+                  <p className="text-red-600 text-sm mb-3">{error}</p>
+                  <Button variant="outline" size="sm" onClick={() => fetchBookings(page)}>
+                    Retry
+                  </Button>
+                </td>
+              </tr>
+            )}
+            {!loading && !error && filteredBookings.length === 0 && (
               <tr>
                 <td colSpan={visibleCols.length + 1} className="py-16 text-center">
                   <Inbox className="h-8 w-8 mx-auto mb-2 text-gray-300" />
@@ -2331,6 +2453,7 @@ export default function TripsPage() {
               </tr>
             )}
             {!loading &&
+              !error &&
               filteredBookings.map((b, i) => (
                 <tr
                   key={b._id}
@@ -2351,14 +2474,27 @@ export default function TripsPage() {
                     <ActionCell booking={b} onRefresh={() => fetchBookings(page)} />
                   </td>
                   {visibleCols.map((col) => {
+                    // POD-received detention columns (both pod-pending and pod-received tabs)
                     const isDetentionCol =
-                      col.key === 'ppCustDetention' || col.key === 'ppSupDetention';
-                    const detentionField =
-                      col.key === 'ppCustDetention'
+                      col.key === 'ppCustDetention' ||
+                      col.key === 'ppSupDetention' ||
+                      col.key === 'prCustDetention' ||
+                      col.key === 'prSupDetention';
+                    const detentionField: 'customerDetentionCharge' | 'supplierDetentionCharge' =
+                      col.key === 'ppCustDetention' || col.key === 'prCustDetention'
                         ? 'customerDetentionCharge'
                         : 'supplierDetentionCharge';
                     const isEditingThis =
                       detentionEditId?.id === b._id && detentionEditId?.field === detentionField;
+
+                    // POD-received text columns
+                    const podTextFieldMap: Record<string, PodTextField> = {
+                      prCourier: 'podCourier',
+                      prDocketNo: 'podDocketNo',
+                      prAckNo: 'podAckNo',
+                    };
+                    const isPodTextField = col.key in podTextFieldMap;
+                    const podField = podTextFieldMap[col.key];
 
                     if (isDetentionCol) {
                       return (
@@ -2374,14 +2510,12 @@ export default function TripsPage() {
                               min="0"
                               defaultValue={(b[detentionField as keyof Booking] as number) ?? ''}
                               disabled={savingDetention === b._id}
-                              onBlur={(e) =>
-                                saveDetention(b._id, detentionField as any, e.target.value)
-                              }
+                              onBlur={(e) => saveDetention(b._id, detentionField, e.target.value)}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter')
                                   saveDetention(
                                     b._id,
-                                    detentionField as any,
+                                    detentionField,
                                     (e.target as HTMLInputElement).value
                                   );
                                 if (e.key === 'Escape') setDetentionEditId(null);
@@ -2391,7 +2525,7 @@ export default function TripsPage() {
                           ) : (
                             <button
                               onClick={() =>
-                                setDetentionEditId({ id: b._id, field: detentionField as any })
+                                setDetentionEditId({ id: b._id, field: detentionField })
                               }
                               className="text-xs text-gray-700 hover:text-blue-600 hover:underline min-w-[60px] text-left"
                               title="Click to edit"
@@ -2402,6 +2536,55 @@ export default function TripsPage() {
                                 <span className="text-gray-400">— set</span>
                               )}
                             </button>
+                          )}
+                        </td>
+                      );
+                    }
+
+                    if (isPodTextField) {
+                      const podSubKey =
+                        podField === 'podCourier'
+                          ? 'courier'
+                          : podField === 'podDocketNo'
+                            ? 'docketNo'
+                            : 'ackNo';
+                      const currentVal =
+                        podTextOverrides[b._id]?.[podField] ??
+                        ((b.podDetails as Record<string, unknown>)?.[podSubKey] as
+                          | string
+                          | undefined) ??
+                        undefined;
+                      const isEditingPod =
+                        podTextEdit?.id === b._id && podTextEdit?.field === podField;
+                      return (
+                        <td
+                          key={col.key}
+                          className="px-3 py-2 border-r border-gray-100 whitespace-nowrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {isEditingPod ? (
+                            <input
+                              autoFocus
+                              className="w-28 text-xs border border-blue-400 rounded px-1.5 py-0.5 focus:outline-none"
+                              value={podTextValue}
+                              onChange={(e) => setPodTextValue(e.target.value)}
+                              onBlur={commitPodTextEdit}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') commitPodTextEdit();
+                                if (e.key === 'Escape') setPodTextEdit(null);
+                              }}
+                            />
+                          ) : (
+                            <span className="flex items-center gap-1 group text-xs text-gray-700">
+                              <span>{currentVal || '—'}</span>
+                              <button
+                                onClick={() => startPodTextEdit(b._id, podField, currentVal)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-500"
+                                title={`Edit ${col.header}`}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                            </span>
                           )}
                         </td>
                       );

@@ -21,16 +21,32 @@ export interface Vehicle {
   isVerified?: boolean;
   hasGPS?: boolean;
   hasFASTag?: boolean;
-  owner?: string | {
-    _id: string;
-    name: string;
-    phone?: string;
+  ownerRef?: {
+    kind: 'Driver' | 'Supplier';
+    item:
+      | string
+      | {
+          _id: string;
+          name?: string;
+          displayName?: string;
+          companyName?: string;
+          phone?: string;
+        };
   };
-  driver?: string | {
-    _id: string;
-    name: string;
-    phone?: string;
-  };
+  owner?:
+    | string
+    | {
+        _id: string;
+        name: string;
+        phone?: string;
+      };
+  driver?:
+    | string
+    | {
+        _id: string;
+        name: string;
+        phone?: string;
+      };
   ownershipType?: 'own' | 'leased' | 'attached';
   registrationCity?: string;
   lastKnownLocation?: { type: 'Point'; coordinates: [number, number] };
@@ -39,6 +55,9 @@ export interface Vehicle {
     completedTrips?: number;
     lastTripDate?: string;
   };
+  supplierCount?: number;
+  region?: string;
+  remarks?: string;
   status: 'active' | 'inactive' | 'under-maintenance' | 'retired';
   availability: 'available' | 'on-trip' | 'maintenance' | 'offline';
   verificationStatus: 'pending' | 'verified' | 'rejected' | 'expired';
@@ -50,6 +69,7 @@ export interface VehicleFilters {
   status?: string;
   truckType?: string;
   bodyType?: string;
+  minCapacity?: number;
   search?: string;
   isVerified?: boolean;
   verificationStatus?: string;

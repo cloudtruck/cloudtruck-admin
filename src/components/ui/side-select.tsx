@@ -75,14 +75,22 @@ export function SideSelect({
   return (
     <>
       {/* Trigger field */}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setOpen(true)}
+      <div
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-disabled={disabled}
+        onClick={() => !disabled && setOpen(true)}
+        onKeyDown={(e) => {
+          if (disabled) return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
         className={cn(
-          'w-full flex items-center justify-between px-3 py-2.5 rounded-md border text-sm transition-colors text-left',
+          'w-full flex items-center justify-between px-3 py-2.5 rounded-md border text-sm transition-colors text-left cursor-pointer',
           'bg-white border-gray-200 hover:border-blue-400 focus:outline-none focus:border-blue-500',
-          disabled && 'opacity-50 cursor-not-allowed',
+          disabled && 'opacity-50 cursor-not-allowed pointer-events-none',
           !selected && 'text-gray-400'
         )}
       >
@@ -92,15 +100,18 @@ export function SideSelect({
         {clearable && selected && onClear ? (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onClear(); }}
-            className="text-gray-400 hover:text-gray-600"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClear();
+            }}
+            className="text-gray-400 hover:text-gray-600 p-1 -m-1"
           >
             <X className="h-4 w-4 shrink-0" />
           </button>
         ) : (
           <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
         )}
-      </button>
+      </div>
 
       {/* Backdrop */}
       {open && (

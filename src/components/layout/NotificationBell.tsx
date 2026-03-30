@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,7 +52,7 @@ export function NotificationBell() {
       // Silently fail if notification API doesn't exist yet (404) or network error
       const err = error as { response?: { status?: number }; message?: string };
       if (err.response?.status !== 404 && err.message !== 'Network Error') {
-        console.error('Failed to fetch notifications:', error);
+        logger.error('Failed to fetch notifications:', error);
       }
     } finally {
       setLoading(false);
@@ -66,7 +67,7 @@ export function NotificationBell() {
       // Silently fail if notification API doesn't exist yet (404) or network error
       const err = error as { response?: { status?: number }; message?: string };
       if (err.response?.status !== 404 && err.message !== 'Network Error') {
-        console.error('Failed to fetch unread count:', error);
+        logger.error('Failed to fetch unread count:', error);
       }
     }
   };
@@ -77,7 +78,7 @@ export function NotificationBell() {
       fetchNotifications();
       fetchUnreadCount();
     } catch (error: unknown) {
-      console.error('Failed to mark as read:', error);
+      logger.error('Failed to mark as read:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to mark notification as read');
     }
@@ -90,7 +91,7 @@ export function NotificationBell() {
       fetchNotifications();
       fetchUnreadCount();
     } catch (error: unknown) {
-      console.error('Failed to mark all as read:', error);
+      logger.error('Failed to mark all as read:', error);
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to mark all as read');
     }

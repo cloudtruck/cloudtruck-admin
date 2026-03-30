@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { bookingApi, driverApi, vehicleApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { getCityRegion } from '@/lib/cityRegionMap';
 import { toCsvString, downloadCsv } from '@/lib/exportCsv';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -392,22 +393,17 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Fetch status breakdown + driver counts in parallel
-      const [sResp, dResp] = await Promise.all([
+      // Fetch status breakdown + all driver counts in parallel (4 requests at once)
+      const [sResp, totalResp, availResp, onTripResp] = await Promise.all([
         bookingApi.getStatusBreakdown(),
         driverApi.getAll({ limit: 1 } as Parameters<typeof driverApi.getAll>[0]),
-      ]);
-
-      const statusObj: Record<string, number> = sResp.data.data || {};
-
-      // Get driver counts by status
-      const [availResp, onTripResp, totalResp] = await Promise.all([
         driverApi.getAll({ status: 'available', limit: 1 } as Parameters<
           typeof driverApi.getAll
         >[0]),
         driverApi.getAll({ status: 'on-trip', limit: 1 } as Parameters<typeof driverApi.getAll>[0]),
-        dResp,
       ]);
+
+      const statusObj: Record<string, number> = sResp.data.data || {};
 
       const driverCounts = {
         available: availResp.data.data?.pagination?.totalItems || 0,
@@ -430,138 +426,52 @@ export default function DashboardPage() {
         { status: 'pod-received', count: statusObj['pod-received'] || 0, color: '#059669' },
       ]);
     } catch (error: unknown) {
-      console.error('Failed to fetch pipeline stats:', error);
+      logger.error('Failed to fetch pipeline stats:', error);
       toast.error('Failed to load dashboard statistics');
     } finally {
       setLoading(false);
     }
 
-    // All bookings for branch KPI
+    // Branch KPI, activities, and trends — run in parallel via backend aggregations
+    const [branchKpiResult, activitiesResult, trendsResult] = await Promise.allSettled([
+      bookingApi.getBranchKpi(),
+      bookingApi.getActivities({ limit: 20 }),
+      bookingApi.getTrends({ days: 7 }),
+    ]);
+
     setLoadingBookings(true);
     try {
-      const bResp = await bookingApi.getAll({ limit: 500 } as Parameters<
-        typeof bookingApi.getAll
-      >[0]);
-      const bookings: Booking[] = bResp.data.data?.bookings || [];
-
-      const branchMap: Record<string, BranchKpiRow> = {};
-      const dateMap: Record<string, Omit<HistoryKpiRow, 'date'>> = {};
-
-      const DISPATCHED_STATUSES = [
-        'assigned',
-        'driver-en-route',
-        'reached-pickup',
-        'loaded',
-        'in-transit',
-        'reached-destination',
-      ];
-      /** Returns true if booking was cancelled after dispatch had already started */
-      const isFailed = (b: Booking): boolean =>
-        b.status === 'cancelled' &&
-        (b.statusHistory || []).some((h) => DISPATCHED_STATUSES.includes(h.status));
-
-      /** Returns true if booking was delivered on or before expectedDeliveryDate */
-      const isOnTime = (b: Booking): boolean => {
-        if (!b.expectedDeliveryDate) return false;
-        const deliveredEntry = (b.statusHistory || []).find(
-          (h: any) =>
-            h.status === 'delivered' || h.status === 'pod-received' || h.status === 'closed'
-        );
-        if (!deliveredEntry?.timestamp) return false;
-        return new Date(deliveredEntry.timestamp) <= new Date(b.expectedDeliveryDate);
-      };
-
-      for (const b of bookings) {
-        const branch = b.pickup?.city || 'Unknown';
-        if (!branchMap[branch])
-          branchMap[branch] = {
-            branch,
-            total: 0,
-            closed: 0,
-            closedPct: 0,
-            ontime: 0,
-            ontimePct: 0,
-            failed: 0,
-            failedPct: 0,
-            cancelled: 0,
-            cancelledPct: 0,
-          };
-        const br = branchMap[branch];
-        br.total++;
-        if (['delivered', 'pod-received', 'closed'].includes(b.status)) {
-          br.closed++;
-          if (isOnTime(b)) br.ontime++;
-        }
-        if (b.status === 'cancelled') br.cancelled++;
-        if (isFailed(b)) br.failed++;
-
-        const date = b.createdAt ? new Date(b.createdAt).toISOString().slice(0, 10) : 'Unknown';
-        if (!dateMap[date])
-          dateMap[date] = {
-            total: 0,
-            closed: 0,
-            closedPct: 0,
-            ontime: 0,
-            ontimePct: 0,
-            failed: 0,
-            failedPct: 0,
-            cancelled: 0,
-            cancelledPct: 0,
-          };
-        const dr = dateMap[date];
-        dr.total++;
-        if (['delivered', 'pod-received', 'closed'].includes(b.status)) {
-          dr.closed++;
-          if (isOnTime(b)) dr.ontime++;
-        }
-        if (b.status === 'cancelled') dr.cancelled++;
-        if (isFailed(b)) dr.failed++;
+      if (branchKpiResult.status === 'fulfilled') {
+        const kpi = branchKpiResult.value.data.data;
+        setBranchLive((kpi?.live || []) as BranchKpiRow[]);
+        setBranchHistory((kpi?.history || []) as HistoryKpiRow[]);
       }
-
-      const calcPcts = <
-        T extends {
-          total: number;
-          closed: number;
-          ontime: number;
-          failed: number;
-          cancelled: number;
-        },
-      >(
-        r: T
-      ) => ({
-        ...r,
-        closedPct: r.total > 0 ? Math.round((r.closed / r.total) * 100) : 0,
-        ontimePct: r.closed > 0 ? Math.round((r.ontime / r.closed) * 100) : 0,
-        failedPct: r.total > 0 ? Math.round((r.failed / r.total) * 100) : 0,
-        cancelledPct: r.total > 0 ? Math.round((r.cancelled / r.total) * 100) : 0,
-      });
-
-      setBranchLive(Object.values(branchMap).map(calcPcts));
-      setBranchHistory(Object.entries(dateMap).map(([date, r]) => calcPcts({ date, ...r })));
     } catch {
       /* silent */
     } finally {
       setLoadingBookings(false);
     }
 
-    // Activities
+    // Activities (result already fetched in parallel above)
     setLoadingActivities(true);
     try {
-      const resp = await bookingApi.getActivities({ limit: 20 });
-      setActivities(resp.data.data || []);
-    } catch {
-      setActivities([]);
+      if (activitiesResult.status === 'fulfilled') {
+        setActivities(activitiesResult.value.data.data || []);
+      } else {
+        setActivities([]);
+      }
     } finally {
       setLoadingActivities(false);
     }
 
-    // Trends
+    // Trends (result already fetched in parallel above)
     setLoadingCharts(true);
     try {
-      const tResp = await bookingApi.getTrends({ days: 7 });
-      setTrendData(tResp.data.data || []);
-    } catch {
-      setTrendData([]);
+      if (trendsResult.status === 'fulfilled') {
+        setTrendData(trendsResult.value.data.data || []);
+      } else {
+        setTrendData([]);
+      }
     } finally {
       setLoadingCharts(false);
     }
@@ -599,9 +509,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setLoadingStageBookings(true);
-    fetchDashboardData()
-      .then(() => fetchAllRingCounts())
-      .finally(() => setLoadingStageBookings(false));
+    Promise.all([fetchDashboardData(), fetchAllRingCounts()]).finally(() =>
+      setLoadingStageBookings(false)
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -660,97 +570,8 @@ export default function DashboardPage() {
   const fetchDriverRows = useCallback(async () => {
     setLoadingDrivers(true);
     try {
-      // Fetch all drivers + all completed bookings in parallel
-      const [driversResp, bookingsResp] = await Promise.all([
-        driverApi.getAll({ limit: 200 } as Parameters<typeof driverApi.getAll>[0]),
-        bookingApi.getAll({ limit: 500 } as Parameters<typeof bookingApi.getAll>[0]),
-      ]);
-      const drivers: Driver[] = driversResp.data.data?.drivers || [];
-      const bookings: Booking[] = bookingsResp.data.data?.bookings || [];
-
-      // Build per-driver stats from bookings
-      const statsMap: Record<
-        string,
-        {
-          trips: number;
-          podPending: number;
-          podReceived: number;
-          sIn: number;
-          sOut: number;
-          dIn: number;
-          dOut: number;
-        }
-      > = {};
-
-      for (const b of bookings) {
-        const dId = b.driver?._id ? String(b.driver._id) : null;
-        if (!dId) continue;
-        if (!statsMap[dId])
-          statsMap[dId] = {
-            trips: 0,
-            podPending: 0,
-            podReceived: 0,
-            sIn: 0,
-            sOut: 0,
-            dIn: 0,
-            dOut: 0,
-          };
-        const s = statsMap[dId];
-        s.trips++;
-        // S-in: driver reached pickup
-        if ((b.statusHistory || []).some((h) => h.status === 'reached-pickup')) s.sIn++;
-        // S-out: loaded/departed
-        if ((b.statusHistory || []).some((h) => h.status === 'loaded' || h.status === 'in-transit'))
-          s.sOut++;
-        // D-in: reached destination
-        if ((b.statusHistory || []).some((h) => h.status === 'reached-destination')) s.dIn++;
-        // D-out: delivered
-        if (
-          (b.statusHistory || []).some(
-            (h) => h.status === 'delivered' || h.status === 'pod-received' || h.status === 'closed'
-          )
-        )
-          s.dOut++;
-        // POD
-        if (b.status === 'delivered') s.podPending++;
-        if (['pod-received', 'closed'].includes(b.status)) s.podReceived++;
-      }
-
-      const p = (n: number, total: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
-
-      const rows: DriverRow[] = drivers.map((d) => {
-        const st = statsMap[String(d._id)] || {
-          trips: 0,
-          podPending: 0,
-          podReceived: 0,
-          sIn: 0,
-          sOut: 0,
-          dIn: 0,
-          dOut: 0,
-        };
-        return {
-          _id: d._id,
-          name: d.name,
-          phone: d.phone || '—',
-          vehicleNumber: d.vehicles?.[0]?.vehicleNumber,
-          truckType: d.vehicles?.[0]?.truckType || d.preferredTruckTypes?.[0],
-          appInstalled: !!d.lastActive, // heuristic: has logged in = app installed
-          availability: d.status,
-          trips: st.trips,
-          podPending: st.podPending,
-          podReceived: st.podReceived,
-          sIn: Number(st.sIn),
-          sInPct: p(st.sIn, st.trips),
-          sOut: Number(st.sOut),
-          sOutPct: p(st.sOut, st.trips),
-          dIn: Number(st.dIn),
-          dInPct: p(st.dIn, st.trips),
-          dOut: Number(st.dOut),
-          dOutPct: p(st.dOut, st.trips),
-        };
-      });
-
-      setDriverRows(rows);
+      const resp = await bookingApi.getDriverStats();
+      setDriverRows((resp.data.data || []) as DriverRow[]);
     } catch {
       setDriverRows([]);
     } finally {

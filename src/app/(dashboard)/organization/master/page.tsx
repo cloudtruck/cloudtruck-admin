@@ -5,12 +5,17 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { GripVertical, Loader2, Edit2, Trash2 } from 'lucide-react';
+import { GripVertical, Loader2, Edit2, Trash2, Shield, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMasterData } from '@/hooks/useMasterData';
+import { useDeleteRequests } from '@/hooks/useDeleteRequests';
 import { AddMasterDataModal } from '@/components/organization/AddMasterDataModal';
 import { EditMasterDataModal } from '@/components/organization/EditMasterDataModal';
+import { DeletionPolicyConfig } from '@/components/organization/DeletionPolicyConfig';
+import { DeleteRequestQueue } from '@/components/organization/DeleteRequestQueue';
+import { useAuthStore } from '@/store/authStore';
+import { toast } from 'sonner';
 import type { MasterData } from '@/types';
 import Image from 'next/image';
 
@@ -20,6 +25,9 @@ const CATEGORIES = [
   { value: 'charge-type', label: 'Charge Types' },
   { value: 'body-type', label: 'Body Types' },
   { value: 'document-type', label: 'Document Types' },
+  { value: 'location', label: 'Locations' },
+  { value: 'lane', label: 'Lanes' },
+  { value: 'cost-center', label: 'Cost Centers' },
 ] as const;
 
 export default function MasterDataPage() {
@@ -28,11 +36,26 @@ export default function MasterDataPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<MasterData | null>(null);
 
+  const { user } = useAuthStore();
+  const isStaff = user?.role === 'staff';
+  const canManagePolicy = user?.role === 'super-admin';
+  const canApprove = user?.role === 'admin' || user?.role === 'super-admin';
+
+  const { items: pendingRequests } = useDeleteRequests({ status: 'pending', autoFetch: canApprove });
+
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this item?')) return;
     setDeleting(id);
-    await deleteItem(id);
-    setDeleting(null);
+    try {
+      const result = await deleteItem(id);
+      // If backend returned 202, the delete is pending approval — toast shown by hook
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((result as any)?.status === 202) {
+        toast.info('Deletion request submitted — awaiting manager approval');
+      }
+    } finally {
+      setDeleting(null);
+    }
   };
 
   const renderCategoryContent = (category: MasterData['category']) => {
@@ -143,12 +166,29 @@ export default function MasterDataPage() {
         onValueChange={(value) => setSelectedCategory(value as MasterData['category'])} 
         className="space-y-4"
       >
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           {CATEGORIES.map((category) => (
             <TabsTrigger key={category.value} value={category.value}>
               {category.label}
             </TabsTrigger>
           ))}
+          {canManagePolicy && (
+            <TabsTrigger value="deletion-policy" className="flex items-center gap-1">
+              <Shield className="h-3 w-3" />
+              Deletion Policy
+            </TabsTrigger>
+          )}
+          {canApprove && (
+            <TabsTrigger value="pending-deletions" className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Pending Deletions
+              {pendingRequests.length > 0 && (
+                <Badge variant="destructive" className="ml-1 text-[10px] px-1 py-0 min-w-[16px] h-4">
+                  {pendingRequests.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {CATEGORIES.map((category) => (
@@ -156,6 +196,18 @@ export default function MasterDataPage() {
             {renderCategoryContent(category.value)}
           </TabsContent>
         ))}
+
+        {canManagePolicy && (
+          <TabsContent value="deletion-policy">
+            <DeletionPolicyConfig />
+          </TabsContent>
+        )}
+
+        {canApprove && (
+          <TabsContent value="pending-deletions">
+            <DeleteRequestQueue />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Edit Modal */}

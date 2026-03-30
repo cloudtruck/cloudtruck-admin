@@ -44,8 +44,16 @@ export default function PaymentRequestsPage() {
       const params: Record<string, string> = {};
       if (statusFilter) params.status = statusFilter;
       const res = await bookingApi.getAllPaymentRequests(params);
-      const data = res.data.data as any;
-      setRequests(data?.items ?? data?.requests ?? data ?? []);
+      const data = res.data.data as
+        | { items?: PaymentRequest[]; requests?: PaymentRequest[] }
+        | PaymentRequest[];
+      setRequests(
+        Array.isArray(data)
+          ? data
+          : ((data as { items?: PaymentRequest[]; requests?: PaymentRequest[] })?.items ??
+              (data as { items?: PaymentRequest[]; requests?: PaymentRequest[] })?.requests ??
+              [])
+      );
     } catch {
       toast.error('Failed to load payment requests');
     } finally {

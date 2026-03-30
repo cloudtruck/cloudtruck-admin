@@ -84,11 +84,12 @@ export function PodList({ bookings, loading }: PodListProps) {
       const lrDate = b.lrDetails?.lrDate || null;
       const weightStr = b.weight ? `${b.weight.value} ${b.weight.unit || 'kg'}` : '';
       const podUploadedBy = b.podDetails
-        ? typeof (b.podDetails as any).uploadedBy === 'string'
-          ? (b.podDetails as any).uploadedBy
-          : (b.podDetails as any).uploadedBy?.name || ''
+        ? (() => {
+            const ub = b.podDetails?.uploadedBy;
+            return typeof ub === 'string' ? ub : ub?.name || '';
+          })()
         : '';
-      const km = (b as any).tripKm ?? (b as any).actualKm ?? '';
+      const km = b.tripKm ?? b.actualKm ?? '';
       return [
         b._id.slice(-6).toUpperCase(),
         b.bookingId || '',
@@ -101,12 +102,12 @@ export function PodList({ bookings, loading }: PodListProps) {
         b.customer?.companyName || '',
         b.pickup?.city || '',
         b.pickup?.address || '',
-        (b as any).sourceCode || '',
+        b.sourceCode || '',
         b.drop?.city || '',
         podUploadedBy,
         b.drop?.address || '',
-        (b as any).destinationCode || '',
-        (b as any).supplier || '',
+        b.destinationCode || '',
+        b.supplierEntity?.displayName || '',
         b.vehicle?.vehicleNumber || '',
         b.vehicle?.truckType || '',
         b.driver?.phone || '',
@@ -180,9 +181,10 @@ export function PodList({ bookings, loading }: PodListProps) {
                   ? `${b.weight.value} ${b.weight.unit || b.weightUnit || 'kg'}`
                   : '—';
                 const podUploadedBy = b.podDetails
-                  ? typeof (b.podDetails as any).uploadedBy === 'string'
-                    ? (b.podDetails as any).uploadedBy
-                    : (b.podDetails as any).uploadedBy?.name || '—'
+                  ? (() => {
+                      const ub = b.podDetails?.uploadedBy;
+                      return typeof ub === 'string' ? ub : ub?.name || '—';
+                    })()
                   : '—';
                 const km = b.tripKm ?? b.actualKm;
 
@@ -242,7 +244,7 @@ export function PodList({ bookings, loading }: PodListProps) {
                     <Td>{b.drop?.address || '—'}</Td>
                     {/* Destination code */}
                     <Td>{b.destinationCode || '—'}</Td>
-                    <Td>{b.supplier || '—'}</Td>
+                    <Td>{b.supplierEntity?.displayName || '—'}</Td>
                     <Td className="font-medium">{b.vehicle?.vehicleNumber || '—'}</Td>
                     <Td>{b.vehicle?.truckType || '—'}</Td>
                     <Td>{b.driver?.phone || '—'}</Td>

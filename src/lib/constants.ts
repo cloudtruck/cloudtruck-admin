@@ -1,3 +1,5 @@
+import { env } from './env';
+
 export const BOOKING_STATUSES = [
   { value: 'created', label: 'Created' },
   { value: 'under-review', label: 'Under Review' },
@@ -7,6 +9,7 @@ export const BOOKING_STATUSES = [
   { value: 'loaded', label: 'Loaded' },
   { value: 'in-transit', label: 'In Transit' },
   { value: 'reached-destination', label: 'Reached Destination' },
+  { value: 'unloading', label: 'Unloading' },
   { value: 'delivered', label: 'Delivered' },
   { value: 'pod-received', label: 'POD Received' },
   { value: 'closed', label: 'Closed' },
@@ -76,8 +79,8 @@ export const PAYMENT_METHODS = [
 
 export const ITEMS_PER_PAGE = 20;
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
-export const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:5000';
+export const API_BASE_URL = env.NEXT_PUBLIC_API_URL;
+export const WS_BASE_URL = env.NEXT_PUBLIC_WS_URL;
 
 // Organization constants
 export const ROLE_TEMPLATE_CATEGORIES = [

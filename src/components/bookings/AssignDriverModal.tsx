@@ -18,11 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { driverApi, vehicleApi, bookingApi } from '@/lib/api';
@@ -78,7 +74,7 @@ export function AssignDriverModal({
       setVehiclesLoading(true);
       const response = await vehicleApi.getByDriver(driverId);
       setVehicles(response.data.data);
-      
+
       // Auto-select if only one vehicle
       if (response.data.data.length === 1) {
         setSelectedVehicleId(response.data.data[0]._id);
@@ -138,9 +134,10 @@ export function AssignDriverModal({
     }
   };
 
-  const filteredDrivers = drivers.filter(driver => 
-    driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    driver.phone?.includes(searchQuery)
+  const filteredDrivers = drivers.filter(
+    (driver) =>
+      driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      driver.phone?.includes(searchQuery)
   );
 
   return (
@@ -164,9 +161,9 @@ export function AssignDriverModal({
                 >
                   {selectedDriverId
                     ? drivers.find((driver) => driver._id === selectedDriverId)?.name
-                    : driversLoading 
-                      ? "Loading drivers..." 
-                      : "Select a driver"}
+                    : driversLoading
+                      ? 'Loading drivers...'
+                      : 'Select a driver'}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -191,8 +188,8 @@ export function AssignDriverModal({
                         <div
                           key={driver._id}
                           className={cn(
-                            "relative flex cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
-                            selectedDriverId === driver._id && "bg-accent text-accent-foreground"
+                            'relative flex cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50',
+                            selectedDriverId === driver._id && 'bg-accent text-accent-foreground'
                           )}
                           onClick={() => {
                             setSelectedDriverId(driver._id);
@@ -202,17 +199,30 @@ export function AssignDriverModal({
                           <div className="flex items-center">
                             <Check
                               className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedDriverId === driver._id ? "opacity-100" : "opacity-0"
+                                'mr-2 h-4 w-4',
+                                selectedDriverId === driver._id ? 'opacity-100' : 'opacity-0'
                               )}
                             />
                             <div className="flex flex-col">
-                              <span>{driver.name}</span>
+                              <span>
+                                {driver.name}
+                                {driver.supplierOwner && (
+                                  <span className="ml-1 text-xs text-muted-foreground">
+                                    (
+                                    {driver.supplierOwner.displayName ||
+                                      driver.supplierOwner.companyName}
+                                    )
+                                  </span>
+                                )}
+                              </span>
                               <span className="text-xs text-muted-foreground">{driver.phone}</span>
                             </div>
                           </div>
                           {driver.isReturnTrip && (
-                            <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200">
+                            <Badge
+                              variant="outline"
+                              className="ml-2 bg-green-50 text-green-700 border-green-200"
+                            >
                               Return
                             </Badge>
                           )}
@@ -233,26 +243,37 @@ export function AssignDriverModal({
               disabled={!selectedDriverId || vehiclesLoading}
             >
               <SelectTrigger>
-                <SelectValue placeholder={
-                  !selectedDriverId 
-                    ? "Select a driver first" 
-                    : vehiclesLoading 
-                      ? "Loading vehicles..." 
-                      : "Select a vehicle"
-                } />
+                <SelectValue
+                  placeholder={
+                    !selectedDriverId
+                      ? 'Select a driver first'
+                      : vehiclesLoading
+                        ? 'Loading vehicles...'
+                        : 'Select a vehicle'
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                {vehicles.length === 0 ? (
-                  <div className="p-2 text-sm text-muted-foreground text-center">
-                    No vehicles found for this driver
-                  </div>
-                ) : (
-                  vehicles.map((vehicle) => (
+                {(() => {
+                  const matchingVehicles = booking.bodyType
+                    ? vehicles.filter((v) => !v.bodyType || v.bodyType === booking.bodyType)
+                    : vehicles;
+                  if (matchingVehicles.length === 0) {
+                    return (
+                      <div className="p-2 text-sm text-muted-foreground text-center">
+                        {vehicles.length === 0
+                          ? 'No vehicles found for this driver'
+                          : `No ${booking.bodyType} body-type vehicles for this driver`}
+                      </div>
+                    );
+                  }
+                  return matchingVehicles.map((vehicle) => (
                     <SelectItem key={vehicle._id} value={vehicle._id}>
-                      {vehicle.vehicleNumber} - {vehicle.truckType}
+                      {vehicle.vehicleNumber} — {vehicle.truckType}
+                      {vehicle.bodyType ? ` (${vehicle.bodyType})` : ''}
                     </SelectItem>
-                  ))
-                )}
+                  ));
+                })()}
               </SelectContent>
             </Select>
           </div>
@@ -272,7 +293,10 @@ export function AssignDriverModal({
           <Button variant="outline" onClick={onCloseAction} disabled={loading}>
             Cancel
           </Button>
-          <Button onClick={handleAssign} disabled={loading || !selectedDriverId || !selectedVehicleId}>
+          <Button
+            onClick={handleAssign}
+            disabled={loading || !selectedDriverId || !selectedVehicleId}
+          >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Assign Driver
           </Button>

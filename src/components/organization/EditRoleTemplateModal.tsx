@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -52,7 +53,9 @@ export function EditRoleTemplateModal({
     description: template.description,
     category: template.category,
     permissions: Array.isArray(template.permissions)
-      ? template.permissions.map((p: string | { _id?: string }) => (typeof p === 'string' ? p : p._id || ''))
+      ? template.permissions.map((p: string | { _id?: string }) =>
+          typeof p === 'string' ? p : p._id || ''
+        )
       : [],
     isActive: template.isActive,
   });
@@ -88,7 +91,7 @@ export function EditRoleTemplateModal({
     } catch (error: unknown) {
       const err = error as ApiErrorResponse;
       toast.error(err.response?.data?.message || 'Failed to update role template');
-      console.error('Error updating role template:', error);
+      logger.error('Error updating role template:', error);
     } finally {
       setLoading(false);
     }
@@ -111,9 +114,7 @@ export function EditRoleTemplateModal({
                 <Input
                   id="templateName"
                   value={formData.templateName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, templateName: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, templateName: e.target.value })}
                   placeholder="e.g., Operations Manager"
                   required
                 />
@@ -150,9 +151,7 @@ export function EditRoleTemplateModal({
               <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Brief description of this role and its responsibilities"
                 rows={3}
                 required
@@ -163,9 +162,7 @@ export function EditRoleTemplateModal({
               <Switch
                 id="isActive"
                 checked={formData.isActive}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, isActive: checked })
-                }
+                onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
               />
               <Label htmlFor="isActive" className="cursor-pointer">
                 Active (can be assigned to employees)
@@ -178,28 +175,22 @@ export function EditRoleTemplateModal({
               </Label>
               <PermissionSelector
                 selectedPermissions={formData.permissions}
-                onChange={(permissions: string[]) =>
-                  setFormData({ ...formData, permissions })
-                }
+                onChange={(permissions: string[]) => setFormData({ ...formData, permissions })}
               />
               <p className="text-xs text-gray-500">
                 Selected: {formData.permissions.length} permission(s)
               </p>
               {template.employeeCount > 0 && (
                 <p className="text-xs text-orange-600">
-                  ⚠️ Changing permissions will affect {template.employeeCount} employee(s) using this template
+                  ⚠️ Changing permissions will affect {template.employeeCount} employee(s) using
+                  this template
                 </p>
               )}
             </div>
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={loading}
-            >
+            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>

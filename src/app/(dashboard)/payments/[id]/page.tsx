@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { PaymentStatusBadge } from '@/components/payments/PaymentStatusBadge';
 import { MarkAsReceivedModal } from '@/components/payments/MarkAsReceivedModal';
 import { paymentApi } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 import type { Payment } from '@/types';
 import { format } from 'date-fns';
@@ -34,7 +35,7 @@ export default function PaymentDetailPage({ params }: PaymentDetailPageProps) {
       const response = await paymentApi.getById(id);
       setPayment(response.data.data);
     } catch (error) {
-      console.error('Failed to fetch payment:', error);
+      logger.error('Failed to fetch payment:', error);
       toast.error('Failed to fetch payment details');
     } finally {
       setLoading(false);
@@ -53,7 +54,7 @@ export default function PaymentDetailPage({ params }: PaymentDetailPageProps) {
       link.remove();
       toast.success('Invoice downloaded');
     } catch (error) {
-      console.error('Failed to download invoice:', error);
+      logger.error('Failed to download invoice:', error);
       toast.error('Failed to download invoice');
     }
   };
@@ -95,11 +96,7 @@ export default function PaymentDetailPage({ params }: PaymentDetailPageProps) {
               Refresh
             </Button>
             {payment.paymentStatus === 'unpaid' && (
-              <Button
-                onClick={() => setMarkAsReceivedModalOpen(true)}
-                variant="default"
-                size="sm"
-              >
+              <Button onClick={() => setMarkAsReceivedModalOpen(true)} variant="default" size="sm">
                 Mark as Received
               </Button>
             )}
@@ -124,32 +121,29 @@ export default function PaymentDetailPage({ params }: PaymentDetailPageProps) {
             <CardContent className="space-y-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-3xl font-bold">
-                    ₹{payment.amount.toLocaleString('en-IN')}
-                  </p>
+                  <p className="text-3xl font-bold">₹{payment.amount.toLocaleString('en-IN')}</p>
                   <p className="text-sm text-muted-foreground mt-1">Total Amount</p>
                 </div>
                 <PaymentStatusBadge status={payment.paymentStatus} />
               </div>
 
               <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                
                 <div>
-                <p className="text-sm text-muted-foreground mb-1">Advance Paid</p>
-                {payment.advanceAmount && payment.advanceAmount > 0 && (
+                  <p className="text-sm text-muted-foreground mb-1">Advance Paid</p>
+                  {payment.advanceAmount && payment.advanceAmount > 0 && (
                     <p className="text-xl font-semibold">
                       ₹{payment.advanceAmount.toLocaleString('en-IN')}
                     </p>
-                )}
+                  )}
                 </div>
-                
+
                 <div>
-                <p className="text-sm text-muted-foreground mb-1">Balance Due</p>
-                {payment.balanceAmount && payment.balanceAmount > 0 && (                    
+                  <p className="text-sm text-muted-foreground mb-1">Balance Due</p>
+                  {payment.balanceAmount && payment.balanceAmount > 0 && (
                     <p className="text-xl font-semibold text-red-600">
                       ₹{payment.balanceAmount.toLocaleString('en-IN')}
                     </p>
-                )}
+                  )}
                 </div>
               </div>
 
@@ -160,9 +154,7 @@ export default function PaymentDetailPage({ params }: PaymentDetailPageProps) {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Payment Method</p>
-                    <p className="font-medium capitalize">
-                      {payment.paymentMethod || 'Not Set'}
-                    </p>
+                    <p className="font-medium capitalize">{payment.paymentMethod || 'Not Set'}</p>
                   </div>
                 </div>
 
@@ -264,7 +256,9 @@ export default function PaymentDetailPage({ params }: PaymentDetailPageProps) {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Contact Person</p>
-                  <p className="font-medium">{payment.booking.customer.contactPerson?.name || 'N/A'}</p>
+                  <p className="font-medium">
+                    {payment.booking.customer.contactPerson?.name || 'N/A'}
+                  </p>
                 </div>
                 {payment.booking.customer.contactPerson?.phone && (
                   <div>

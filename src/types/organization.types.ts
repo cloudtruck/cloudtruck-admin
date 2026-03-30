@@ -73,6 +73,38 @@ export interface Account {
   updatedAt: string;
 }
 
+export interface OrgAddress {
+  _id: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  country?: string;
+  gstin?: string;
+  pan?: string;
+  series?: string;
+  accountNo?: string;
+  isPrimary: boolean;
+  isActive: boolean;
+}
+
+export type DeletionPolicyResource =
+  | 'driver'
+  | 'vehicle'
+  | 'customer'
+  | 'staff'
+  | 'branch'
+  | 'supplier'
+  | 'master-data'
+  | 'account'
+  | 'route'
+  | 'document';
+
+export interface DeletionPolicy {
+  requireApprovalFor: DeletionPolicyResource[];
+}
+
 export interface OrganizationSettings {
   _id: string;
   companyName: string;
@@ -80,8 +112,31 @@ export interface OrganizationSettings {
   bookingSeriesPrefix: string;
   podMandatory: boolean;
   advancePaymentPercentage: number;
+  deletionPolicy?: DeletionPolicy;
   updatedAt: string;
   updatedBy?: string;
+  // Master Tab Settings
+  noPodAttached?: boolean;
+  noPodMarket?: boolean;
+  serviceChargesEnabled?: boolean;
+  partnerCode?: string;
+  eximEnabled?: boolean;
+  customerBudgetLimitEnabled?: boolean;
+  additionPointCharge?: number;
+  bmAccess?: 'none' | 'read' | 'full';
+  paymentMamul?: 'none' | 'custom' | 'slab';
+  documentsMandatory?: boolean;
+  documentsMandatoryFor?: string[];
+  deleteTripTimeRoles?: string[];
+  processSupplierAdvance?: boolean;
+  tripConfirmationEnabled?: boolean;
+  lrMandatory?: { lrNo: boolean; lrImage: boolean; ewayBill: boolean };
+  lrMandatoryFields?: string[];
+  supplierAdvanceEditMode?: 'price' | 'percent';
+  deleteTripRoles?: string[];
+  deleteLrRoles?: string[];
+  kycDocsMandatoryEnabled?: boolean;
+  kycDocsMandatoryFor?: string[];
 }
 
 export interface Branch {
@@ -91,6 +146,7 @@ export interface Branch {
   assignedCities: string[];
   region: string;
   branchManager?: Staff | string;
+  trafficCoordinator?: Staff | string;
   employees: (Staff | string)[];
   vehicles: string[];
   metrics: {
@@ -129,6 +185,28 @@ export interface MasterDataFilters {
   search?: string;
 }
 
+export interface DeleteRequest {
+  _id: string;
+  resource: DeletionPolicyResource;
+  resourceId: string;
+  resourceModel: string;
+  resourceSnapshot: Record<string, unknown>;
+  requestedBy: { _id: string; name: string; email: string; role: string } | string;
+  reason?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approvedBy?: { _id: string; name: string; email: string } | string;
+  approvedAt?: string;
+  rejectionReason?: string;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DeleteRequestPagination {
+  items: DeleteRequest[];
+  pagination: { page: number; limit: number; total: number; pages: number };
+}
+
 export interface BranchFilters {
   region?: string;
   isActive?: boolean;
@@ -154,6 +232,7 @@ export interface UpdateStaffData {
   roleTemplate?: string;
   permissions?: string[];
   status?: 'active' | 'inactive' | 'blocked';
+  isActive?: boolean;
   branch?: string;
 }
 
