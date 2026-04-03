@@ -12,6 +12,7 @@ import { AddLaneModal } from '@/components/organization/AddLaneModal';
 import { EditLaneModal } from '@/components/organization/EditLaneModal';
 import { EditAddressModal } from '@/components/organization/EditAddressModal';
 import { EditBranchModal } from '@/components/organization/EditBranchModal';
+import { AddMasterDataModal } from '@/components/organization/AddMasterDataModal';
 import { useBranches } from '@/hooks/useBranches';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useAccounts } from '@/hooks/useAccounts';
@@ -49,6 +50,7 @@ import {
   X,
 } from 'lucide-react';
 import { DeleteRequestQueue } from '@/components/organization/DeleteRequestQueue';
+import { DeleteRequestModal } from '@/components/organization/DeleteRequestModal';
 import { EditSettingModal } from '@/components/organization/EditSettingModal';
 
 // ─── Tab definition ───────────────────────────────────────────────────────────
@@ -539,7 +541,7 @@ const ROLE_CHIPS = [
   'Operations',
 ];
 
-function TagChips({ items }: { items: string[] }) {
+function TagChips({ items, onAdd }: { items: string[]; onAdd?: () => void }) {
   return (
     <div className="flex flex-wrap gap-1.5 items-center">
       {items.map((item) => (
@@ -550,9 +552,14 @@ function TagChips({ items }: { items: string[] }) {
           {item}
         </span>
       ))}
-      <button className="flex items-center justify-center w-5 h-5 bg-blue-500 text-white rounded text-xs hover:bg-blue-600">
-        <Plus className="h-3 w-3" />
-      </button>
+      {onAdd && (
+        <button
+          onClick={onAdd}
+          className="flex items-center justify-center w-5 h-5 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+        >
+          <Plus className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 }
@@ -609,15 +616,18 @@ function MasterTab({
   materialTypes,
   truckTypes,
   chargeTypes,
+  onRefreshMaster,
 }: {
   materialTypes: MasterData[];
   truckTypes: MasterData[];
   chargeTypes: MasterData[];
+  onRefreshMaster: () => void;
 }) {
   const { settings, updateSettings, updateBookingConfig } = useOrganizationSettings();
 
-  // Prevent re-initialization on every settings save (only init once when _id first appears)
-  const initialized = useRef(false);
+  // Track the last settings.updatedAt that was applied to local state.
+  // Using updatedAt (not _id) allows re-sync if a save fails and settings refresh.
+  const syncedAtRef = useRef<string | null>(null);
 
   // ── Local state ───────────────────────────────────────────────────────────
   // noPodOwn is inverted: checked = podMandatory false (no POD required for own trucks)
@@ -625,9 +635,12 @@ function MasterTab({
   const [noPodAttached, setNoPodAttached] = useState(false);
   const [noPodMarket, setNoPodMarket] = useState(false);
   const [serviceCharges, setServiceCharges] = useState(false);
-  const [lrNo, setLrNo] = useState(true);
-  const [lrImage, setLrImage] = useState(false);
-  const [ewayBill, setEwayBill] = useState(false);
+  // Single object avoids stale-closure race when multiple LR checkboxes are clicked rapidly
+  const [lrMandatoryState, setLrMandatoryState] = useState({
+    lrNo: true,
+    lrImage: false,
+    ewayBill: false,
+  });
   const [exim, setExim] = useState(false);
   const [budgetLimit, setBudgetLimit] = useState(false);
   const [bmAccess, setBmAccess] = useState<'none' | 'read' | 'full'>('full');
@@ -649,18 +662,26 @@ function MasterTab({
   const [editPartnerOpen, setEditPartnerOpen] = useState(false);
   const [editPointChargeOpen, setEditPointChargeOpen] = useState(false);
 
-  // ── Initialize all state from fetched settings (once) ────────────────────
+  // Add master data modal
+  const [addMasterCategory, setAddMasterCategory] = useState<MasterData['category'] | null>(null);
+
+  // ── Sync local state from settings ───────────────────────────────────────
+  // Runs whenever updatedAt changes (initial load or successful save).
+  // Using updatedAt (not _id) allows re-sync after a failed save once the
+  // server returns fresh data, without reverting in-flight user edits.
   useEffect(() => {
-    if (!settings?._id || initialized.current) return;
-    initialized.current = true;
+    if (!settings?.updatedAt || syncedAtRef.current === settings.updatedAt) return;
+    syncedAtRef.current = settings.updatedAt;
 
     setNoPodOwn(settings.podMandatory === false);
     setNoPodAttached(settings.noPodAttached ?? false);
     setNoPodMarket(settings.noPodMarket ?? false);
     setServiceCharges(settings.serviceChargesEnabled ?? false);
-    setLrNo(settings.lrMandatory?.lrNo ?? true);
-    setLrImage(settings.lrMandatory?.lrImage ?? false);
-    setEwayBill(settings.lrMandatory?.ewayBill ?? false);
+    setLrMandatoryState({
+      lrNo: settings.lrMandatory?.lrNo ?? true,
+      lrImage: settings.lrMandatory?.lrImage ?? false,
+      ewayBill: settings.lrMandatory?.ewayBill ?? false,
+    });
     setExim(settings.eximEnabled ?? false);
     setBudgetLimit(settings.customerBudgetLimitEnabled ?? false);
     setBmAccess(settings.bmAccess ?? 'full');
@@ -676,7 +697,7 @@ function MasterTab({
     setDeleteLr(settings.deleteLrRoles ?? []);
     setKycDocsEnable(settings.kycDocsMandatoryEnabled ?? false);
     setKycDocsMandatoryFor(settings.kycDocsMandatoryFor ?? []);
-  }, [settings?._id]);
+  }, [settings?.updatedAt]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const chk = (checked: boolean, onChange: (v: boolean) => void) => (
@@ -722,18 +743,21 @@ function MasterTab({
       <SettingRow label="Material Type">
         <TagChips
           items={materialTypes.filter((t) => t.isActive).map((t) => t.displayName.toUpperCase())}
+          onAdd={() => setAddMasterCategory('material-type')}
         />
       </SettingRow>
 
       <SettingRow label="Truck Type">
         <TagChips
           items={truckTypes.filter((t) => t.isActive).map((t) => t.displayName.toUpperCase())}
+          onAdd={() => setAddMasterCategory('truck-type')}
         />
       </SettingRow>
 
       <SettingRow label="Charge Type">
         <TagChips
           items={chargeTypes.filter((t) => t.isActive).map((t) => t.displayName.toUpperCase())}
+          onAdd={() => setAddMasterCategory('charge-type')}
         />
       </SettingRow>
 
@@ -787,27 +811,27 @@ function MasterTab({
       </SettingRow>
 
       <SettingRow label="LR" sub="Mandatory before source out - S-Out">
-        <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(lrNo, (v) => {
-            setLrNo(v);
-            updateSettings({ lrMandatory: { lrNo: v, lrImage, ewayBill } });
-          })}{' '}
-          LR No
-        </label>
-        <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(lrImage, (v) => {
-            setLrImage(v);
-            updateSettings({ lrMandatory: { lrNo, lrImage: v, ewayBill } });
-          })}{' '}
-          LR Image
-        </label>
-        <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
-          {chk(ewayBill, (v) => {
-            setEwayBill(v);
-            updateSettings({ lrMandatory: { lrNo, lrImage, ewayBill: v } });
-          })}{' '}
-          Eway Bill
-        </label>
+        {(['lrNo', 'lrImage', 'ewayBill'] as const).map((field) => {
+          const labels: Record<string, string> = {
+            lrNo: 'LR No',
+            lrImage: 'LR Image',
+            ewayBill: 'Eway Bill',
+          };
+          return (
+            <label
+              key={field}
+              className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer"
+            >
+              {chk(lrMandatoryState[field], (v) => {
+                // Use functional update to always read fresh state, avoiding stale closure
+                const next = { ...lrMandatoryState, [field]: v };
+                setLrMandatoryState(next);
+                updateSettings({ lrMandatory: next });
+              })}{' '}
+              {labels[field]}
+            </label>
+          );
+        })}
       </SettingRow>
 
       <SettingRow label="Partner Code">
@@ -972,6 +996,7 @@ function MasterTab({
             disabled={!processAdvance}
             onChange={(e) => setAdvancePercentage(e.target.value)}
             onBlur={() => {
+              if (!processAdvance) return;
               const val = parseFloat(advancePercentage);
               if (!isNaN(val)) updateSettings({ advancePaymentPercentage: val });
             }}
@@ -990,19 +1015,6 @@ function MasterTab({
           })}{' '}
           Enable
         </label>
-      </SettingRow>
-
-      <SettingRow label="Lr Mandatory" sub="manual lr mandatory field">
-        <button className="text-blue-400 hover:text-blue-600 border border-blue-200 rounded p-1">
-          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
-        </button>
       </SettingRow>
 
       <SettingRow label="Supplier Advance Edit" sub="based on percentage or supplier price">
@@ -1135,6 +1147,27 @@ function MasterTab({
         hint="Flat charge added for each additional trip point"
         onSave={(v) => updateSettings({ additionPointCharge: parseFloat(v) })}
       />
+
+      {addMasterCategory && (
+        <AddMasterDataModal
+          category={addMasterCategory}
+          categoryLabel={
+            addMasterCategory === 'material-type'
+              ? 'Material Type'
+              : addMasterCategory === 'truck-type'
+                ? 'Truck Type'
+                : 'Charge Type'
+          }
+          open={true}
+          onOpenChange={(v) => {
+            if (!v) setAddMasterCategory(null);
+          }}
+          onSuccess={() => {
+            setAddMasterCategory(null);
+            onRefreshMaster();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1275,7 +1308,7 @@ function BranchesTab({
               <TableHead className="text-xs font-semibold text-gray-600 w-16">
                 <span className="flex items-center gap-1">
                   <Settings2 className="h-3.5 w-3.5" /> Action
-                  <span className="ml-1 text-green-600 border border-green-400 rounded px-1 py-0.5 text-[10px] leading-none cursor-pointer">
+                  <span className="ml-1 text-green-600 border border-green-400 rounded px-1 py-0.5 text-[10px] leading-none">
                     ↓
                   </span>
                 </span>
@@ -1402,15 +1435,18 @@ function EmployeesTab({
   loading,
   pagination,
   onRefresh,
+  onDeactivate,
 }: {
   employees: Staff[];
   loading: boolean;
   pagination: any;
   onRefresh: () => void;
+  onDeactivate: (id: string) => Promise<void>;
 }) {
   const [selectedEmployee, setSelectedEmployee] = useState<Staff | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [deactivating, setDeactivating] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -1429,7 +1465,7 @@ function EmployeesTab({
               <TableHead className="text-xs font-semibold text-gray-600 w-16">
                 <span className="flex items-center gap-1">
                   <Settings2 className="h-3.5 w-3.5" /> Action
-                  <span className="ml-1 text-green-600 border border-green-400 rounded px-1 py-0.5 text-[10px] leading-none cursor-pointer">
+                  <span className="ml-1 text-green-600 border border-green-400 rounded px-1 py-0.5 text-[10px] leading-none">
                     ↓
                   </span>
                 </span>
@@ -1459,17 +1495,6 @@ function EmployeesTab({
               </TableHead>
               <TableHead className="text-xs font-semibold text-gray-600">
                 <span className="flex items-center gap-1">
-                  <Filter className="h-3 w-3 text-gray-400" /> Application Name
-                </span>
-              </TableHead>
-              <TableHead className="text-xs font-semibold text-gray-600">
-                Track Last Access
-              </TableHead>
-              <TableHead className="text-xs font-semibold text-gray-600">
-                Desk Last Access
-              </TableHead>
-              <TableHead className="text-xs font-semibold text-gray-600">
-                <span className="flex items-center gap-1">
                   Status <Filter className="h-3 w-3 text-gray-400" />
                 </span>
               </TableHead>
@@ -1478,7 +1503,7 @@ function EmployeesTab({
           <TableBody>
             {employees.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="py-12">
+                <TableCell colSpan={6} className="py-12">
                   <div className="flex flex-col items-center gap-2 text-gray-400">
                     <Inbox className="h-8 w-8 opacity-30" />
                     <span className="text-sm">No employees found</span>
@@ -1503,8 +1528,22 @@ function EmployeesTab({
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                         </Tooltip>
-                        <Tooltip label="Deactivate">
-                          <button className="text-red-400 hover:text-red-600 p-0.5">
+                        <Tooltip label={emp.status === 'inactive' ? 'Activate' : 'Deactivate'}>
+                          <button
+                            className="text-red-400 hover:text-red-600 p-0.5 disabled:opacity-40"
+                            disabled={deactivating === emp._id}
+                            onClick={async () => {
+                              if (
+                                !window.confirm(
+                                  `${emp.status === 'inactive' ? 'Activate' : 'Deactivate'} employee "${emp.name}"?`
+                                )
+                              )
+                                return;
+                              setDeactivating(emp._id);
+                              await onDeactivate(emp._id);
+                              setDeactivating(null);
+                            }}
+                          >
                             <XCircle className="h-3.5 w-3.5" />
                           </button>
                         </Tooltip>
@@ -1513,7 +1552,15 @@ function EmployeesTab({
                   </TableCell>
 
                   {/* Name */}
-                  <TableCell className="text-sm font-medium text-gray-800">{emp.name}</TableCell>
+                  <TableCell
+                    className="text-sm font-medium text-gray-800 cursor-pointer hover:text-blue-600"
+                    onClick={() => {
+                      setSelectedEmployee(emp);
+                      setDrawerOpen(true);
+                    }}
+                  >
+                    {emp.name}
+                  </TableCell>
 
                   {/* Email */}
                   <TableCell className="text-sm text-gray-600">{emp.email || '—'}</TableCell>
@@ -1527,20 +1574,17 @@ function EmployeesTab({
                       {typeof emp.roleTemplate === 'object' && emp.roleTemplate !== null
                         ? (emp.roleTemplate as RoleTemplate).templateName
                         : emp.role}
-                      <button className="text-blue-400 hover:text-blue-600">
+                      <button
+                        className="text-blue-400 hover:text-blue-600"
+                        onClick={() => {
+                          setSelectedEmployee(emp);
+                          setEditOpen(true);
+                        }}
+                      >
                         <Pencil className="h-3 w-3" />
                       </button>
                     </span>
                   </TableCell>
-
-                  {/* Application Name */}
-                  <TableCell className="text-sm text-gray-400">—</TableCell>
-
-                  {/* Track Last Access */}
-                  <TableCell className="text-sm text-gray-400">—</TableCell>
-
-                  {/* Desk Last Access */}
-                  <TableCell className="text-sm text-gray-400">—</TableCell>
 
                   {/* Status */}
                   <TableCell className="text-sm font-semibold uppercase tracking-wide text-gray-700">
@@ -1737,7 +1781,12 @@ export default function OrganisationPage() {
     setBranchManager,
     setTrafficCoordinator,
   } = useBranches();
-  const { employees, loading: employeesLoading, refetch: refetchEmployees } = useEmployees();
+  const {
+    employees,
+    loading: employeesLoading,
+    refetch: refetchEmployees,
+    updateEmployee,
+  } = useEmployees();
   const { accounts, loading: accountsLoading, setPrimaryAccount, updateAccount } = useAccounts();
   const {
     addresses,
@@ -1748,9 +1797,9 @@ export default function OrganisationPage() {
     setPrimaryAddress,
   } = useAddress();
   const { createDeleteRequest } = useDeleteRequests({ autoFetch: false });
-  const { data: materialTypes } = useMasterData('material-type');
-  const { data: truckTypes } = useMasterData('truck-type');
-  const { data: chargeTypes } = useMasterData('charge-type');
+  const { data: materialTypes, refetch: refetchMaterialTypes } = useMasterData('material-type');
+  const { data: truckTypes, refetch: refetchTruckTypes } = useMasterData('truck-type');
+  const { data: chargeTypes, refetch: refetchChargeTypes } = useMasterData('charge-type');
   const { data: locations } = useMasterData('location');
   const {
     data: lanes,
@@ -1851,6 +1900,11 @@ export default function OrganisationPage() {
           loading={employeesLoading}
           pagination={pagination}
           onRefresh={refetchEmployees}
+          onDeactivate={async (id) => {
+            const emp = employees.find((e) => e._id === id);
+            const nextStatus = emp?.status === 'inactive' ? 'active' : 'inactive';
+            await updateEmployee(id, { status: nextStatus });
+          }}
         />
       )}
       {activeTab === 'accounts' && (
@@ -1878,7 +1932,7 @@ export default function OrganisationPage() {
             onEdit={setEditingAddress}
             onDelete={(id) => {
               const addr = addresses.find((a) => a._id === id);
-              handleDeleteRequest('account', id, 'OrganizationSettings', addr?.name || id);
+              handleDeleteRequest('address', id, 'OrganizationSettings', addr?.name || id);
             }}
             onSetPrimary={setPrimaryAddress}
           />
@@ -1914,6 +1968,11 @@ export default function OrganisationPage() {
           materialTypes={materialTypes}
           truckTypes={truckTypes}
           chargeTypes={chargeTypes}
+          onRefreshMaster={() => {
+            refetchMaterialTypes();
+            refetchTruckTypes();
+            refetchChargeTypes();
+          }}
         />
       )}
 

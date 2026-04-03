@@ -267,6 +267,9 @@ export function IndentList({
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [staffSearch, setStaffSearch] = useState('');
   const [savingSupervisor, setSavingSupervisor] = useState(false);
+  const [supervisorOverrides, setSupervisorOverrides] = useState<
+    Record<string, NonNullable<Booking['supervisor']>>
+  >({});
 
   const [loadTypeEditId, setLoadTypeEditId] = useState<string | null>(null);
   const [savingLoadType, setSavingLoadType] = useState<string | null>(null);
@@ -348,6 +351,10 @@ export function IndentList({
     setSavingSupervisor(true);
     try {
       await bookingApi.update(bookingId, { supervisor: staffMember._id } as unknown as Partial<Booking>);
+      setSupervisorOverrides((prev) => ({
+        ...prev,
+        [bookingId]: staffMember,
+      }));
       toast.success(`Supervisor updated to ${staffMember.name}`);
       setSupervisorEditId(null);
     } catch {
@@ -770,23 +777,26 @@ export function IndentList({
                     </Td>
                     {/* Supervisor */}
                     <Td>
+                      {(() => {
+                        const supervisor = supervisorOverrides[b._id] ?? b.supervisor;
+                        return (
                       <div
                         className="flex items-center gap-1 relative"
                         ref={supervisorEditId === b._id ? supervisorRef : undefined}
                       >
-                        {b.supervisor?.name ? (
+                        {supervisor?.name ? (
                           <>
                             <a
-                              href={`tel:${b.supervisor.phone}`}
+                              href={`tel:${supervisor.phone}`}
                               className={cn(
                                 'text-blue-500 hover:text-blue-700 shrink-0',
-                                !b.supervisor.phone && 'pointer-events-none opacity-30'
+                                !supervisor.phone && 'pointer-events-none opacity-30'
                               )}
-                              title={b.supervisor.phone ? `Call ${b.supervisor.name}` : 'No phone'}
+                              title={supervisor.phone ? `Call ${supervisor.name}` : 'No phone'}
                             >
                               <Phone className="h-3.5 w-3.5" />
                             </a>
-                            <span>{b.supervisor.name}</span>
+                            <span>{supervisor.name}</span>
                           </>
                         ) : (
                           <span className="text-gray-400">—</span>
@@ -808,7 +818,7 @@ export function IndentList({
                                 autoFocus
                                 value={staffSearch}
                                 onChange={(e) => setStaffSearch(e.target.value)}
-                                placeholder={b.supervisor?.name || 'Search staff…'}
+                                  placeholder={supervisor?.name || 'Search staff…'}
                                 className="flex-1 text-xs outline-none bg-transparent"
                               />
                               <button
@@ -849,6 +859,8 @@ export function IndentList({
                           </div>
                         )}
                       </div>
+                        );
+                      })()}
                     </Td>
                     {/* Customer */}
                     <Td className="font-medium text-gray-700">{b.customer?.companyName || '—'}</Td>

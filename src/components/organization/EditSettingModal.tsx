@@ -16,7 +16,7 @@ interface EditSettingModalProps {
   placeholder?: string;
   hint?: string;
   transform?: (v: string) => string;
-  onSave: (value: string) => Promise<void> | void;
+  onSave: (value: string) => Promise<boolean | void> | void;
 }
 
 export function EditSettingModal({
@@ -54,9 +54,18 @@ export function EditSettingModal({
   const validate = (): boolean => {
     if (inputType === 'number') {
       const n = parseFloat(draft);
-      if (isNaN(n)) { setError('Please enter a valid number'); return false; }
-      if (min !== undefined && n < min) { setError(`Minimum value is ${min}`); return false; }
-      if (max !== undefined && n > max) { setError(`Maximum value is ${max}`); return false; }
+      if (isNaN(n)) {
+        setError('Please enter a valid number');
+        return false;
+      }
+      if (min !== undefined && n < min) {
+        setError(`Minimum value is ${min}`);
+        return false;
+      }
+      if (max !== undefined && n > max) {
+        setError(`Maximum value is ${max}`);
+        return false;
+      }
     }
     if (maxLength && draft.length > maxLength) {
       setError(`Maximum ${maxLength} characters`);
@@ -69,8 +78,9 @@ export function EditSettingModal({
     if (!validate()) return;
     setSaving(true);
     try {
-      await onSave(draft);
-      onClose();
+      const result = await onSave(draft);
+      // Only close if the save did not explicitly return false (i.e. hook reported failure)
+      if (result !== false) onClose();
     } finally {
       setSaving(false);
     }

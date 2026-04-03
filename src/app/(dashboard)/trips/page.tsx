@@ -130,17 +130,19 @@ const ALL_NON_SAPPROVAL = [
   'intransit-o',
   'intransit-i',
   'unloading',
+  'cancelled',
 ] as const;
 
 const TABS = [
   { key: 's-approval', label: 'S Approval', statuses: ['created', 'under-review'] },
   { key: 'confirmed', label: 'Confirmed', statuses: ['assigned'] },
-  { key: 'loading', label: 'Loading', statuses: ['loaded', 'driver-en-route', 'reached-pickup'] },
-  { key: 'intransit-o', label: 'Intransit(O)', statuses: ['in-transit'] },
-  { key: 'intransit-i', label: 'Intransit(I)', statuses: ['reached-destination'] },
+  { key: 'loading', label: 'Loading', statuses: ['driver-en-route', 'reached-pickup', 'loaded'] },
+  { key: 'intransit-o', label: 'In Transit', statuses: ['in-transit'] },
+  { key: 'intransit-i', label: 'Arrived', statuses: ['reached-destination'] },
   { key: 'unloading', label: 'Unloading', statuses: ['unloading'] },
   { key: 'pod-pending', label: 'POD Pending', statuses: ['delivered'] },
-  { key: 'pod-received', label: 'POD Received', statuses: ['pod-received'] },
+  { key: 'pod-received', label: 'POD Received', statuses: ['pod-received', 'closed'] },
+  { key: 'cancelled', label: 'Cancelled', statuses: ['cancelled'] },
   { key: 'all', label: 'All', statuses: [] },
 ] as const;
 
@@ -319,6 +321,7 @@ const COLS: Col[] = [
       'unloading',
       'pod-pending',
       'pod-received',
+      'cancelled',
       'all',
     ] as const,
     searchable: true,
@@ -1783,12 +1786,12 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   created: ['under-review', 'cancelled'],
   'under-review': ['assigned', 'cancelled'],
   assigned: ['driver-en-route', 'cancelled'],
-  'driver-en-route': ['reached-pickup'],
-  'reached-pickup': ['loaded'],
-  loaded: ['in-transit'],
-  'in-transit': ['reached-destination'],
-  'reached-destination': ['unloading'],
-  unloading: ['delivered'],
+  'driver-en-route': ['reached-pickup', 'cancelled'],
+  'reached-pickup': ['loaded', 'cancelled'],
+  loaded: ['in-transit', 'cancelled'],
+  'in-transit': ['reached-destination', 'cancelled'],
+  'reached-destination': ['unloading', 'cancelled'],
+  unloading: ['delivered', 'cancelled'],
   delivered: ['pod-received'],
   'pod-received': ['closed'],
 };
@@ -1909,6 +1912,7 @@ type ModalType = 'lr' | 'delete' | 'comment' | 'status' | null;
 
 function ActionCell({ booking, onRefresh }: { booking: Booking; onRefresh: () => void }) {
   const [modal, setModal] = useState<ModalType>(null);
+  const isCancelled = booking.status === 'cancelled';
 
   const handleShare = () => {
     const url = `${window.location.origin}/bookings/${booking._id}`;
@@ -1918,30 +1922,36 @@ function ActionCell({ booking, onRefresh }: { booking: Booking; onRefresh: () =>
   return (
     <>
       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-        <Tip label="Update Status">
-          <button
-            className="p-1 rounded hover:bg-orange-50 text-orange-500 transition-colors"
-            onClick={() => setModal('status')}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
-        </Tip>
-        <Tip label="Update LR">
-          <button
-            className="p-1 rounded hover:bg-green-50 text-green-600 transition-colors"
-            onClick={() => setModal('lr')}
-          >
-            <FileText className="h-4 w-4" />
-          </button>
-        </Tip>
-        <Tip label="Cancel Trip">
-          <button
-            className="p-1 rounded hover:bg-red-50 text-red-500 transition-colors"
-            onClick={() => setModal('delete')}
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </Tip>
+        {!isCancelled && (
+          <Tip label="Update Status">
+            <button
+              className="p-1 rounded hover:bg-orange-50 text-orange-500 transition-colors"
+              onClick={() => setModal('status')}
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </Tip>
+        )}
+        {!isCancelled && (
+          <Tip label="Update LR">
+            <button
+              className="p-1 rounded hover:bg-green-50 text-green-600 transition-colors"
+              onClick={() => setModal('lr')}
+            >
+              <FileText className="h-4 w-4" />
+            </button>
+          </Tip>
+        )}
+        {!isCancelled && (
+          <Tip label="Cancel Trip">
+            <button
+              className="p-1 rounded hover:bg-red-50 text-red-500 transition-colors"
+              onClick={() => setModal('delete')}
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </Tip>
+        )}
         <Tip label="Copy Share Link">
           <button
             className="p-1 rounded hover:bg-blue-50 text-blue-500 transition-colors"
@@ -2056,34 +2066,12 @@ export default function TripsPage() {
   };
 
   const tabConfig = TABS.find((t) => t.key === activeTab)!;
-  const statusParam = tabConfig.statuses.length > 0 ? tabConfig.statuses.join(',') : undefined;
+  const ALL_STATUSES_EXCEPT_CANCELLED =
+    'created,under-review,assigned,driver-en-route,reached-pickup,loaded,in-transit,reached-destination,unloading,delivered,pod-received,closed';
+  const statusParam =
+    tabConfig.statuses.length > 0 ? tabConfig.statuses.join(',') : ALL_STATUSES_EXCEPT_CANCELLED;
 
-  const fetchBookings = useCallback(
-    async (pg = 1) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await bookingApi.getAll({ status: statusParam, page: pg, limit: PAGE_SIZE });
-        const d = res.data.data as unknown as {
-          bookings?: Booking[];
-          items?: Booking[];
-          pagination?: { pages: number; total: number; totalPages?: number; totalItems?: number };
-        };
-        const items: Booking[] = d.bookings ?? d.items ?? [];
-        setBookings(items);
-        setTotalPages(d.pagination?.totalPages ?? d.pagination?.pages ?? 1);
-        setTotalItems(d.pagination?.totalItems ?? d.pagination?.total ?? items.length);
-      } catch {
-        setError('Failed to load trips. Please try again.');
-        toast.error('Failed to fetch trips');
-      } finally {
-        setLoading(false);
-      }
-    },
-    [statusParam]
-  );
-
-  useEffect(() => {
+  const fetchCounts = useCallback(() => {
     bookingApi
       .getStats()
       .then((r) => {
@@ -2116,6 +2104,36 @@ export default function TripsPage() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetchCounts();
+  }, [fetchCounts]);
+
+  const fetchBookings = useCallback(
+    async (pg = 1) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await bookingApi.getAll({ status: statusParam, page: pg, limit: PAGE_SIZE });
+        const d = res.data.data as unknown as {
+          bookings?: Booking[];
+          items?: Booking[];
+          pagination?: { pages: number; total: number; totalPages?: number; totalItems?: number };
+        };
+        const items: Booking[] = d.bookings ?? d.items ?? [];
+        setBookings(items);
+        setTotalPages(d.pagination?.totalPages ?? d.pagination?.pages ?? 1);
+        setTotalItems(d.pagination?.totalItems ?? d.pagination?.total ?? items.length);
+        fetchCounts();
+      } catch {
+        setError('Failed to load trips. Please try again.');
+        toast.error('Failed to fetch trips');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [statusParam, fetchCounts]
+  );
 
   useEffect(() => {
     setPage(1);

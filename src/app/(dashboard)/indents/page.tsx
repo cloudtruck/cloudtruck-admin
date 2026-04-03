@@ -39,9 +39,12 @@ function fmtDate(ts?: string): string {
 function statusColor(status: string): string {
   const s = status?.toLowerCase() || '';
   if (s === 'created' || s === 'under-review') return 'bg-yellow-100 text-yellow-800';
-  if (s === 'assigned') return 'bg-blue-100 text-blue-800';
-  if (s === 'in-transit' || s === 'loaded') return 'bg-purple-100 text-purple-800';
-  if (s === 'delivered' || s === 'pod-received') return 'bg-green-100 text-green-800';
+  if (s === 'assigned' || s === 'driver-en-route' || s === 'reached-pickup')
+    return 'bg-blue-100 text-blue-800';
+  if (s === 'loaded' || s === 'in-transit' || s === 'reached-destination' || s === 'unloading')
+    return 'bg-purple-100 text-purple-800';
+  if (s === 'delivered' || s === 'pod-received' || s === 'closed')
+    return 'bg-green-100 text-green-800';
   if (s === 'cancelled') return 'bg-red-100 text-red-800';
   return 'bg-gray-100 text-gray-700';
 }
@@ -51,10 +54,15 @@ function statusLabel(status: string): string {
     created: 'New',
     'under-review': 'Under Review',
     assigned: 'Assigned',
-    'in-transit': 'In Transit',
+    'driver-en-route': 'Driver En Route',
+    'reached-pickup': 'Reached Pickup',
     loaded: 'Loaded',
+    'in-transit': 'In Transit',
+    'reached-destination': 'Arrived',
+    unloading: 'Unloading',
     delivered: 'Delivered',
     'pod-received': 'POD Received',
+    closed: 'Closed',
     cancelled: 'Cancelled',
   };
   return map[status] || status;
@@ -1542,9 +1550,9 @@ function BidTag({ bookingType, onClick }: { bookingType?: string; onClick?: () =
 const STATUS_TABS = [
   { key: 'all', label: 'All' },
   { key: 'created,under-review', label: 'New' },
-  { key: 'assigned', label: 'Assigned' },
-  { key: 'in-transit,loaded', label: 'In Transit' },
-  { key: 'delivered,pod-received', label: 'Delivered' },
+  { key: 'assigned,driver-en-route,reached-pickup', label: 'Confirmed' },
+  { key: 'loaded,in-transit,reached-destination,unloading', label: 'In Transit' },
+  { key: 'delivered,pod-received,closed', label: 'Delivered' },
   { key: 'cancelled', label: 'Cancelled' },
 ];
 
@@ -1597,7 +1605,10 @@ export default function IndentsPage() {
     async (opts?: { page?: number; search?: string; status?: string }) => {
       setLoading(true);
       try {
-        const status = opts?.status ?? (activeTab === 'all' ? undefined : activeTab);
+        const ALL_STATUSES_EXCEPT_CANCELLED =
+          'created,under-review,assigned,driver-en-route,reached-pickup,loaded,in-transit,reached-destination,unloading,delivered,pod-received,closed';
+        const status =
+          opts?.status ?? (activeTab === 'all' ? ALL_STATUSES_EXCEPT_CANCELLED : activeTab);
         const res = await bookingApi.getAll({
           page: opts?.page ?? page,
           limit: PAGE_SIZE,
@@ -1845,14 +1856,16 @@ export default function IndentsPage() {
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
-                      <button
-                        aria-label="Edit"
-                        onClick={() => setEditTarget(b)}
-                        className="text-blue-400 hover:text-blue-600 p-0.5"
-                        title="Manage Indent"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
+                      {b.status !== 'cancelled' && (
+                        <button
+                          aria-label="Edit"
+                          onClick={() => setEditTarget(b)}
+                          className="text-blue-400 hover:text-blue-600 p-0.5"
+                          title="Manage Indent"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                       <button
                         aria-label="Comments"
                         onClick={() => setCommentTarget(b)}
@@ -1861,7 +1874,9 @@ export default function IndentsPage() {
                       >
                         <MessageCircle className="h-3.5 w-3.5" />
                       </button>
-                      <BidTag bookingType={b.bookingType} onClick={() => setBidTarget(b)} />
+                      {b.status !== 'cancelled' && (
+                        <BidTag bookingType={b.bookingType} onClick={() => setBidTarget(b)} />
+                      )}
                     </div>
                   </Td>
 

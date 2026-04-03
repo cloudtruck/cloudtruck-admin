@@ -1,23 +1,55 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { bookingApi, driverApi, vehicleApi } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { getCityRegion } from '@/lib/cityRegionMap';
 import { toCsvString, downloadCsv } from '@/lib/exportCsv';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { PipelineCard, PipelineCardProps, RingType } from '@/components/dashboard/PipelineCard';
-import { BranchKpiTable, BranchKpiRow, HistoryKpiRow } from '@/components/dashboard/BranchKpiTable';
 import { IndentList } from '@/components/dashboard/IndentList';
-import { BookingTrendsChart } from '@/components/dashboard/BookingTrendsChart';
-import { StatusDistributionChart } from '@/components/dashboard/StatusDistributionChart';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { Activity, Booking, Driver, TrendData, Vehicle } from '@/types';
-import { DriverList, DriverRow } from '@/components/dashboard/DriverList';
-import { AvailableList, AvailableVehicleRow } from '@/components/dashboard/AvailableList';
-import { PodList } from '@/components/dashboard/PodList';
+import { Activity, Booking, TrendData, Vehicle } from '@/types';
+// Type-only imports (no runtime cost)
+import type { BranchKpiRow, HistoryKpiRow } from '@/components/dashboard/BranchKpiTable';
+import type { DriverRow } from '@/components/dashboard/DriverList';
+import type { AvailableVehicleRow } from '@/components/dashboard/AvailableList';
+
+// Lazy-loaded components — deferred until needed, keeps initial bundle small
+const BranchKpiTable = dynamic(
+  () =>
+    import('@/components/dashboard/BranchKpiTable').then((m) => ({ default: m.BranchKpiTable })),
+  { ssr: false }
+);
+const BookingTrendsChart = dynamic(
+  () =>
+    import('@/components/dashboard/BookingTrendsChart').then((m) => ({
+      default: m.BookingTrendsChart,
+    })),
+  { ssr: false }
+);
+const StatusDistributionChart = dynamic(
+  () =>
+    import('@/components/dashboard/StatusDistributionChart').then((m) => ({
+      default: m.StatusDistributionChart,
+    })),
+  { ssr: false }
+);
+const DriverList = dynamic(
+  () => import('@/components/dashboard/DriverList').then((m) => ({ default: m.DriverList })),
+  { ssr: false }
+);
+const AvailableList = dynamic(
+  () => import('@/components/dashboard/AvailableList').then((m) => ({ default: m.AvailableList })),
+  { ssr: false }
+);
+const PodList = dynamic(
+  () => import('@/components/dashboard/PodList').then((m) => ({ default: m.PodList })),
+  { ssr: false }
+);
 
 // ---------------------------------------------------------------------------
 // Ring filter helpers

@@ -1,7 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,10 +21,25 @@ interface AddMasterDataModalProps {
   category: MasterData['category'];
   categoryLabel: string;
   onSuccess?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function AddMasterDataModal({ category, categoryLabel, onSuccess }: AddMasterDataModalProps) {
-  const [open, setOpen] = useState(false);
+export function AddMasterDataModal({
+  category,
+  categoryLabel,
+  onSuccess,
+  open: controlledOpen,
+  onOpenChange,
+}: AddMasterDataModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (!isControlled) setInternalOpen(v);
+    onOpenChange?.(v);
+    if (!v) resetForm();
+  };
   const [saving, setSaving] = useState(false);
   const { createItem } = useMasterData(category);
   const [formData, setFormData] = useState({
@@ -28,6 +49,12 @@ export function AddMasterDataModal({ category, categoryLabel, onSuccess }: AddMa
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setFormData({ displayName: '', key: '', description: '' });
+    setImageFile(null);
+    setImagePreview(null);
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -49,38 +76,45 @@ export function AddMasterDataModal({ category, categoryLabel, onSuccess }: AddMa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    try {
+      const data = new FormData();
+      data.append('category', category);
+      data.append('displayName', formData.displayName);
+      data.append(
+        'key',
+        formData.key ||
+          formData.displayName
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '')
+      );
+      data.append('description', formData.description);
+      data.append('isActive', 'true');
+      if (imageFile) {
+        data.append('image', imageFile);
+      }
 
-    const data = new FormData();
-    data.append('category', category);
-    data.append('displayName', formData.displayName);
-    data.append('key', formData.key || formData.displayName.toLowerCase().replace(/\s+/g, '-'));
-    data.append('description', formData.description);
-    data.append('isActive', 'true');
-    if (imageFile) {
-      data.append('image', imageFile);
-    }
+      const result = await createItem(data);
 
-    const result = await createItem(data);
-
-    setSaving(false);
-
-    if (result) {
-      setOpen(false);
-      setFormData({ displayName: '', key: '', description: '' });
-      setImageFile(null);
-      setImagePreview(null);
-      onSuccess?.();
+      if (result) {
+        setOpen(false);
+        onSuccess?.();
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add {categoryLabel}
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Add {categoryLabel}
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add {categoryLabel}</DialogTitle>
@@ -92,12 +126,7 @@ export function AddMasterDataModal({ category, categoryLabel, onSuccess }: AddMa
               <div className="flex items-center gap-4">
                 {imagePreview ? (
                   <div className="relative w-20 h-20 rounded-md overflow-hidden border">
-                    <Image
-                      src={imagePreview}
-                      alt="Preview"
-                      fill
-                      className="object-cover"
-                    />
+                    <Image src={imagePreview} alt="Preview" fill className="object-cover" />
                     <button
                       type="button"
                       onClick={removeImage}

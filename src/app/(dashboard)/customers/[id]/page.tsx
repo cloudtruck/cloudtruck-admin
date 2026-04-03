@@ -49,8 +49,8 @@ function InlineField({
   }
 
   return (
-    <div className="min-w-[100px]">
-      <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">
+    <div className="min-w-0 overflow-hidden">
+      <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5 truncate">
         {label}
       </p>
       {editing ? (
@@ -74,8 +74,10 @@ function InlineField({
           </button>
         </div>
       ) : (
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm text-gray-800">{value || '—'}</span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-sm text-gray-800 truncate" title={value || undefined}>
+            {value || '—'}
+          </span>
           {onSave && (
             <button onClick={() => setEditing(true)} className="text-blue-400 hover:text-blue-600">
               <Pencil className="h-3 w-3" />
