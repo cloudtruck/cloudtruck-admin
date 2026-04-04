@@ -9,6 +9,18 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true, // Important for refresh token cookies
+  paramsSerializer: (params) => {
+    const parts: string[] = [];
+    for (const [key, value] of Object.entries(params)) {
+      if (value === undefined || value === null) continue;
+      if (Array.isArray(value)) {
+        parts.push(`${key}=${value.join(',')}`);
+      } else {
+        parts.push(`${key}=${encodeURIComponent(String(value))}`);
+      }
+    }
+    return parts.join('&');
+  },
 });
 
 // Request interceptor - Add auth token

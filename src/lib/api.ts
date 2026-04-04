@@ -270,6 +270,11 @@ export const vehicleApi = {
 
   getByDriver: (driverId: string) =>
     api.get<ApiResponse<Vehicle[]>>(`/vehicles/driver/${driverId}`),
+
+  getNotes: (id: string) => api.get<ApiResponse<unknown[]>>(`/vehicles/${id}/notes`),
+
+  addNote: (id: string, data: { text: string }) =>
+    api.post<ApiResponse<unknown>>(`/vehicles/${id}/notes`, data),
 };
 
 // ============================================================================
