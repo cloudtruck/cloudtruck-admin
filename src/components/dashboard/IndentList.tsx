@@ -24,6 +24,7 @@ import { Staff } from '@/types/organization.types';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { bookingApi, documentApi, staffApi } from '@/lib/api';
+import { UpdateStatusModal } from '@/components/bookings/UpdateStatusModal';
 import { toast } from 'sonner';
 import { toCsvString, downloadCsv } from '@/lib/exportCsv';
 
@@ -256,6 +257,7 @@ export function IndentList({
   const [lrLoading, setLrLoading] = useState(false);
   const [uploadModal, setUploadModal] = useState<UploadModalState | null>(null);
 
+  const [statusTarget, setStatusTarget] = useState<Booking | null>(null);
   const [commentTarget, setCommentTarget] = useState<Booking | null>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
@@ -350,7 +352,9 @@ export function IndentList({
   async function handleSupervisorChange(bookingId: string, staffMember: Staff) {
     setSavingSupervisor(true);
     try {
-      await bookingApi.update(bookingId, { supervisor: staffMember._id } as unknown as Partial<Booking>);
+      await bookingApi.update(bookingId, {
+        supervisor: staffMember._id,
+      } as unknown as Partial<Booking>);
       setSupervisorOverrides((prev) => ({
         ...prev,
         [bookingId]: staffMember,
@@ -656,8 +660,10 @@ export function IndentList({
                       <Td>
                         <div className="flex items-center gap-1.5">
                           <button
-                            aria-label="Timeline"
+                            aria-label="Update Status"
+                            onClick={() => setStatusTarget(b)}
                             className="text-blue-500 hover:text-blue-700 p-0.5"
+                            title="Update status"
                           >
                             <Clock className="h-3.5 w-3.5" />
                           </button>
@@ -780,85 +786,85 @@ export function IndentList({
                       {(() => {
                         const supervisor = supervisorOverrides[b._id] ?? b.supervisor;
                         return (
-                      <div
-                        className="flex items-center gap-1 relative"
-                        ref={supervisorEditId === b._id ? supervisorRef : undefined}
-                      >
-                        {supervisor?.name ? (
-                          <>
-                            <a
-                              href={`tel:${supervisor.phone}`}
-                              className={cn(
-                                'text-blue-500 hover:text-blue-700 shrink-0',
-                                !supervisor.phone && 'pointer-events-none opacity-30'
-                              )}
-                              title={supervisor.phone ? `Call ${supervisor.name}` : 'No phone'}
+                          <div
+                            className="flex items-center gap-1 relative"
+                            ref={supervisorEditId === b._id ? supervisorRef : undefined}
+                          >
+                            {supervisor?.name ? (
+                              <>
+                                <a
+                                  href={`tel:${supervisor.phone}`}
+                                  className={cn(
+                                    'text-blue-500 hover:text-blue-700 shrink-0',
+                                    !supervisor.phone && 'pointer-events-none opacity-30'
+                                  )}
+                                  title={supervisor.phone ? `Call ${supervisor.name}` : 'No phone'}
+                                >
+                                  <Phone className="h-3.5 w-3.5" />
+                                </a>
+                                <span>{supervisor.name}</span>
+                              </>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                            <button
+                              onClick={() =>
+                                setSupervisorEditId(supervisorEditId === b._id ? null : b._id)
+                              }
+                              className="ml-1 text-blue-400 hover:text-blue-600 shrink-0"
+                              title="Edit supervisor"
                             >
-                              <Phone className="h-3.5 w-3.5" />
-                            </a>
-                            <span>{supervisor.name}</span>
-                          </>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                        <button
-                          onClick={() =>
-                            setSupervisorEditId(supervisorEditId === b._id ? null : b._id)
-                          }
-                          className="ml-1 text-blue-400 hover:text-blue-600 shrink-0"
-                          title="Edit supervisor"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                        {supervisorEditId === b._id && (
-                          <div className="absolute top-6 left-0 z-50 bg-white border border-gray-200 rounded-lg shadow-xl w-56">
-                            <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-100">
-                              <Search className="h-3 w-3 text-gray-400 shrink-0" />
-                              <input
-                                autoFocus
-                                value={staffSearch}
-                                onChange={(e) => setStaffSearch(e.target.value)}
-                                  placeholder={supervisor?.name || 'Search staff…'}
-                                className="flex-1 text-xs outline-none bg-transparent"
-                              />
-                              <button
-                                onClick={() => setSupervisorEditId(null)}
-                                className="text-gray-400 hover:text-gray-600"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </div>
-                            <div className="max-h-40 overflow-y-auto">
-                              {savingSupervisor ? (
-                                <div className="py-4 flex justify-center">
-                                  <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                            {supervisorEditId === b._id && (
+                              <div className="absolute top-6 left-0 z-50 bg-white border border-gray-200 rounded-lg shadow-xl w-56">
+                                <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-100">
+                                  <Search className="h-3 w-3 text-gray-400 shrink-0" />
+                                  <input
+                                    autoFocus
+                                    value={staffSearch}
+                                    onChange={(e) => setStaffSearch(e.target.value)}
+                                    placeholder={supervisor?.name || 'Search staff…'}
+                                    className="flex-1 text-xs outline-none bg-transparent"
+                                  />
+                                  <button
+                                    onClick={() => setSupervisorEditId(null)}
+                                    className="text-gray-400 hover:text-gray-600"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
                                 </div>
-                              ) : staffList.filter((s) =>
-                                  s.name.toLowerCase().includes(staffSearch.toLowerCase())
-                                ).length === 0 ? (
-                                <div className="py-6 flex flex-col items-center text-gray-400 gap-1">
-                                  <Inbox className="h-6 w-6 opacity-40" />
-                                  <span className="text-xs">No data</span>
+                                <div className="max-h-40 overflow-y-auto">
+                                  {savingSupervisor ? (
+                                    <div className="py-4 flex justify-center">
+                                      <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                    </div>
+                                  ) : staffList.filter((s) =>
+                                      s.name.toLowerCase().includes(staffSearch.toLowerCase())
+                                    ).length === 0 ? (
+                                    <div className="py-6 flex flex-col items-center text-gray-400 gap-1">
+                                      <Inbox className="h-6 w-6 opacity-40" />
+                                      <span className="text-xs">No data</span>
+                                    </div>
+                                  ) : (
+                                    staffList
+                                      .filter((s) =>
+                                        s.name.toLowerCase().includes(staffSearch.toLowerCase())
+                                      )
+                                      .map((s) => (
+                                        <button
+                                          key={s._id}
+                                          onClick={() => handleSupervisorChange(b._id, s)}
+                                          className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-gray-700"
+                                        >
+                                          {s.name}
+                                        </button>
+                                      ))
+                                  )}
                                 </div>
-                              ) : (
-                                staffList
-                                  .filter((s) =>
-                                    s.name.toLowerCase().includes(staffSearch.toLowerCase())
-                                  )
-                                  .map((s) => (
-                                    <button
-                                      key={s._id}
-                                      onClick={() => handleSupervisorChange(b._id, s)}
-                                      className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-gray-700"
-                                    >
-                                      {s.name}
-                                    </button>
-                                  ))
-                              )}
-                            </div>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
                         );
                       })()}
                     </Td>
@@ -986,6 +992,16 @@ export function IndentList({
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Update Status Modal */}
+      {statusTarget && (
+        <UpdateStatusModal
+          isOpen={!!statusTarget}
+          onClose={() => setStatusTarget(null)}
+          booking={statusTarget}
+          onSuccess={() => setStatusTarget(null)}
+        />
       )}
 
       {/* Delete Indent Modal */}

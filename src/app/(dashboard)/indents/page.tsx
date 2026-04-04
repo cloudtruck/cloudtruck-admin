@@ -1856,16 +1856,29 @@ export default function IndentsPage() {
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
-                      {b.status !== 'cancelled' && (
-                        <button
-                          aria-label="Edit"
-                          onClick={() => setEditTarget(b)}
-                          className="text-blue-400 hover:text-blue-600 p-0.5"
-                          title="Manage Indent"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                      )}
+                      {(() => {
+                        const isTerminal = [
+                          'cancelled',
+                          'delivered',
+                          'pod-received',
+                          'closed',
+                        ].includes(b.status);
+                        return (
+                          <button
+                            aria-label="Edit"
+                            onClick={isTerminal ? undefined : () => setEditTarget(b)}
+                            disabled={isTerminal}
+                            className={
+                              isTerminal
+                                ? 'text-gray-300 p-0.5 cursor-not-allowed'
+                                : 'text-blue-400 hover:text-blue-600 p-0.5'
+                            }
+                            title={isTerminal ? 'Cannot edit in current status' : 'Manage Indent'}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        );
+                      })()}
                       <button
                         aria-label="Comments"
                         onClick={() => setCommentTarget(b)}
