@@ -21,7 +21,15 @@ import { useMasterData } from '@/hooks/useMasterData';
 import { useOrganizationSettings } from '@/hooks/useOrganizationSettings';
 import { useDeleteRequests } from '@/hooks/useDeleteRequests';
 import { useEmployeeStore } from '@/store/employeeStore';
-import type { Staff, Branch, Account, MasterData, OrgAddress, RoleTemplate } from '@/types';
+import type {
+  Staff,
+  Branch,
+  Account,
+  MasterData,
+  OrgAddress,
+  RoleTemplate,
+  Pagination,
+} from '@/types';
 import {
   Table,
   TableBody,
@@ -402,7 +410,7 @@ function LaneTab({
   locations: MasterData[];
   truckTypes: MasterData[];
   onEdit: (lane: MasterData) => void;
-  onDelete: (id: string) => void;
+  onDelete: (lane: MasterData) => void;
 }) {
   if (loading) {
     return (
@@ -474,11 +482,7 @@ function LaneTab({
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (window.confirm(`Delete lane "${lane.displayName}"?`)) {
-                            onDelete(lane._id);
-                          }
-                        }}
+                        onClick={() => onDelete(lane)}
                         className="text-red-400 hover:text-red-600 p-0.5 rounded"
                         title="Delete lane"
                       >
@@ -1439,7 +1443,7 @@ function EmployeesTab({
 }: {
   employees: Staff[];
   loading: boolean;
-  pagination: any;
+  pagination: Pagination;
   onRefresh: () => void;
   onDeactivate: (id: string) => Promise<void>;
 }) {
@@ -1447,6 +1451,7 @@ function EmployeesTab({
   const [editOpen, setEditOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [deactivating, setDeactivating] = useState<string | null>(null);
+  const [confirmDeactivate, setConfirmDeactivate] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -1528,25 +1533,38 @@ function EmployeesTab({
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                         </Tooltip>
-                        <Tooltip label={emp.status === 'inactive' ? 'Activate' : 'Deactivate'}>
-                          <button
-                            className="text-red-400 hover:text-red-600 p-0.5 disabled:opacity-40"
-                            disabled={deactivating === emp._id}
-                            onClick={async () => {
-                              if (
-                                !window.confirm(
-                                  `${emp.status === 'inactive' ? 'Activate' : 'Deactivate'} employee "${emp.name}"?`
-                                )
-                              )
-                                return;
-                              setDeactivating(emp._id);
-                              await onDeactivate(emp._id);
-                              setDeactivating(null);
-                            }}
-                          >
-                            <XCircle className="h-3.5 w-3.5" />
-                          </button>
-                        </Tooltip>
+                        {confirmDeactivate === emp._id ? (
+                          <span className="flex items-center gap-1">
+                            <button
+                              className="text-xs text-red-600 font-medium hover:underline disabled:opacity-40"
+                              disabled={deactivating === emp._id}
+                              onClick={async () => {
+                                setConfirmDeactivate(null);
+                                setDeactivating(emp._id);
+                                await onDeactivate(emp._id);
+                                setDeactivating(null);
+                              }}
+                            >
+                              {emp.status === 'inactive' ? 'Activate' : 'Deactivate'}
+                            </button>
+                            <button
+                              className="text-xs text-gray-400 hover:text-gray-600"
+                              onClick={() => setConfirmDeactivate(null)}
+                            >
+                              Cancel
+                            </button>
+                          </span>
+                        ) : (
+                          <Tooltip label={emp.status === 'inactive' ? 'Activate' : 'Deactivate'}>
+                            <button
+                              className="text-red-400 hover:text-red-600 p-0.5 disabled:opacity-40"
+                              disabled={deactivating === emp._id}
+                              onClick={() => setConfirmDeactivate(emp._id)}
+                            >
+                              <XCircle className="h-3.5 w-3.5" />
+                            </button>
+                          </Tooltip>
+                        )}
                       </div>
                     </div>
                   </TableCell>
@@ -1949,7 +1967,9 @@ export default function OrganisationPage() {
             locations={locations.filter((item) => item.isActive !== false)}
             truckTypes={truckTypes.filter((item) => item.isActive !== false)}
             onEdit={setEditingLane}
-            onDelete={deleteLane}
+            onDelete={(lane) =>
+              handleDeleteRequest('lane', lane._id, 'MasterData', lane.displayName || lane.key)
+            }
           />
           {editingLane && (
             <EditLaneModal
