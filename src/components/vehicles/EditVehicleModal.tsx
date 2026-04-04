@@ -1,59 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { logger } from '@/lib/logger';
-import { CalendarIcon, Loader2 } from 'lucide-react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { vehicleApi, driverApi } from '@/lib/api';
+import { X, Loader2, Search } from 'lucide-react';
+import { vehicleApi, driverApi, supplierApi } from '@/lib/api';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
 import { useMasterData } from '@/hooks/useMasterData';
-import { cn } from '@/lib/utils';
-import type { Driver, Vehicle } from '@/types';
-
-const editVehicleSchema = z.object({
-  vehicleNumber: z.string().min(5, 'Vehicle number must be at least 5 characters'),
-  truckType: z.string().min(1, 'Truck type is required'),
-  lengthValue: z.string().min(1, 'Length is required'),
-  lengthUnit: z.enum(['ft', 'm']),
-  capacityValue: z.string().min(1, 'Capacity is required'),
-  capacityUnit: z.enum(['kg', 'tons']),
-  bodyType: z.string().min(1, 'Body type is required'),
-  owner: z.string().min(1, 'Owner is required'),
-  insuranceExpiry: z.date().optional(),
-  fitnessExpiry: z.date().optional(),
-  status: z.enum(['active', 'inactive', 'under-maintenance', 'retired']),
-});
-
-type EditVehicleFormData = z.infer<typeof editVehicleSchema>;
+import type { Driver, Vehicle, Supplier } from '@/types';
 
 interface EditVehicleModalProps {
   vehicle: Vehicle;
@@ -61,6 +14,50 @@ interface EditVehicleModalProps {
   onCloseAction: () => void;
   onSuccessAction: () => void;
 }
+
+interface FormState {
+  truckType: string;
+  bodyType: string;
+  ownershipType: 'own' | 'leased' | 'attached';
+  capacityValue: string;
+  capacityUnit: 'tons' | 'kg';
+  lengthValue: string;
+  lengthUnit: 'ft' | 'm';
+  registrationCity: string;
+  insuranceExpiry: string;
+  fitnessExpiry: string;
+  ownerId: string;
+  ownerType: 'driver' | 'supplier' | null;
+  availability: string;
+  status: string;
+}
+
+function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium text-gray-800">
+        {required && <span className="text-red-500 mr-1">*</span>}
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+const inputCls =
+  'w-full border border-gray-300 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white';
+const disabledInputCls =
+  'w-full border border-gray-200 rounded-md px-3 py-2 text-sm bg-gray-100 text-gray-500 cursor-not-allowed';
+const selectCls =
+  'w-full border border-gray-300 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white appearance-none';
 
 export function EditVehicleModal({
   vehicle,
@@ -70,84 +67,210 @@ export function EditVehicleModal({
 }: EditVehicleModalProps) {
   const [loading, setLoading] = useState(false);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [ownerSearch, setOwnerSearch] = useState('');
+  const [ownerFocused, setOwnerFocused] = useState(false);
+  const [ownerDisplayName, setOwnerDisplayName] = useState('');
+  const ownerContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch master data
   const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
   const { data: bodyTypes, loading: bodyTypesLoading } = useMasterData('body-type');
 
-  const form = useForm<EditVehicleFormData>({
-    resolver: zodResolver(editVehicleSchema),
-    defaultValues: {
-      vehicleNumber: '',
-      truckType: '',
-      lengthValue: '',
-      lengthUnit: 'ft',
-      capacityValue: '',
-      capacityUnit: 'tons',
-      bodyType: 'closed',
-      owner: '',
-      status: 'active',
-    },
+  const [form, setForm] = useState<FormState>({
+    truckType: '',
+    bodyType: '',
+    ownershipType: 'own',
+    capacityValue: '',
+    capacityUnit: 'tons',
+    lengthValue: '',
+    lengthUnit: 'ft',
+    registrationCity: '',
+    insuranceExpiry: '',
+    fitnessExpiry: '',
+    ownerId: '',
+    ownerType: null,
+    availability: 'available',
+    status: 'active',
   });
 
+  // Close owner dropdown on outside click
   useEffect(() => {
-    if (isOpen) {
-      const fetchDrivers = async () => {
-        try {
-          const response = await driverApi.getAll({ limit: 100 });
-          setDrivers(response.data.data.drivers);
-        } catch (error) {
-          logger.error('Failed to fetch drivers:', error);
-        }
-      };
-      fetchDrivers();
-
-      // Reset form with vehicle data
-      if (vehicle) {
-        form.reset({
-          vehicleNumber: vehicle.vehicleNumber,
-          truckType: vehicle.truckType,
-          lengthValue: vehicle.length.value.toString(),
-          lengthUnit: vehicle.length.unit === 'meter' ? 'm' : 'ft',
-          capacityValue: vehicle.capacity.value.toString(),
-          capacityUnit: vehicle.capacity.unit === 'kg' ? 'kg' : 'tons',
-          bodyType: vehicle.bodyType,
-          owner: typeof vehicle.owner === 'string' ? vehicle.owner : vehicle.owner?._id || '',
-          insuranceExpiry: vehicle.expiryDates?.insurance
-            ? new Date(vehicle.expiryDates.insurance)
-            : undefined,
-          fitnessExpiry: vehicle.expiryDates?.fitness
-            ? new Date(vehicle.expiryDates.fitness)
-            : undefined,
-          status: vehicle.status,
-        });
+    const handler = (e: MouseEvent) => {
+      if (ownerContainerRef.current && !ownerContainerRef.current.contains(e.target as Node)) {
+        setOwnerFocused(false);
       }
-    }
-  }, [isOpen, vehicle, form]);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
-  const onSubmit = async (data: EditVehicleFormData) => {
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchData = async () => {
+      try {
+        const [driversRes, suppliersRes] = await Promise.all([
+          driverApi.getAll({ limit: 200 }),
+          supplierApi.getAll({ limit: 200 }),
+        ]);
+        setDrivers(driversRes.data.data.drivers);
+        setSuppliers(suppliersRes.data.data.items);
+      } catch (e) {
+        logger.error('Failed to fetch owners:', e);
+      }
+    };
+    fetchData();
+
+    const insuranceExpiry = vehicle.expiryDates?.insurance
+      ? vehicle.expiryDates.insurance.slice(0, 10)
+      : '';
+    const fitnessExpiry = vehicle.expiryDates?.fitness
+      ? vehicle.expiryDates.fitness.slice(0, 10)
+      : '';
+
+    // Determine owner type and ID from vehicle
+    let ownerId = '';
+    let ownerType: 'driver' | 'supplier' | null = null;
+
+    const ownerRefKind = vehicle.ownerRef?.kind;
+    const ownerRefItem = vehicle.ownerRef?.item;
+
+    if (ownerRefKind === 'Driver' && ownerRefItem) {
+      ownerType = 'driver';
+      ownerId = typeof ownerRefItem === 'string' ? ownerRefItem : ownerRefItem._id;
+    } else if (ownerRefKind === 'Supplier' && ownerRefItem) {
+      ownerType = 'supplier';
+      ownerId = typeof ownerRefItem === 'string' ? ownerRefItem : ownerRefItem._id;
+    } else if (vehicle.supplierOwner) {
+      ownerType = 'supplier';
+      ownerId =
+        typeof vehicle.supplierOwner === 'string'
+          ? vehicle.supplierOwner
+          : (vehicle.supplierOwner as { _id: string })._id;
+    } else if (vehicle.owner) {
+      ownerType = 'driver';
+      ownerId =
+        typeof vehicle.owner === 'string' ? vehicle.owner : (vehicle.owner as { _id: string })._id;
+    }
+
+    // Resolve display name from populated ownerRef
+    let initialDisplayName = '';
+    if (ownerType === 'driver' && ownerRefItem && typeof ownerRefItem !== 'string') {
+      const d = ownerRefItem as { name?: string; phone?: string };
+      initialDisplayName = d.name ? `${d.name}${d.phone ? ` (${d.phone})` : ''}` : '';
+    } else if (ownerType === 'supplier' && ownerRefItem && typeof ownerRefItem !== 'string') {
+      const s = ownerRefItem as { displayName?: string; companyName?: string; phone?: string };
+      initialDisplayName = s.displayName
+        ? `${s.displayName}${s.companyName ? ` (${s.companyName})` : ''}${s.phone ? ` · ${s.phone}` : ''}`
+        : '';
+    }
+    setOwnerDisplayName(initialDisplayName);
+    setOwnerSearch('');
+    setOwnerFocused(false);
+
+    setForm({
+      truckType: vehicle.truckType || '',
+      bodyType: vehicle.bodyType || '',
+      ownershipType: (vehicle.ownershipType as 'own' | 'leased' | 'attached') || 'own',
+      capacityValue: vehicle.capacity.value.toString(),
+      capacityUnit: vehicle.capacity.unit === 'kg' ? 'kg' : 'tons',
+      lengthValue: vehicle.length.value.toString(),
+      lengthUnit: vehicle.length.unit === 'meter' ? 'm' : 'ft',
+      registrationCity: vehicle.registrationCity || '',
+      insuranceExpiry,
+      fitnessExpiry,
+      ownerId,
+      ownerType,
+      availability: vehicle.availability || 'available',
+      status: vehicle.status || 'active',
+    });
+  }, [isOpen, vehicle]);
+
+  const set =
+    (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  // Combined owner results: drivers tagged with type, suppliers tagged with type
+  type OwnerOption = { id: string; type: 'driver' | 'supplier'; label: string; sub: string };
+
+  const ownerOptions: OwnerOption[] = [
+    ...drivers.map((d) => ({
+      id: d._id,
+      type: 'driver' as const,
+      label: d.name,
+      sub: d.phone || '',
+    })),
+    ...suppliers.map((s) => ({
+      id: s._id,
+      type: 'supplier' as const,
+      label: s.displayName,
+      sub: [s.companyName, s.phone].filter(Boolean).join(' · '),
+    })),
+  ];
+
+  const filteredOwners = ownerSearch.trim()
+    ? ownerOptions.filter(
+        (o) =>
+          o.label.toLowerCase().includes(ownerSearch.toLowerCase()) ||
+          o.sub.toLowerCase().includes(ownerSearch.toLowerCase())
+      )
+    : ownerOptions;
+
+  const handleOwnerSelect = (opt: OwnerOption) => {
+    setForm((prev) => ({ ...prev, ownerId: opt.id, ownerType: opt.type }));
+    setOwnerDisplayName(`${opt.label}${opt.sub ? ` · ${opt.sub}` : ''}`);
+    setOwnerSearch('');
+    setOwnerFocused(false);
+  };
+
+  const handleOwnerClear = () => {
+    setForm((prev) => ({ ...prev, ownerId: '', ownerType: null }));
+    setOwnerDisplayName('');
+    setOwnerSearch('');
+    setOwnerFocused(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.truckType) {
+      toast.error('Truck Type is required');
+      return;
+    }
     setLoading(true);
     try {
-      await vehicleApi.update(vehicle._id, {
-        vehicleNumber: data.vehicleNumber.toUpperCase(),
-        truckType: data.truckType,
+      const updateData: Record<string, unknown> = {
+        truckType: form.truckType,
+        bodyType: form.bodyType || undefined,
+        ownershipType: form.ownershipType,
+        capacity: { value: parseFloat(form.capacityValue), unit: form.capacityUnit },
         length: {
-          value: parseFloat(data.lengthValue),
-          unit: data.lengthUnit === 'm' ? 'meter' : 'ft',
+          value: parseFloat(form.lengthValue),
+          unit: form.lengthUnit === 'm' ? 'meter' : 'ft',
         },
-        capacity: {
-          value: parseFloat(data.capacityValue),
-          unit: data.capacityUnit,
-        },
-        bodyType: data.bodyType,
-        owner: data.owner,
+        registrationCity: form.registrationCity || undefined,
         expiryDates: {
-          insurance: data.insuranceExpiry?.toISOString(),
-          fitness: data.fitnessExpiry?.toISOString(),
+          insurance: form.insuranceExpiry || undefined,
+          fitness: form.fitnessExpiry || undefined,
         },
-        status: data.status,
-      });
+        availability: form.availability as Vehicle['availability'],
+        status: form.status as Vehicle['status'],
+      };
 
+      // Set owner based on type
+      if (form.ownerType === 'driver' && form.ownerId) {
+        updateData.owner = form.ownerId;
+        updateData.ownerRef = { kind: 'Driver', item: form.ownerId };
+      } else if (form.ownerType === 'supplier' && form.ownerId) {
+        updateData.supplierOwner = form.ownerId;
+        updateData.ownerRef = { kind: 'Supplier', item: form.ownerId };
+      } else {
+        // Clear owner if none selected
+        updateData.owner = undefined;
+        updateData.supplierOwner = undefined;
+        updateData.ownerRef = undefined;
+      }
+
+      await vehicleApi.update(vehicle._id, updateData);
       toast.success('Vehicle updated successfully');
       onSuccessAction();
       onCloseAction();
@@ -160,277 +283,319 @@ export function EditVehicleModal({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Dialog open={isOpen} onOpenChange={onCloseAction}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Vehicle</DialogTitle>
-          <DialogDescription>Update the vehicle details below</DialogDescription>
-        </DialogHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onCloseAction} />
+      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">Edit Truck</h2>
+          <button onClick={onCloseAction} className="text-gray-400 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="vehicleNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vehicle Number</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="DL01AB1234"
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+        {/* Body */}
+        <form onSubmit={handleSubmit} className="flex flex-col overflow-y-auto">
+          <div className="flex flex-col gap-5 px-6 py-5">
+            {/* Truck No — read-only */}
+            <Field label="Truck No" required>
+              <input className={disabledInputCls} value={vehicle.vehicleNumber} readOnly />
+            </Field>
+
+            {/* Truck Type */}
+            <Field label="Truck Type" required>
+              <div className="relative">
+                <select
+                  className={selectCls}
+                  value={form.truckType}
+                  onChange={set('truckType')}
+                  disabled={truckTypesLoading}
+                >
+                  <option value="">Select truck type</option>
+                  {truckTypes
+                    .filter((t) => t.isActive)
+                    .map((t) => (
+                      <option key={t._id} value={t.key}>
+                        {t.displayName}
+                      </option>
+                    ))}
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  &#8964;
+                </span>
+              </div>
+            </Field>
+
+            {/* Truck Sub Type (bodyType) */}
+            <Field label="Truck Sub Type">
+              <div className="relative">
+                <select
+                  className={selectCls}
+                  value={form.bodyType}
+                  onChange={set('bodyType')}
+                  disabled={bodyTypesLoading}
+                >
+                  <option value="">Select truck sub type</option>
+                  {bodyTypes
+                    .filter((t) => t.isActive)
+                    .map((t) => (
+                      <option key={t._id} value={t.key}>
+                        {t.displayName}
+                      </option>
+                    ))}
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  &#8964;
+                </span>
+              </div>
+            </Field>
+
+            {/* Ownership */}
+            <Field label="Ownership">
+              <div className="relative">
+                <select
+                  className={selectCls}
+                  value={form.ownershipType}
+                  onChange={(e) => {
+                    set('ownershipType')(e);
+                    // Clear owner when switching away from attached
+                    if (e.target.value !== 'attached') {
+                      handleOwnerClear();
+                    }
+                  }}
+                >
+                  <option value="own">Own (Cloudtruck fleet)</option>
+                  <option value="leased">Leased (finance / EMI)</option>
+                  <option value="attached">Market (driver / supplier owned)</option>
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  &#8964;
+                </span>
+              </div>
+            </Field>
+
+            {/* Owner — only shown for Market (attached) trucks */}
+            {form.ownershipType === 'attached' && (
+              <Field label="Owner">
+                <div className="relative" ref={ownerContainerRef}>
+                  {/* Selected owner chip */}
+                  {form.ownerId && ownerDisplayName ? (
+                    <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-blue-50">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 shrink-0">
+                        {form.ownerType === 'driver' ? 'Driver' : 'Supplier'}
+                      </span>
+                      <span className="flex-1 text-sm text-gray-800 truncate">
+                        {ownerDisplayName}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleOwnerClear}
+                        className="text-gray-400 hover:text-gray-600 shrink-0"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Search drivers or suppliers…"
+                        value={ownerSearch}
+                        onChange={(e) => {
+                          setOwnerSearch(e.target.value);
+                          setOwnerFocused(true);
+                        }}
+                        onFocus={() => setOwnerFocused(true)}
+                        onClick={() => setOwnerFocused(true)}
+                        className="pl-9 pr-3 py-2 w-full border border-gray-300 rounded-md text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="owner"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Owner (Driver)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select owner" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {drivers.map((driver) => (
-                          <SelectItem key={driver._id} value={driver._id}>
-                            {driver.name} ({driver.phone})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="truckType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Truck Type</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={truckTypesLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={truckTypesLoading ? 'Loading...' : 'Select type'}
-                          />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {truckTypes
-                          .filter((type) => type.isActive)
-                          .map((type) => (
-                            <SelectItem key={type._id} value={type.key}>
-                              {type.displayName}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="bodyType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Body Type</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={bodyTypesLoading}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={bodyTypesLoading ? 'Loading...' : 'Select body type'}
-                          />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {bodyTypes
-                          .filter((type) => type.isActive)
-                          .map((type) => (
-                            <SelectItem key={type._id} value={type.key}>
-                              {type.displayName}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex gap-2 items-end">
-                <FormField
-                  control={form.control}
-                  name="lengthValue"
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>Length</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.1" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                    </div>
                   )}
-                />
-                <FormField
-                  control={form.control}
-                  name="lengthUnit"
-                  render={({ field }) => (
-                    <FormItem className="w-20">
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="ft">ft</SelectItem>
-                          <SelectItem value="m">m</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
 
-              <div className="flex gap-2 items-end">
-                <FormField
-                  control={form.control}
-                  name="capacityValue"
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>Capacity</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.1" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="capacityUnit"
-                  render={({ field }) => (
-                    <FormItem className="w-[100px]">
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="tons">Tons</SelectItem>
-                          <SelectItem value="kg">kg</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vehicle Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                        <SelectItem value="under-maintenance">Maintenance</SelectItem>
-                        <SelectItem value="retired">Retired</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="insuranceExpiry"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Insurance Expiry</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={'outline'}
-                            className={cn(
-                              'w-full pl-3 text-left font-normal',
-                              !field.value && 'text-muted-foreground'
-                            )}
+                  {/* Dropdown list */}
+                  {ownerFocused && !form.ownerId && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-52 overflow-y-auto">
+                      {filteredOwners.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-gray-400">No results</div>
+                      ) : (
+                        filteredOwners.map((opt) => (
+                          <button
+                            key={`${opt.type}-${opt.id}`}
+                            type="button"
+                            onMouseDown={() => handleOwnerSelect(opt)}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
                           >
-                            {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date('1900-01-01')}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                            <span
+                              className={`text-xs font-semibold uppercase tracking-wide shrink-0 ${
+                                opt.type === 'driver' ? 'text-blue-500' : 'text-purple-500'
+                              }`}
+                            >
+                              {opt.type === 'driver' ? 'D' : 'S'}
+                            </span>
+                            <span className="flex-1 min-w-0">
+                              <span className="block text-sm text-gray-900 truncate">
+                                {opt.label}
+                              </span>
+                              {opt.sub && (
+                                <span className="block text-xs text-gray-400 truncate">
+                                  {opt.sub}
+                                </span>
+                              )}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </Field>
+            )}
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={onCloseAction}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+            {/* Capacity */}
+            <Field label="Capacity">
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  className={inputCls}
+                  value={form.capacityValue}
+                  onChange={set('capacityValue')}
+                  placeholder="e.g. 10"
+                />
+                <div className="relative w-24 shrink-0">
+                  <select
+                    className={selectCls}
+                    value={form.capacityUnit}
+                    onChange={set('capacityUnit')}
+                  >
+                    <option value="tons">Tons</option>
+                    <option value="kg">kg</option>
+                  </select>
+                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+                    &#8964;
+                  </span>
+                </div>
+              </div>
+            </Field>
+
+            {/* Length */}
+            <Field label="Length">
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  className={inputCls}
+                  value={form.lengthValue}
+                  onChange={set('lengthValue')}
+                  placeholder="e.g. 32"
+                />
+                <div className="relative w-24 shrink-0">
+                  <select
+                    className={selectCls}
+                    value={form.lengthUnit}
+                    onChange={set('lengthUnit')}
+                  >
+                    <option value="ft">ft</option>
+                    <option value="m">m</option>
+                  </select>
+                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+                    &#8964;
+                  </span>
+                </div>
+              </div>
+            </Field>
+
+            {/* Registration City */}
+            <Field label="Registration City">
+              <input
+                className={inputCls}
+                value={form.registrationCity}
+                onChange={set('registrationCity')}
+                placeholder="e.g. Ahmedabad"
+              />
+            </Field>
+
+            {/* Insurance Expiry */}
+            <Field label="Insurance Expiry">
+              <input
+                type="date"
+                className={inputCls}
+                value={form.insuranceExpiry}
+                onChange={set('insuranceExpiry')}
+              />
+            </Field>
+
+            {/* Fitness Expiry */}
+            <Field label="Fitness Expiry">
+              <input
+                type="date"
+                className={inputCls}
+                value={form.fitnessExpiry}
+                onChange={set('fitnessExpiry')}
+              />
+            </Field>
+
+            {/* Availability */}
+            <Field label="Availability">
+              <div className="relative">
+                <select
+                  className={selectCls}
+                  value={form.availability}
+                  onChange={set('availability')}
+                >
+                  <option value="available">Available</option>
+                  <option value="on-trip">On Trip</option>
+                  <option value="maintenance">Maintenance</option>
+                  <option value="offline">Offline</option>
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  &#8964;
+                </span>
+              </div>
+            </Field>
+
+            {/* Status */}
+            <Field label="Status">
+              <div className="relative">
+                <select className={selectCls} value={form.status} onChange={set('status')}>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="under-maintenance">Under Maintenance</option>
+                  <option value="retired">Retired</option>
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  &#8964;
+                </span>
+              </div>
+            </Field>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-white">
+            <button
+              type="button"
+              onClick={onCloseAction}
+              className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-md flex items-center gap-2"
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }

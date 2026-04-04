@@ -47,6 +47,7 @@ export interface Vehicle {
         name: string;
         phone?: string;
       };
+  supplierOwner?: string | { _id: string };
   ownershipType?: 'own' | 'leased' | 'attached';
   registrationCity?: string;
   lastKnownLocation?: { type: 'Point'; coordinates: [number, number] };
@@ -73,4 +74,5 @@ export interface VehicleFilters {
   search?: string;
   isVerified?: boolean;
   verificationStatus?: string;
+  ownershipType?: 'own' | 'leased' | 'attached' | ('own' | 'leased' | 'attached')[];
 }

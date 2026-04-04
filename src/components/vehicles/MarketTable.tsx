@@ -11,6 +11,20 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { TruckCommentModal } from './TruckCommentModal';
+import { EditVehicleModal } from './EditVehicleModal';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import type { Vehicle, Pagination } from '@/types';
 import {
   ChevronDown,
@@ -83,55 +97,171 @@ function VehicleActions({
 }: {
   vehicle: Vehicle;
   onDelete?: (id: string) => void;
-  onRejectKyc?: (id: string) => void;
+  onRejectKyc?: (id: string, reason: string) => void;
 }) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [commentOpen, setCommentOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+
+  const ownerRefItem =
+    vehicle.ownerRef?.item && typeof vehicle.ownerRef.item === 'object'
+      ? vehicle.ownerRef.item
+      : null;
+  const legacyOwner = typeof vehicle.owner === 'object' ? vehicle.owner : null;
+  const resolvedOwner = ownerRefItem ?? legacyOwner;
+  const driver = typeof vehicle.driver === 'object' ? vehicle.driver : null;
+  const phone =
+    (resolvedOwner as { phone?: string } | null)?.phone ||
+    (driver as { phone?: string } | null)?.phone;
+
+  const handleCall = () => {
+    if (phone) window.open(`tel:${phone}`);
+  };
+
+  const handleConfirmDelete = () => {
+    onDelete?.(vehicle._id);
+    setDeleteOpen(false);
+  };
+
+  const handleConfirmReject = () => {
+    if (rejectReason.trim().length < 5) return;
+    onRejectKyc?.(vehicle._id, rejectReason.trim());
+    setRejectOpen(false);
+    setRejectReason('');
+  };
+
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1">
-        <Tooltip label="Edit">
-          <Link href={`/vehicles/${vehicle._id}`}>
-            <button className="text-blue-400 hover:text-blue-600 p-0.5">
+    <>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-1">
+          <Tooltip label="Edit">
+            <button
+              className="text-blue-400 hover:text-blue-600 p-0.5"
+              onClick={() => setEditOpen(true)}
+            >
               <Pencil className="h-3.5 w-3.5" />
             </button>
-          </Link>
-        </Tooltip>
-        <Tooltip label="Call">
-          <button className="text-blue-400 hover:text-blue-600 p-0.5">
-            <Phone className="h-3.5 w-3.5" />
-          </button>
-        </Tooltip>
-        <Tooltip label="Comment">
-          <button className="text-blue-400 hover:text-blue-600 p-0.5">
-            <MessageCircle className="h-3.5 w-3.5" />
-          </button>
-        </Tooltip>
-        <Tooltip label="Delete">
-          <button
-            className="text-red-400 hover:text-red-600 p-0.5"
-            onClick={() => onDelete?.(vehicle._id)}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        </Tooltip>
-      </div>
-      <div className="flex items-center gap-1">
-        <Tooltip label="Preview Documents">
-          <Link href={`/vehicles/${vehicle._id}`}>
-            <button className="text-blue-400 hover:text-blue-600 p-0.5">
-              <FileCheck className="h-3.5 w-3.5" />
+          </Tooltip>
+          <Tooltip label={phone ? `Call ${phone}` : 'No phone available'}>
+            <button
+              className={`p-0.5 ${phone ? 'text-blue-400 hover:text-blue-600' : 'text-gray-300 cursor-not-allowed'}`}
+              onClick={handleCall}
+              disabled={!phone}
+            >
+              <Phone className="h-3.5 w-3.5" />
             </button>
-          </Link>
-        </Tooltip>
-        <Tooltip label="Reject KYC">
-          <button
-            className="text-red-400 hover:text-red-600 p-0.5"
-            onClick={() => onRejectKyc?.(vehicle._id)}
-          >
-            <XCircle className="h-3.5 w-3.5" />
-          </button>
-        </Tooltip>
+          </Tooltip>
+          <Tooltip label="Comment">
+            <button
+              className="text-blue-400 hover:text-blue-600 p-0.5"
+              onClick={() => setCommentOpen(true)}
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
+          <Tooltip label="Delete">
+            <button
+              className="text-red-400 hover:text-red-600 p-0.5"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
+        </div>
+        <div className="flex items-center gap-1">
+          <Tooltip label="Preview Documents">
+            <Link href={`/vehicles/${vehicle._id}`}>
+              <button className="text-blue-400 hover:text-blue-600 p-0.5">
+                <FileCheck className="h-3.5 w-3.5" />
+              </button>
+            </Link>
+          </Tooltip>
+          <Tooltip label="Reject KYC">
+            <button
+              className="text-red-400 hover:text-red-600 p-0.5"
+              onClick={() => setRejectOpen(true)}
+            >
+              <XCircle className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
+        </div>
       </div>
-    </div>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Vehicle</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{' '}
+              <span className="font-semibold">{vehicle.vehicleNumber}</span>? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject KYC</AlertDialogTitle>
+            <AlertDialogDescription>
+              Provide a reason for rejecting KYC for{' '}
+              <span className="font-semibold">{vehicle.vehicleNumber}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor={`reject-reason-${vehicle._id}`}>Reason</Label>
+            <Textarea
+              id={`reject-reason-${vehicle._id}`}
+              placeholder="Enter rejection reason (min. 5 characters)..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRejectReason('')}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmReject}
+              disabled={rejectReason.trim().length < 5}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Reject KYC
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Comment modal */}
+      {commentOpen && (
+        <TruckCommentModal
+          vehicleId={vehicle._id}
+          vehicleNumber={vehicle.vehicleNumber}
+          onClose={() => setCommentOpen(false)}
+        />
+      )}
+
+      {/* Edit modal */}
+      {editOpen && (
+        <EditVehicleModal
+          vehicle={vehicle}
+          isOpen={editOpen}
+          onCloseAction={() => setEditOpen(false)}
+          onSuccessAction={() => setEditOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -154,7 +284,7 @@ interface MarketTableProps {
   pagination?: Pagination;
   onPageChange?: (page: number) => void;
   onDelete?: (id: string) => void;
-  onRejectKyc?: (id: string) => void;
+  onRejectKyc?: (id: string, reason: string) => void;
 }
 
 export function MarketTable({

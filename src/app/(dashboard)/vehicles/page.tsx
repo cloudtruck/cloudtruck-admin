@@ -12,44 +12,25 @@ import {
 } from '@/components/ui/select';
 import { VehicleTable } from '@/components/vehicles/VehicleTable';
 import { MarketTable } from '@/components/vehicles/MarketTable';
-import { DriverTabTable } from '@/components/vehicles/DriverTabTable';
 import { VehicleMapView } from '@/components/vehicles/VehicleMapView';
 import { AddVehicleModal } from '@/components/vehicles/AddVehicleModal';
-import { vehicleApi, driverApi } from '@/lib/api';
+import { vehicleApi } from '@/lib/api';
 import { toast } from 'sonner';
-import type { Vehicle, Pagination, VehicleFilters, Driver } from '@/types';
+import type { Vehicle, Pagination, VehicleFilters } from '@/types';
 import { useMasterData } from '@/hooks/useMasterData';
-import {
-  Search,
-  X,
-  Map,
-  Table2,
-  FileSpreadsheet,
-  UserPlus,
-  ChevronDown,
-  Upload,
-} from 'lucide-react';
+import { Search, X, Map, Table2, FileSpreadsheet, ChevronDown, Upload } from 'lucide-react';
 
 // ─── Tab definition ───────────────────────────────────────────────────────────
 
-type Tab = 'trucks' | 'market' | 'driver';
+type Tab = 'all' | 'market' | 'owned';
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'trucks', label: 'Trucks' },
+  { key: 'all', label: 'All Trucks' },
   { key: 'market', label: 'Market' },
-  { key: 'driver', label: 'Driver' },
+  { key: 'owned', label: 'Owned' },
 ];
 
-// ─── Placeholder for unimplemented tabs ──────────────────────────────────────
-
-function ComingSoon({ label }: { label: string }) {
-  return (
-    <div className="bg-white rounded border p-16 flex flex-col items-center gap-3 text-gray-400">
-      <FileSpreadsheet className="h-10 w-10 opacity-20" />
-      <p className="text-sm">{label} — coming soon</p>
-    </div>
-  );
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function TruckReportButton({ onClick }: { onClick: () => void }) {
   const [show, setShow] = useState(false);
@@ -73,123 +54,157 @@ function TruckReportButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+// ─── Empty pagination helper ──────────────────────────────────────────────────
+
+const emptyPagination = (): Pagination => ({
+  currentPage: 1,
+  totalPages: 1,
+  totalItems: 0,
+  itemsPerPage: 20,
+});
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function VehiclesPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('trucks');
+  const [activeTab, setActiveTab] = useState<Tab>('all');
   const [viewMode, setViewMode] = useState<'table' | 'map'>('table');
   const [fastagOpen, setFastagOpen] = useState(false);
 
-  // ── Vehicles state (Trucks + Market tabs) ─────────────────────────────────
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [vehiclesLoading, setVehiclesLoading] = useState(true);
-  const [searchInput, setSearchInput] = useState('');
   const { data: truckTypes, loading: truckTypesLoading } = useMasterData('truck-type');
-  const [filters, setFilters] = useState<VehicleFilters>({});
-  const [pagination, setPagination] = useState<Pagination>({
-    currentPage: 1,
-    totalPages: 1,
-    totalItems: 0,
-    itemsPerPage: 20,
-  });
 
-  // ── Drivers state (Driver tab) ────────────────────────────────────────────
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [driversLoading, setDriversLoading] = useState(false);
-  const [driverPagination, setDriverPagination] = useState<Pagination>({
-    currentPage: 1,
-    totalPages: 1,
-    totalItems: 0,
-    itemsPerPage: 20,
-  });
+  // ── All Trucks tab state ───────────────────────────────────────────────────
+  const [allVehicles, setAllVehicles] = useState<Vehicle[]>([]);
+  const [allLoading, setAllLoading] = useState(true);
+  const [allFilters, setAllFilters] = useState<VehicleFilters>({});
+  const [allSearchInput, setAllSearchInput] = useState('');
+  const [allPagination, setAllPagination] = useState<Pagination>(emptyPagination());
+
+  // ── Market tab state (ownershipType=attached) ──────────────────────────────
+  const [marketVehicles, setMarketVehicles] = useState<Vehicle[]>([]);
+  const [marketLoading, setMarketLoading] = useState(false);
+  const [marketPagination, setMarketPagination] = useState<Pagination>(emptyPagination());
+
+  // ── Owned tab state (ownershipType=own|leased) ─────────────────────────────
+  const [ownedVehicles, setOwnedVehicles] = useState<Vehicle[]>([]);
+  const [ownedLoading, setOwnedLoading] = useState(false);
+  const [ownedPagination, setOwnedPagination] = useState<Pagination>(emptyPagination());
+
+  // ── Fetch functions ────────────────────────────────────────────────────────
+
+  const fetchAll = async () => {
+    setAllLoading(true);
+    try {
+      const res = await vehicleApi.getAll({
+        ...allFilters,
+        page: allPagination.currentPage,
+        limit: 20,
+      });
+      setAllVehicles(res.data.data.vehicles);
+      setAllPagination(res.data.data.pagination);
+    } catch {
+      toast.error('Failed to fetch vehicles');
+    } finally {
+      setAllLoading(false);
+    }
+  };
+
+  const fetchMarket = async () => {
+    setMarketLoading(true);
+    try {
+      const res = await vehicleApi.getAll({
+        ownershipType: 'attached',
+        page: marketPagination.currentPage,
+        limit: 20,
+      });
+      setMarketVehicles(res.data.data.vehicles);
+      setMarketPagination(res.data.data.pagination);
+    } catch {
+      toast.error('Failed to fetch market vehicles');
+    } finally {
+      setMarketLoading(false);
+    }
+  };
+
+  const fetchOwned = async () => {
+    setOwnedLoading(true);
+    try {
+      const res = await vehicleApi.getAll({
+        ownershipType: ['own', 'leased'],
+        page: ownedPagination.currentPage,
+        limit: 20,
+      });
+      setOwnedVehicles(res.data.data.vehicles);
+      setOwnedPagination(res.data.data.pagination);
+    } catch {
+      toast.error('Failed to fetch owned vehicles');
+    } finally {
+      setOwnedLoading(false);
+    }
+  };
+
+  // ── Effects ────────────────────────────────────────────────────────────────
+
+  // Fetch counts for non-active tabs on mount so badges show immediately
+  useEffect(() => {
+    fetchMarket();
+    fetchOwned();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
-    if (activeTab === 'trucks' || activeTab === 'market') fetchVehicles();
-    if (activeTab === 'driver') fetchDrivers();
+    if (activeTab === 'all') fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, pagination.currentPage, driverPagination.currentPage, activeTab]);
+  }, [activeTab, allFilters, allPagination.currentPage]);
 
-  const fetchVehicles = async () => {
-    setVehiclesLoading(true);
-    try {
-      const response = await vehicleApi.getAll({
-        ...filters,
-        page: pagination.currentPage,
-        limit: 20,
-      });
-      setVehicles(response.data.data.vehicles);
-      setPagination(response.data.data.pagination);
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to fetch vehicles');
-    } finally {
-      setVehiclesLoading(false);
-    }
+  useEffect(() => {
+    if (activeTab === 'market') fetchMarket();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, marketPagination.currentPage]);
+
+  useEffect(() => {
+    if (activeTab === 'owned') fetchOwned();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, ownedPagination.currentPage]);
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
+
+  const handleAllSearch = () => {
+    setAllFilters((f) => ({ ...f, search: allSearchInput }));
+    setAllPagination((p) => ({ ...p, currentPage: 1 }));
   };
 
-  const fetchDrivers = async () => {
-    setDriversLoading(true);
-    try {
-      const response = await driverApi.getAll({
-        page: driverPagination.currentPage,
-        limit: 20,
-      });
-      setDrivers(response.data.data.drivers);
-      setDriverPagination(response.data.data.pagination);
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to fetch drivers');
-    } finally {
-      setDriversLoading(false);
-    }
-  };
-
-  const handleSearch = () => {
-    setFilters({ ...filters, search: searchInput });
-    setPagination((prev) => ({ ...prev, currentPage: 1 }));
-  };
-
-  const handleClearFilters = () => {
-    setFilters({});
-    setSearchInput('');
-    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+  const handleAllClearFilters = () => {
+    setAllFilters({});
+    setAllSearchInput('');
+    setAllPagination((p) => ({ ...p, currentPage: 1 }));
   };
 
   const handleDeleteVehicle = async (id: string) => {
-    if (!confirm('Delete this vehicle?')) return;
     try {
       await vehicleApi.delete(id);
       toast.success('Vehicle deleted');
-      fetchVehicles();
+      if (activeTab === 'all') fetchAll();
+      else if (activeTab === 'market') fetchMarket();
+      else fetchOwned();
     } catch {
       toast.error('Failed to delete vehicle');
     }
   };
 
-  const handleRejectVehicleKyc = async (id: string) => {
-    if (!confirm('Reject KYC for this vehicle?')) return;
+  const handleRejectVehicleKyc = async (id: string, reason: string) => {
     try {
-      await vehicleApi.reject(id, { reason: 'Rejected by admin' });
+      await vehicleApi.reject(id, { reason });
       toast.success('KYC rejected');
-      fetchVehicles();
+      if (activeTab === 'all') fetchAll();
+      else if (activeTab === 'market') fetchMarket();
+      else fetchOwned();
     } catch {
       toast.error('Failed to reject KYC');
     }
   };
 
-  const handleRejectDriverKyc = async (id: string) => {
-    if (!confirm('Reject KYC for this driver?')) return;
-    try {
-      await driverApi.reject(id, { reason: 'Rejected by admin' });
-      toast.success('Driver KYC rejected');
-      fetchDrivers();
-    } catch {
-      toast.error('Failed to reject driver KYC');
-    }
-  };
-
   const hasActiveFilters =
-    filters.search || filters.status || filters.truckType || filters.verificationStatus;
+    allFilters.search || allFilters.status || allFilters.truckType || allFilters.verificationStatus;
 
   const downloadTruckReport = async () => {
     try {
@@ -202,7 +217,7 @@ export default function VehiclesPage() {
         'Body Type',
         'Capacity',
         'Ownership',
-        'Driver',
+        'Owner',
         'KYC Status',
         'Availability',
         'City',
@@ -212,15 +227,19 @@ export default function VehiclesPage() {
       const lines = [
         headers.join(','),
         ...rows.map((v) => {
-          const owner = typeof v.owner === 'object' ? v.owner : null;
-          const driver = typeof v.driver === 'object' ? v.driver : null;
+          const ownerRef =
+            v.ownerRef?.item && typeof v.ownerRef.item === 'object' ? v.ownerRef.item : null;
+          const legacyOwner = typeof v.owner === 'object' ? v.owner : null;
+          const owner = ownerRef ?? legacyOwner;
           return [
             v.vehicleNumber,
             v.truckType,
             v.bodyType,
             `${v.capacity.value} ${v.capacity.unit}`,
             v.ownershipType || '',
-            owner?.name || driver?.name || '',
+            (owner as { name?: string; displayName?: string } | null)?.name ??
+              (owner as { displayName?: string } | null)?.displayName ??
+              '',
             v.verificationStatus,
             v.availability,
             v.registrationCity || '',
@@ -244,18 +263,39 @@ export default function VehiclesPage() {
     }
   };
 
-  const sharedVehicleProps = {
-    vehicles,
-    loading: vehiclesLoading,
-    pagination,
-    onPageChange: (page: number) => setPagination((prev) => ({ ...prev, currentPage: page })),
-    onDelete: handleDeleteVehicle,
-    onRejectKyc: handleRejectVehicleKyc,
+  const refreshCurrent = () => {
+    if (activeTab === 'all') fetchAll();
+    else if (activeTab === 'market') fetchMarket();
+    else fetchOwned();
   };
 
-  // Badge counts
-  const trucksBadge = activeTab === 'trucks' || activeTab === 'market' ? pagination.totalItems : 0;
-  const driversBadge = driverPagination.totalItems;
+  // ── Current tab vehicles/pagination for shared props ───────────────────────
+
+  const currentVehicles =
+    activeTab === 'all' ? allVehicles : activeTab === 'market' ? marketVehicles : ownedVehicles;
+  const currentLoading =
+    activeTab === 'all' ? allLoading : activeTab === 'market' ? marketLoading : ownedLoading;
+  const currentPagination =
+    activeTab === 'all'
+      ? allPagination
+      : activeTab === 'market'
+        ? marketPagination
+        : ownedPagination;
+  const currentPageChange = (page: number) => {
+    if (activeTab === 'all') setAllPagination((p) => ({ ...p, currentPage: page }));
+    else if (activeTab === 'market') setMarketPagination((p) => ({ ...p, currentPage: page }));
+    else setOwnedPagination((p) => ({ ...p, currentPage: page }));
+  };
+
+  const sharedTableProps = {
+    vehicles: currentVehicles,
+    loading: currentLoading,
+    pagination: currentPagination,
+    onPageChange: currentPageChange,
+    onDelete: handleDeleteVehicle,
+    onRejectKyc: handleRejectVehicleKyc,
+    onRefresh: refreshCurrent,
+  };
 
   return (
     <div className="space-y-0">
@@ -265,13 +305,11 @@ export default function VehiclesPage() {
         <div className="flex items-end gap-0">
           {TABS.map((tab) => {
             const badge =
-              tab.key === 'trucks'
-                ? pagination.totalItems
+              tab.key === 'all'
+                ? allPagination.totalItems
                 : tab.key === 'market'
-                  ? trucksBadge
-                  : tab.key === 'driver'
-                    ? driversBadge
-                    : 0;
+                  ? marketPagination.totalItems
+                  : ownedPagination.totalItems;
             return (
               <button
                 key={tab.key}
@@ -296,8 +334,8 @@ export default function VehiclesPage() {
 
         {/* Action buttons */}
         <div className="flex items-center gap-2">
-          {/* Trucks tab: single toggle button + Fastag */}
-          {activeTab === 'trucks' && (
+          {/* Map toggle — All Trucks only */}
+          {activeTab === 'all' && (
             <>
               <Button
                 variant="outline"
@@ -317,7 +355,6 @@ export default function VehiclesPage() {
               </Button>
               {/* Fastag split button */}
               <div className="relative flex">
-                {/* Hidden file input */}
                 <input
                   id="fastag-upload"
                   type="file"
@@ -329,21 +366,18 @@ export default function VehiclesPage() {
                     e.target.value = '';
                   }}
                 />
-                {/* Upload part */}
                 <label
                   htmlFor="fastag-upload"
                   className="flex items-center gap-1.5 h-8 px-3 text-sm font-medium border border-r-0 rounded-l cursor-pointer bg-white hover:bg-gray-50 text-gray-700"
                 >
                   <Upload className="h-3.5 w-3.5" /> Fastag
                 </label>
-                {/* Chevron dropdown part */}
                 <button
                   onClick={() => setFastagOpen((o) => !o)}
                   className="flex items-center px-2 h-8 border rounded-r bg-white hover:bg-gray-50 text-gray-500"
                 >
                   <ChevronDown className="h-3.5 w-3.5" />
                 </button>
-                {/* Dropdown */}
                 {fastagOpen && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setFastagOpen(false)} />
@@ -361,26 +395,13 @@ export default function VehiclesPage() {
                   </>
                 )}
               </div>
-              <TruckReportButton onClick={downloadTruckReport} />
             </>
           )}
 
-          {/* Non-trucks: Excel only */}
-          {activeTab !== 'trucks' && <TruckReportButton onClick={downloadTruckReport} />}
+          <TruckReportButton onClick={downloadTruckReport} />
+          <AddVehicleModal onSuccess={refreshCurrent} />
 
-          {/* Primary CTA — varies by tab */}
-          {activeTab === 'driver' ? (
-            <Button
-              size="sm"
-              className="h-8 text-sm gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <UserPlus className="h-3.5 w-3.5" /> Add Driver
-            </Button>
-          ) : (
-            <AddVehicleModal onSuccess={fetchVehicles} />
-          )}
-
-          {activeTab === 'trucks' && (
+          {activeTab === 'all' && (
             <Button variant="outline" size="sm" className="h-8 text-sm text-gray-400" disabled>
               Update Tracking
             </Button>
@@ -388,35 +409,35 @@ export default function VehiclesPage() {
         </div>
       </div>
 
-      {/* ── Divider ────────────────────────────────────────────────────── */}
+      {/* ── Divider ─────────────────────────────────────────────────────── */}
       <div className="border-b mb-4" />
 
-      {/* ── Trucks tab ──────────────────────────────────────────────────── */}
-      {activeTab === 'trucks' && viewMode === 'map' && <VehicleMapView vehicles={vehicles} />}
+      {/* ── All Trucks tab ──────────────────────────────────────────────── */}
+      {activeTab === 'all' && viewMode === 'map' && <VehicleMapView vehicles={allVehicles} />}
 
-      {activeTab === 'trucks' && viewMode === 'table' && (
+      {activeTab === 'all' && viewMode === 'table' && (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
             <div className="relative flex-1 min-w-[200px] max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
               <Input
                 placeholder="Search vehicle number..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                value={allSearchInput}
+                onChange={(e) => setAllSearchInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAllSearch()}
                 className="pl-8 h-8 text-sm"
               />
             </div>
             <Select
-              value={filters.truckType || 'all'}
+              value={allFilters.truckType || 'all'}
               onValueChange={(v) => {
-                setFilters({ ...filters, truckType: v === 'all' ? undefined : v });
-                setPagination((p) => ({ ...p, currentPage: 1 }));
+                setAllFilters((f) => ({ ...f, truckType: v === 'all' ? undefined : v }));
+                setAllPagination((p) => ({ ...p, currentPage: 1 }));
               }}
               disabled={truckTypesLoading}
             >
               <SelectTrigger className="w-[140px] h-8 text-sm">
-                <SelectValue placeholder="Truck Type" />
+                <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
@@ -430,17 +451,17 @@ export default function VehiclesPage() {
               </SelectContent>
             </Select>
             <Select
-              value={filters.status || 'all'}
+              value={allFilters.status || 'all'}
               onValueChange={(v) => {
-                setFilters({ ...filters, status: v === 'all' ? undefined : v });
-                setPagination((p) => ({ ...p, currentPage: 1 }));
+                setAllFilters((f) => ({ ...f, status: v === 'all' ? undefined : v }));
+                setAllPagination((p) => ({ ...p, currentPage: 1 }));
               }}
             >
               <SelectTrigger className="w-[140px] h-8 text-sm">
-                <SelectValue placeholder="Availability" />
+                <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="available">Available</SelectItem>
                 <SelectItem value="on-trip">On Trip</SelectItem>
                 <SelectItem value="maintenance">Maintenance</SelectItem>
@@ -448,14 +469,17 @@ export default function VehiclesPage() {
               </SelectContent>
             </Select>
             <Select
-              value={filters.verificationStatus || 'all'}
+              value={allFilters.verificationStatus || 'all'}
               onValueChange={(v) => {
-                setFilters({ ...filters, verificationStatus: v === 'all' ? undefined : v });
-                setPagination((p) => ({ ...p, currentPage: 1 }));
+                setAllFilters((f) => ({
+                  ...f,
+                  verificationStatus: v === 'all' ? undefined : v,
+                }));
+                setAllPagination((p) => ({ ...p, currentPage: 1 }));
               }}
             >
               <SelectTrigger className="w-[140px] h-8 text-sm">
-                <SelectValue placeholder="KYC Status" />
+                <SelectValue placeholder="All KYC" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All KYC</SelectItem>
@@ -466,29 +490,20 @@ export default function VehiclesPage() {
               </SelectContent>
             </Select>
             {hasActiveFilters && (
-              <Button onClick={handleClearFilters} variant="ghost" size="sm" className="h-8">
+              <Button onClick={handleAllClearFilters} variant="ghost" size="sm" className="h-8">
                 <X className="h-3.5 w-3.5 mr-1" /> Clear
               </Button>
             )}
           </div>
-
-          <VehicleTable {...sharedVehicleProps} onRefresh={fetchVehicles} />
+          <VehicleTable {...sharedTableProps} />
         </div>
       )}
 
-      {/* ── Market tab ──────────────────────────────────────────────────── */}
-      {activeTab === 'market' && <MarketTable {...sharedVehicleProps} />}
+      {/* ── Market tab (attached trucks) ─────────────────────────────────── */}
+      {activeTab === 'market' && <MarketTable {...sharedTableProps} />}
 
-      {/* ── Driver tab ──────────────────────────────────────────────────── */}
-      {activeTab === 'driver' && (
-        <DriverTabTable
-          drivers={drivers}
-          loading={driversLoading}
-          pagination={driverPagination}
-          onPageChange={(page) => setDriverPagination((prev) => ({ ...prev, currentPage: page }))}
-          onRejectKyc={handleRejectDriverKyc}
-        />
-      )}
+      {/* ── Owned tab (own + leased trucks) ─────────────────────────────── */}
+      {activeTab === 'owned' && <VehicleTable {...sharedTableProps} />}
     </div>
   );
 }

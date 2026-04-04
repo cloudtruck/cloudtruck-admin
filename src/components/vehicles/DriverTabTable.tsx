@@ -11,6 +11,18 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import type { Driver, Pagination } from '@/types';
 import { FileText, FileCheck, XCircle, Settings2, Search, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
@@ -43,11 +55,14 @@ function StatusBadge({ driver }: { driver: Driver }) {
   }
   const map: Record<string, { label: string; cls: string }> = {
     available: { label: 'Available', cls: 'bg-green-100 text-green-700' },
-    'on-trip': { label: 'On Trip',   cls: 'bg-blue-100 text-blue-700' },
-    offline:   { label: 'Offline',   cls: 'bg-gray-100 text-gray-500' },
-    blocked:   { label: 'Blocked',   cls: 'bg-red-100 text-red-600' },
+    'on-trip': { label: 'On Trip', cls: 'bg-blue-100 text-blue-700' },
+    offline: { label: 'Offline', cls: 'bg-gray-100 text-gray-500' },
+    blocked: { label: 'Blocked', cls: 'bg-red-100 text-red-600' },
   };
-  const { label, cls } = map[driver.status] ?? { label: driver.status, cls: 'bg-gray-100 text-gray-500' };
+  const { label, cls } = map[driver.status] ?? {
+    label: driver.status,
+    cls: 'bg-gray-100 text-gray-500',
+  };
   return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls}`}>{label}</span>;
 }
 
@@ -58,39 +73,83 @@ function DriverActions({
   onRejectKyc,
 }: {
   driver: Driver;
-  onRejectKyc?: (id: string) => void;
+  onRejectKyc?: (id: string, reason: string) => void;
 }) {
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+
+  const handleConfirmReject = () => {
+    if (rejectReason.trim().length < 5) return;
+    onRejectKyc?.(driver._id, rejectReason.trim());
+    setRejectOpen(false);
+    setRejectReason('');
+  };
+
   return (
-    <div className="flex flex-col gap-1">
-      {/* Row 1: View (green file) */}
-      <div className="flex items-center gap-1">
-        <Tooltip label="View Driver">
-          <Link href={`/drivers/${driver._id}`}>
-            <button className="text-green-500 hover:text-green-700 p-0.5">
-              <FileText className="h-3.5 w-3.5" />
+    <>
+      <div className="flex flex-col gap-1">
+        {/* Row 1: View (green file) */}
+        <div className="flex items-center gap-1">
+          <Tooltip label="View Driver">
+            <Link href={`/drivers/${driver._id}`}>
+              <button className="text-green-500 hover:text-green-700 p-0.5">
+                <FileText className="h-3.5 w-3.5" />
+              </button>
+            </Link>
+          </Tooltip>
+        </div>
+        {/* Row 2: Preview Docs + Reject KYC */}
+        <div className="flex items-center gap-1">
+          <Tooltip label="Preview Documents">
+            <Link href={`/drivers/${driver._id}`}>
+              <button className="text-blue-400 hover:text-blue-600 p-0.5">
+                <FileCheck className="h-3.5 w-3.5" />
+              </button>
+            </Link>
+          </Tooltip>
+          <Tooltip label="Reject KYC">
+            <button
+              className="text-red-400 hover:text-red-600 p-0.5"
+              onClick={() => setRejectOpen(true)}
+            >
+              <XCircle className="h-3.5 w-3.5" />
             </button>
-          </Link>
-        </Tooltip>
+          </Tooltip>
+        </div>
       </div>
-      {/* Row 2: Preview Docs + Reject KYC */}
-      <div className="flex items-center gap-1">
-        <Tooltip label="Preview Documents">
-          <Link href={`/drivers/${driver._id}`}>
-            <button className="text-blue-400 hover:text-blue-600 p-0.5">
-              <FileCheck className="h-3.5 w-3.5" />
-            </button>
-          </Link>
-        </Tooltip>
-        <Tooltip label="Reject KYC">
-          <button
-            className="text-red-400 hover:text-red-600 p-0.5"
-            onClick={() => onRejectKyc?.(driver._id)}
-          >
-            <XCircle className="h-3.5 w-3.5" />
-          </button>
-        </Tooltip>
-      </div>
-    </div>
+
+      <AlertDialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject KYC</AlertDialogTitle>
+            <AlertDialogDescription>
+              Provide a reason for rejecting KYC for{' '}
+              <span className="font-semibold">{driver.name}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor={`reject-reason-${driver._id}`}>Reason</Label>
+            <Textarea
+              id={`reject-reason-${driver._id}`}
+              placeholder="Enter rejection reason (min. 5 characters)..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRejectReason('')}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmReject}
+              disabled={rejectReason.trim().length < 5}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Reject KYC
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -112,7 +171,7 @@ interface DriverTabTableProps {
   loading?: boolean;
   pagination?: Pagination;
   onPageChange?: (page: number) => void;
-  onRejectKyc?: (id: string) => void;
+  onRejectKyc?: (id: string, reason: string) => void;
 }
 
 export function DriverTabTable({
@@ -152,23 +211,35 @@ export function DriverTabTable({
             <TableHead className="text-xs font-semibold text-gray-600">ID</TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">Truck</TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">
-              <span className="flex items-center gap-1"><Search className="h-3 w-3" /> Name</span>
+              <span className="flex items-center gap-1">
+                <Search className="h-3 w-3" /> Name
+              </span>
             </TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">
-              <span className="flex items-center gap-1"><Search className="h-3 w-3" /> Short Name</span>
+              <span className="flex items-center gap-1">
+                <Search className="h-3 w-3" /> Short Name
+              </span>
             </TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">
-              <span className="flex items-center gap-1"><Search className="h-3 w-3" /> Mobile</span>
+              <span className="flex items-center gap-1">
+                <Search className="h-3 w-3" /> Mobile
+              </span>
             </TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">
-              <span className="flex items-center gap-1"><Search className="h-3 w-3" /> Ownership</span>
+              <span className="flex items-center gap-1">
+                <Search className="h-3 w-3" /> Ownership
+              </span>
             </TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">
-              <span className="flex items-center gap-1"><Search className="h-3 w-3" /> Licence No</span>
+              <span className="flex items-center gap-1">
+                <Search className="h-3 w-3" /> Licence No
+              </span>
             </TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">L.Valid Till</TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">
-              <span className="flex items-center gap-1"><Search className="h-3 w-3" /> Aadhar No</span>
+              <span className="flex items-center gap-1">
+                <Search className="h-3 w-3" /> Aadhar No
+              </span>
             </TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">Bank A/C</TableHead>
             <TableHead className="text-xs font-semibold text-gray-600">Status</TableHead>
@@ -191,9 +262,7 @@ export function DriverTabTable({
                 </TableCell>
 
                 {/* ID */}
-                <TableCell className="text-sm text-blue-600 font-medium">
-                  {shortId}
-                </TableCell>
+                <TableCell className="text-sm text-blue-600 font-medium">{shortId}</TableCell>
 
                 {/* Truck */}
                 <TableCell>
@@ -225,13 +294,11 @@ export function DriverTabTable({
                 </TableCell>
 
                 {/* Mobile */}
-                <TableCell className="text-sm text-gray-700">
-                  {driver.phone || '—'}
-                </TableCell>
+                <TableCell className="text-sm text-gray-700">{driver.phone || '—'}</TableCell>
 
                 {/* Ownership — from first vehicle type or default Market */}
                 <TableCell className="text-sm text-gray-600 capitalize">
-                  {firstVehicle ? (firstVehicle.truckType || 'Market') : 'Market'}
+                  {firstVehicle ? firstVehicle.truckType || 'Market' : 'Market'}
                 </TableCell>
 
                 {/* Licence No */}
@@ -248,9 +315,7 @@ export function DriverTabTable({
 
                 {/* Aadhar No */}
                 <TableCell className="text-sm text-gray-700">
-                  {driver.aadhaarNumber
-                    ? `XXXX-XXXX-${driver.aadhaarNumber.slice(-4)}`
-                    : '—'}
+                  {driver.aadhaarNumber ? `XXXX-XXXX-${driver.aadhaarNumber.slice(-4)}` : '—'}
                 </TableCell>
 
                 {/* Bank A/C */}
@@ -273,7 +338,9 @@ export function DriverTabTable({
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-3 border-t text-sm text-gray-600">
-          <span>Page {pagination.currentPage} of {pagination.totalPages}</span>
+          <span>
+            Page {pagination.currentPage} of {pagination.totalPages}
+          </span>
           <div className="flex gap-2">
             <Button
               variant="outline"

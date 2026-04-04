@@ -40,20 +40,36 @@ import { useMasterData } from '@/hooks/useMasterData';
 import { cn } from '@/lib/utils';
 import type { Driver, Supplier } from '@/types';
 
-const addVehicleSchema = z.object({
-  vehicleNumber: z.string().min(5, 'Vehicle number must be at least 5 characters'),
-  truckType: z.string().min(1, 'Truck type is required'),
-  lengthValue: z.string().min(1, 'Length is required'),
-  lengthUnit: z.enum(['ft', 'm']),
-  heightValue: z.string().optional(),
-  heightUnit: z.enum(['ft', 'm']),
-  capacityValue: z.string().min(1, 'Capacity is required'),
-  capacityUnit: z.enum(['kg', 'tons']),
-  bodyType: z.string().min(1, 'Body type is required'),
-  ownerKind: z.enum(['Driver', 'Supplier']),
-  ownerItem: z.string().min(1, 'Owner is required'),
-  insuranceExpiry: z.date(),
-});
+const addVehicleSchema = z
+  .object({
+    vehicleNumber: z.string().min(5, 'Vehicle number must be at least 5 characters'),
+    truckType: z.string().min(1, 'Truck type is required'),
+    lengthValue: z.string().min(1, 'Length is required'),
+    lengthUnit: z.enum(['ft', 'm']),
+    heightValue: z.string().optional(),
+    heightUnit: z.enum(['ft', 'm']),
+    capacityValue: z.string().min(1, 'Capacity is required'),
+    capacityUnit: z.enum(['kg', 'tons']),
+    bodyType: z.string().min(1, 'Body type is required'),
+    ownershipType: z.enum(['own', 'leased', 'attached']),
+    ownerKind: z.enum(['Driver', 'Supplier']).optional(),
+    ownerItem: z.string().optional(),
+    insuranceExpiry: z.date(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.ownershipType === 'attached') {
+      if (!data.ownerKind) {
+        ctx.addIssue({ code: 'custom', path: ['ownerKind'], message: 'Select driver or supplier' });
+      }
+      if (!data.ownerItem) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['ownerItem'],
+          message: 'Owner is required for market trucks',
+        });
+      }
+    }
+  });
 
 type AddVehicleFormData = z.infer<typeof addVehicleSchema>;
 
@@ -82,11 +98,13 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
       capacityValue: '',
       capacityUnit: 'tons',
       bodyType: '',
-      ownerKind: 'Driver',
+      ownershipType: 'own',
+      ownerKind: undefined,
       ownerItem: '',
     },
   });
 
+  const ownershipType = form.watch('ownershipType');
   const ownerKind = form.watch('ownerKind');
 
   useEffect(() => {
@@ -127,8 +145,13 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
           unit: data.capacityUnit,
         },
         bodyType: data.bodyType,
-        ownerRef: { kind: data.ownerKind, item: data.ownerItem },
-        ...(data.ownerKind === 'Driver' ? { owner: data.ownerItem } : {}),
+        ownershipType: data.ownershipType,
+        ...(data.ownershipType === 'attached' && data.ownerKind && data.ownerItem
+          ? {
+              ownerRef: { kind: data.ownerKind, item: data.ownerItem },
+              ...(data.ownerKind === 'Driver' ? { owner: data.ownerItem } : {}),
+            }
+          : {}),
         expiryDates: {
           insurance: data.insuranceExpiry.toISOString(),
         },
@@ -182,27 +205,30 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
                 )}
               />
 
+              {/* Ownership Type — Own / Leased / Market (Attached) */}
               <FormField
                 control={form.control}
-                name="ownerKind"
+                name="ownershipType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Owner Type</FormLabel>
+                    <FormLabel>Ownership</FormLabel>
                     <Select
                       onValueChange={(v) => {
                         field.onChange(v);
+                        form.setValue('ownerKind', undefined);
                         form.setValue('ownerItem', '');
                       }}
                       value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select owner type" />
+                          <SelectValue placeholder="Select ownership" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Driver">Driver (Individual RC holder)</SelectItem>
-                        <SelectItem value="Supplier">Company (Supplier owns RC)</SelectItem>
+                        <SelectItem value="own">Own (Cloudtruck fleet)</SelectItem>
+                        <SelectItem value="leased">Leased (finance / EMI)</SelectItem>
+                        <SelectItem value="attached">Market (driver / supplier owned)</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -210,42 +236,83 @@ export function AddVehicleModal({ onSuccess }: AddVehicleModalProps) {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="ownerItem"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {ownerKind === 'Supplier' ? 'Supplier (RC Holder)' : 'Driver (RC Holder)'}
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={
-                              ownerKind === 'Supplier' ? 'Select supplier' : 'Select driver'
-                            }
-                          />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {ownerKind === 'Driver'
-                          ? drivers.map((d) => (
-                              <SelectItem key={d._id} value={d._id}>
-                                {d.name} ({d.phone})
-                              </SelectItem>
-                            ))
-                          : suppliers.map((s) => (
-                              <SelectItem key={s._id} value={s._id}>
-                                {s.companyName || s.displayName}
-                              </SelectItem>
-                            ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Owner sub-type + owner selector — only for Market trucks */}
+              {ownershipType === 'attached' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="ownerKind"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Owner Type</FormLabel>
+                        <Select
+                          onValueChange={(v) => {
+                            field.onChange(v);
+                            form.setValue('ownerItem', '');
+                          }}
+                          value={field.value ?? ''}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Driver or Supplier?" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Driver">Driver (individual RC holder)</SelectItem>
+                            <SelectItem value="Supplier">Supplier (company RC holder)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="ownerItem"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {ownerKind === 'Supplier' ? 'Supplier (RC Holder)' : 'Driver (RC Holder)'}
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value ?? ''}
+                          disabled={!ownerKind}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue
+                                placeholder={
+                                  !ownerKind
+                                    ? 'Select owner type first'
+                                    : ownerKind === 'Supplier'
+                                      ? 'Select supplier'
+                                      : 'Select driver'
+                                }
+                              />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {ownerKind === 'Driver'
+                              ? drivers.map((d) => (
+                                  <SelectItem key={d._id} value={d._id}>
+                                    {d.name} ({d.phone})
+                                  </SelectItem>
+                                ))
+                              : suppliers.map((s) => (
+                                  <SelectItem key={s._id} value={s._id}>
+                                    {s.companyName || s.displayName}
+                                  </SelectItem>
+                                ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
