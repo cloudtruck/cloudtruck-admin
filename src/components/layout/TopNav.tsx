@@ -61,14 +61,14 @@ export function TopNav() {
         <Button
           size="sm"
           onClick={() => router.push('/bookings/create')}
-          className="bg-blue-600 hover:bg-blue-700 text-white shrink-0 h-7 px-3 text-xs font-semibold rounded-full"
+          className="relative z-10 bg-gray-900 hover:bg-gray-700 text-white shrink-0 h-7 px-3 text-xs font-semibold rounded-full"
         >
           <Plus className="h-3 w-3 mr-1" />
           Indent
         </Button>
 
         {/* Nav Items */}
-        <nav className="flex items-center gap-0.5 flex-1 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <nav className="flex items-center gap-0.5 flex-1 min-w-0 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {navItems.map((item) => (
             <Link
               key={item.href}
