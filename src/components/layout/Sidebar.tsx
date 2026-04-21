@@ -16,6 +16,8 @@ import {
   Settings,
   ChevronDown,
   Building2,
+  TicketCheck,
+  MessageSquare,
 } from 'lucide-react';
 
 interface NavItem {
@@ -105,6 +107,16 @@ const navigationItems: NavItem[] = [
 ];
 
 const bottomNavigationItems: NavItem[] = [
+  {
+    label: 'Support Tickets',
+    href: '/support-tickets',
+    icon: TicketCheck,
+  },
+  {
+    label: 'Chat',
+    href: '/chat',
+    icon: MessageSquare,
+  },
   {
     label: 'Settings',
     href: '/settings',
