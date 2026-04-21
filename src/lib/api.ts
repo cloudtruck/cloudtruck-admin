@@ -695,13 +695,30 @@ export const marketRateApi = {
 
 // Support Tickets API
 export const supportTicketApi = {
-  getAll: (params?: { status?: string; page?: number; limit?: number }) =>
+  getAll: (params?: {
+    status?: string;
+    priority?: string;
+    category?: string;
+    page?: number;
+    limit?: number;
+  }) =>
     api.get<ApiResponse<{ tickets: any[]; pagination: Pagination }>>('/support-tickets', {
       params,
     }),
   getById: (id: string) => api.get<ApiResponse<any>>(`/support-tickets/${id}`),
   reply: (id: string, data: { message: string }) =>
     api.post<ApiResponse<any>>(`/support-tickets/${id}/reply`, data),
+  update: (id: string, data: { status?: string; priority?: string; resolutionNotes?: string }) =>
+    api.patch<ApiResponse<any>>(`/support-tickets/${id}`, data),
+};
+
+// Chat API
+export const chatApi = {
+  getConversations: () => api.get<ApiResponse<any[]>>('/chat'),
+  getMessages: (id: string) => api.get<ApiResponse<any[]>>(`/chat/${id}/messages`),
+  sendMessage: (id: string, data: { text: string }) =>
+    api.post<ApiResponse<any>>(`/chat/${id}/messages`, data),
+  markAsRead: (id: string) => api.patch<ApiResponse<any>>(`/chat/${id}/read`, {}),
 };
 
 // Audit Logs API

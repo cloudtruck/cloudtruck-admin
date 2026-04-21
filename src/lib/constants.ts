@@ -16,6 +16,22 @@ export const BOOKING_STATUSES = [
   { value: 'cancelled', label: 'Cancelled' },
 ] as const;
 
+// The single next valid status for each booking status.
+// 'assigned' is excluded — it is set only via the Assign Driver flow, never manually.
+// 'under-review' has no next status here — admin must assign a driver first.
+export const NEXT_BOOKING_STATUS: Partial<Record<string, { value: string; label: string }>> = {
+  created: { value: 'under-review', label: 'Under Review' },
+  assigned: { value: 'driver-en-route', label: 'Driver En Route' },
+  'driver-en-route': { value: 'reached-pickup', label: 'Reached Pickup' },
+  'reached-pickup': { value: 'loaded', label: 'Loaded' },
+  loaded: { value: 'in-transit', label: 'In Transit' },
+  'in-transit': { value: 'reached-destination', label: 'Reached Destination' },
+  'reached-destination': { value: 'unloading', label: 'Unloading' },
+  unloading: { value: 'delivered', label: 'Delivered' },
+  delivered: { value: 'pod-received', label: 'POD Received' },
+  'pod-received': { value: 'closed', label: 'Closed' },
+};
+
 export const PAYMENT_STATUSES = [
   { value: 'unpaid', label: 'Unpaid' },
   { value: 'partial', label: 'Partial' },

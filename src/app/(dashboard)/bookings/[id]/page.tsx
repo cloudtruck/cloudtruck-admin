@@ -135,10 +135,12 @@ export default function BookingDetailPage() {
               <Edit className="h-4 w-4 mr-2" />
               Edit Booking
             </Button>
-            <Button variant="outline" onClick={handleUpdateStatus}>
-              <FileText className="h-4 w-4 mr-2" />
-              Update Status
-            </Button>
+            {booking.status !== 'under-review' && (
+              <Button variant="outline" onClick={handleUpdateStatus}>
+                <FileText className="h-4 w-4 mr-2" />
+                Update Status
+              </Button>
+            )}
           </>
         )}
         <Button variant="outline" onClick={handleAddNote}>

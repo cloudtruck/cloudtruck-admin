@@ -11,19 +11,12 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { bookingApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Booking } from '@/types';
 import { Loader2 } from 'lucide-react';
-import { BOOKING_STATUSES } from '@/lib/constants';
+import { NEXT_BOOKING_STATUS } from '@/lib/constants';
 
 interface UpdateStatusModalProps {
   isOpen: boolean;
@@ -34,21 +27,22 @@ interface UpdateStatusModalProps {
 
 export function UpdateStatusModal({ isOpen, onClose, booking, onSuccess }: UpdateStatusModalProps) {
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<string>(booking.status);
   const [notes, setNotes] = useState('');
+
+  const nextStatus = NEXT_BOOKING_STATUS[booking.status];
 
   useEffect(() => {
     if (isOpen) {
-      setStatus(booking.status);
       setNotes('');
     }
-  }, [isOpen, booking.status]);
+  }, [isOpen]);
 
   const handleUpdate = async () => {
+    if (!nextStatus) return;
     try {
       setLoading(true);
       await bookingApi.updateStatus(booking._id, {
-        status,
+        status: nextStatus.value,
         notes,
       });
       toast.success('Booking status updated successfully');
@@ -69,6 +63,8 @@ export function UpdateStatusModal({ isOpen, onClose, booking, onSuccess }: Updat
     }
   };
 
+  const isUnderReview = booking.status === 'under-review';
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
@@ -77,41 +73,47 @@ export function UpdateStatusModal({ isOpen, onClose, booking, onSuccess }: Updat
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="status">New Status</Label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                {BOOKING_STATUSES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {isUnderReview ? (
+            <p className="text-sm text-muted-foreground">
+              This booking is under review. Please assign a driver first before advancing the
+              status.
+            </p>
+          ) : nextStatus ? (
+            <>
+              <div className="space-y-2">
+                <Label>Next Status</Label>
+                <div className="px-3 py-2 rounded-md border bg-muted text-sm font-medium">
+                  {nextStatus.label}
+                </div>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="notes">Status Update Notes (Optional)</Label>
-            <Textarea
-              id="notes"
-              placeholder="Reason for status change or additional details..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Status Update Notes (Optional)</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Reason for status change or additional details..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No further status updates are available for this booking.
+            </p>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button onClick={handleUpdate} disabled={loading || status === booking.status}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Update Status
-          </Button>
+          {nextStatus && !isUnderReview && (
+            <Button onClick={handleUpdate} disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Update Status
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
