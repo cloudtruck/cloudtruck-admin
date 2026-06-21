@@ -141,6 +141,22 @@ export const bookingApi = {
 
   getUnloadingTrucks: (params: { dropCity: string; truckType?: string; limit?: number }) =>
     api.get<ApiResponse<UnloadingTruck[]>>('/bookings/unloading-trucks', { params }),
+
+  /** Generate LR PDF and upload to Cloudinary; returns { url, bookingId, lrNumber } */
+  generateLR: (id: string) =>
+    api.get<ApiResponse<{ url: string; bookingId: string; lrNumber?: string }>>(`/bookings/${id}/generate-lr`),
+
+  /** Download LR PDF as a binary blob */
+  downloadLR: (id: string) =>
+    api.get(`/bookings/${id}/download-lr`, { responseType: 'blob' }),
+
+  /** Download booking-level invoice PDF as a binary blob */
+  downloadInvoicePdf: (id: string) =>
+    api.get(`/bookings/${id}/download-invoice`, { responseType: 'blob' }),
+
+  /** Generate customer Invoice PDF and upload to Cloudinary; returns { url, bookingId, invoiceNo } */
+  generateInvoice: (id: string) =>
+    api.get<ApiResponse<{ url: string; bookingId: string; invoiceNo?: string }>>(`/bookings/${id}/generate-invoice`),
 };
 
 // ============================================================================
@@ -298,6 +314,16 @@ export const paymentApi = {
   ) => api.patch<ApiResponse<Payment>>(`/payments/${id}/mark-received`, data),
 
   downloadInvoice: (id: string) => api.get(`/payments/${id}/invoice`, { responseType: 'blob' }),
+
+  recordManual: (data: {
+    bookingId: string;
+    customerId?: string;
+    amount: number;
+    paymentMethod: string;
+    referenceNumber?: string;
+    transactionDate?: string;
+    remarks?: string;
+  }) => api.post<ApiResponse<any>>('/payments/manual', data),
 };
 
 // ============================================================================
@@ -677,6 +703,7 @@ export const branchApi = {
 export const cityApi = {
   search: (query: string) =>
     api.get<ApiResponse<string[]>>('/cities/search', { params: { q: query } }),
+  getAll: () => api.get<ApiResponse<{ name: string; state: string }[]>>('/cities'),
 };
 
 // Market Rates API

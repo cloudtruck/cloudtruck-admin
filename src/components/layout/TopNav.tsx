@@ -23,6 +23,8 @@ const navItems = [
   { label: 'Indents', href: '/indents' },
   { label: 'Trips', href: '/trips' },
   { label: 'E-way Bill', href: '/eway-bills' },
+  { label: 'LRs', href: '/lrs' },
+  { label: 'Invoices', href: '/invoices' },
   { label: 'Customers', href: '/customers' },
   { label: 'Suppliers', href: '/suppliers' },
   { label: 'Trucks', href: '/vehicles' },

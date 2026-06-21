@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SideSelect } from '@/components/ui/side-select';
 import type { SideSelectOption } from '@/components/ui/side-select';
-import { bookingApi, customerApi, vehicleApi, driverApi, staffApi, supplierApi } from '@/lib/api';
+import { bookingApi, customerApi, vehicleApi, driverApi, staffApi, supplierApi, cityApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type {
   Customer,
@@ -24,13 +24,37 @@ import type {
 } from '@/types';
 import { useMasterData } from '@/hooks/useMasterData';
 
-type ActiveTab = 'Indent' | 'Direct Load' | 'Direct Invoice';
+type ActiveTab = 'Indent' | 'Direct Load';
 
 function localDateTimeString() {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+const emptyCreateLR = {
+  customerId: '',
+  laneCode: '',
+  sourceCode: '',
+  destinationCode: '',
+  trafficController: '',
+  vehicleId: '',
+  truckType: '',
+  driverId: '',
+  materialType: '',
+  weight: '',
+  weightUnit: 'tons' as 'kg' | 'tons',
+  quantity: '',
+  lrNumber: '',
+  lrDate: localDateTimeString(),
+  consignorName: '',
+  consignorAddress: '',
+  consigneeName: '',
+  consigneeAddress: '',
+  customerPrice: '',
+  supplierPrice: '',
+  remarks: '',
+};
 
 const emptyDirectInvoice = {
   customerId: '',
@@ -133,7 +157,9 @@ export default function CreateIndentPage() {
   const [supplierList, setSupplierList] = useState<Supplier[]>([]);
   const [formData, setFormData] = useState({ ...emptyForm });
   const [dlForm, setDlForm] = useState({ ...emptyDirectLoad });
+  const [lrForm, setLrForm] = useState({ ...emptyCreateLR });
   const [diForm, setDiForm] = useState({ ...emptyDirectInvoice });
+  const [cities, setCities] = useState<{ name: string; state: string }[]>([]);
 
   const { data: truckTypes } = useMasterData('truck-type');
   const { data: materialTypes } = useMasterData('material-type');
@@ -146,6 +172,9 @@ export default function CreateIndentPage() {
   const setDl = (key: keyof typeof emptyDirectLoad, value: unknown) =>
     setDlForm((prev) => ({ ...prev, [key]: value }));
 
+  const setLr = (key: keyof typeof emptyCreateLR, value: unknown) =>
+    setLrForm((prev) => ({ ...prev, [key]: value }));
+
   const setDi = (key: keyof typeof emptyDirectInvoice, value: unknown) =>
     setDiForm((prev) => ({ ...prev, [key]: value }));
 
@@ -155,7 +184,17 @@ export default function CreateIndentPage() {
     fetchDrivers();
     fetchStaff();
     fetchSuppliers();
+    fetchCities();
   }, []);
+
+  const fetchCities = async () => {
+    try {
+      const res = await cityApi.getAll();
+      setCities(res.data.data);
+    } catch {
+      /* silent */
+    }
+  };
 
   const fetchCustomers = async () => {
     try {
@@ -168,7 +207,7 @@ export default function CreateIndentPage() {
 
   const fetchVehicles = async () => {
     try {
-      const res = await vehicleApi.getAll({ limit: 200, status: 'verified' });
+      const res = await vehicleApi.getAll({ limit: 200, verificationStatus: 'verified', status: 'active' });
       setVehicles(res.data.data.vehicles);
     } catch {
       /* silent */
@@ -221,15 +260,43 @@ export default function CreateIndentPage() {
     sublabel: c.contactPerson?.phone || c.phone,
   }));
 
-  const locationOptions: SideSelectOption[] = locations
-    .filter((l) => l.isActive)
-    .map((l: MasterData) => ({
-      value: l.key,
-      label: l.displayName,
-      sublabel: l.metadata?.city
-        ? `${l.metadata.city}${l.metadata.type ? ` · ${l.metadata.type}` : ''}`
-        : undefined,
-    }));
+  const locationOptions: SideSelectOption[] = (() => {
+    // 1. Existing registered locations (active only)
+    const locs = locations
+      .filter((l) => l.isActive)
+      .map((l: MasterData) => ({
+        value: l.key,
+        label: l.displayName,
+        sublabel: l.metadata?.city
+          ? `${l.metadata.city}${l.metadata.type ? ` · ${l.metadata.type}` : ''}`
+          : undefined,
+      }));
+
+    // 2. Global cities (only add if not already present as an ACTIVE location city)
+    const activeRegisteredCities = new Set(
+      locations
+        .filter((l) => l.isActive)
+        .map((l) => (l.metadata?.city as string | undefined)?.toLowerCase())
+        .filter(Boolean)
+    );
+
+    const seenCityNames = new Set(activeRegisteredCities);
+    const cityOpts: SideSelectOption[] = [];
+    
+    for (const c of cities) {
+      const lowerName = c.name.toLowerCase();
+      if (!seenCityNames.has(lowerName)) {
+        seenCityNames.add(lowerName);
+        cityOpts.push({
+          value: c.name,
+          label: c.name,
+          sublabel: c.state,
+        });
+      }
+    }
+
+    return [...locs, ...cityOpts].sort((a, b) => (a.label || '').localeCompare(b.label || ''));
+  })();
 
   const laneOptions: SideSelectOption[] = lanes
     .filter((l) => l.isActive)
@@ -349,8 +416,11 @@ export default function CreateIndentPage() {
 
     const srcLoc = locations.find((l: MasterData) => l.key === formData.sourceCode);
     const dstLoc = locations.find((l: MasterData) => l.key === formData.destinationCode);
-    const pickupCity = (srcLoc?.metadata?.city as string) || formData.sourceCode;
-    const dropCity = (dstLoc?.metadata?.city as string) || formData.destinationCode;
+    const findCity = (code: string) => cities.find(c => c.name === code);
+    const pickupCity = (srcLoc?.metadata?.city as string) || findCity(formData.sourceCode)?.name || formData.sourceCode;
+    const dropCity = (dstLoc?.metadata?.city as string) || findCity(formData.destinationCode)?.name || formData.destinationCode;
+    const pickupState = (srcLoc?.metadata?.state as string) || findCity(formData.sourceCode)?.state || undefined;
+    const dropState = (dstLoc?.metadata?.state as string) || findCity(formData.destinationCode)?.state || undefined;
     const pickupAddress =
       (srcLoc?.metadata?.address as string) || srcLoc?.displayName || pickupCity;
     const dropAddress = (dstLoc?.metadata?.address as string) || dstLoc?.displayName || dropCity;
@@ -444,8 +514,11 @@ export default function CreateIndentPage() {
 
     const srcLoc = locations.find((l: MasterData) => l.key === dlForm.sourceCode);
     const dstLoc = locations.find((l: MasterData) => l.key === dlForm.destinationCode);
-    const pickupCity = (srcLoc?.metadata?.city as string) || dlForm.sourceCode;
-    const dropCity = (dstLoc?.metadata?.city as string) || dlForm.destinationCode;
+    const findCity = (code: string) => cities.find(c => c.name === code);
+    const pickupCity = (srcLoc?.metadata?.city as string) || findCity(dlForm.sourceCode)?.name || dlForm.sourceCode;
+    const dropCity = (dstLoc?.metadata?.city as string) || findCity(dlForm.destinationCode)?.name || dlForm.destinationCode;
+    const pickupState = (srcLoc?.metadata?.state as string) || findCity(dlForm.sourceCode)?.state || undefined;
+    const dropState = (dstLoc?.metadata?.state as string) || findCity(dlForm.destinationCode)?.state || undefined;
     const pickupAddress =
       (srcLoc?.metadata?.address as string) || srcLoc?.displayName || pickupCity;
     const dropAddress = (dstLoc?.metadata?.address as string) || dstLoc?.displayName || dropCity;
@@ -479,7 +552,7 @@ export default function CreateIndentPage() {
         trafficController: dlForm.trafficController || undefined,
         supplierPrice: dlForm.supplierPrice ? parseFloat(dlForm.supplierPrice) : undefined,
         customerPrice: dlForm.customerPrice ? parseFloat(dlForm.customerPrice) : undefined,
-        bookingType: 'direct-load',
+        bookingType: 'indent',
         ratePerTon: dlForm.ratePerTon,
         vehicleId: dlForm.vehicleId,
         driverId: dlForm.driverId || undefined,
@@ -537,8 +610,11 @@ export default function CreateIndentPage() {
 
     const srcLoc = locations.find((l: MasterData) => l.key === diForm.sourceCode);
     const dstLoc = locations.find((l: MasterData) => l.key === diForm.destinationCode);
-    const pickupCity = (srcLoc?.metadata?.city as string) || diForm.sourceCode;
-    const dropCity = (dstLoc?.metadata?.city as string) || diForm.destinationCode;
+    const findCity = (code: string) => cities.find(c => c.name === code);
+    const pickupCity = (srcLoc?.metadata?.city as string) || findCity(diForm.sourceCode)?.name || diForm.sourceCode;
+    const dropCity = (dstLoc?.metadata?.city as string) || findCity(diForm.destinationCode)?.name || diForm.destinationCode;
+    const pickupState = (srcLoc?.metadata?.state as string) || findCity(diForm.sourceCode)?.state || undefined;
+    const dropState = (dstLoc?.metadata?.state as string) || findCity(diForm.destinationCode)?.state || undefined;
     const pickupAddress =
       (srcLoc?.metadata?.address as string) || srcLoc?.displayName || pickupCity;
     const dropAddress = (dstLoc?.metadata?.address as string) || dstLoc?.displayName || dropCity;
@@ -600,10 +676,95 @@ export default function CreateIndentPage() {
 
       await bookingApi.create(payload);
       toast.success('Direct invoice created successfully');
-      router.push('/indents');
+      router.push('/invoices');
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Failed to create direct invoice');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+  const handleCreateLRSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lrForm.customerId) {
+      toast.error('Customer is required');
+      return;
+    }
+    if (!lrForm.sourceCode) {
+      toast.error('Source is required');
+      return;
+    }
+    if (!lrForm.destinationCode) {
+      toast.error('Destination is required');
+      return;
+    }
+    if (!lrForm.vehicleId) {
+      toast.error('Truck No is required');
+      return;
+    }
+
+    const srcLoc = locations.find((l: MasterData) => l.key === lrForm.sourceCode);
+    const dstLoc = locations.find((l: MasterData) => l.key === lrForm.destinationCode);
+    const findCity = (code: string) => cities.find((c) => c.name === code);
+    const pickupCity =
+      (srcLoc?.metadata?.city as string) || findCity(lrForm.sourceCode)?.name || lrForm.sourceCode;
+    const dropCity =
+      (dstLoc?.metadata?.city as string) ||
+      findCity(lrForm.destinationCode)?.name ||
+      lrForm.destinationCode;
+    const pickupAddress =
+      lrForm.consignorAddress ||
+      (srcLoc?.metadata?.address as string) ||
+      srcLoc?.displayName ||
+      pickupCity;
+    const dropAddress =
+      lrForm.consigneeAddress ||
+      (dstLoc?.metadata?.address as string) ||
+      dstLoc?.displayName ||
+      dropCity;
+
+    const vehicle = vehicles.find((v) => v._id === lrForm.vehicleId);
+
+    setLoading(true);
+    try {
+      const payload: CreateBookingPayload = {
+        customerId: lrForm.customerId,
+        pickupCity,
+        pickupAddress,
+        pickupLat: 0,
+        pickupLng: 0,
+        dropCity,
+        dropAddress,
+        dropLat: 0,
+        dropLng: 0,
+        materialType: lrForm.materialType || 'general-cargo',
+        weight: lrForm.weight ? parseFloat(lrForm.weight) : 1,
+        weightUnit: lrForm.weightUnit,
+        truckType: lrForm.truckType || vehicle?.truckType || 'open-body',
+        bodyType: 'open',
+        numberOfTrucks: 1,
+        loadDate: lrForm.lrDate ? new Date(lrForm.lrDate).toISOString() : undefined,
+        laneCode: lrForm.laneCode || undefined,
+        sourceCode: lrForm.sourceCode,
+        destinationCode: lrForm.destinationCode,
+        trafficController: lrForm.trafficController || undefined,
+        supplierPrice: lrForm.supplierPrice ? parseFloat(lrForm.supplierPrice) : undefined,
+        customerPrice: lrForm.customerPrice ? parseFloat(lrForm.customerPrice) : undefined,
+        bookingType: 'direct-lr',
+        vehicleId: lrForm.vehicleId,
+        driverId: lrForm.driverId || undefined,
+        remarks: lrForm.remarks || undefined,
+      };
+
+      await bookingApi.create(payload);
+      toast.success('LR created successfully');
+      router.push('/lrs');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to create LR');
     } finally {
       setLoading(false);
     }
@@ -637,7 +798,7 @@ export default function CreateIndentPage() {
 
         {/* Tabs */}
         <div className="flex px-6 border-t border-white/10">
-          {(['Indent', 'Direct Load', 'Direct Invoice'] as ActiveTab[]).map((tab) => (
+          {(['Indent', 'Direct Load'] as ActiveTab[]).map((tab) => (
             <button
               key={tab}
               type="button"
@@ -657,7 +818,7 @@ export default function CreateIndentPage() {
       <div className="min-h-0 overflow-y-auto bg-[#f0f2f5]">
         {activeTab === 'Direct Load' && (
           <form
-            id="create-indent-form"
+            id="direct-load-form"
             onSubmit={handleDirectLoadSubmit}
             className="max-w-lg mx-auto px-4 py-6 space-y-3"
           >
@@ -996,346 +1157,9 @@ export default function CreateIndentPage() {
           </form>
         )}
 
-        {activeTab === 'Direct Invoice' && (
-          <form
-            id="create-indent-form"
-            onSubmit={handleDirectInvoiceSubmit}
-            className="max-w-lg mx-auto px-4 py-6 space-y-3"
-          >
-            <FormField label="Lane Code">
-              <SideSelect
-                label="Lane Code"
-                panelTitle="Select Lane"
-                placeholder="Select lane code"
-                options={laneOptions}
-                value={diForm.laneCode}
-                onChange={(v) => {
-                  setDi('laneCode', v);
-                  const lane = lanes.find((l) => l.key === v);
-                  if (lane?.metadata) {
-                    if (lane.metadata.sourceKey) setDi('sourceCode', lane.metadata.sourceKey);
-                    if (lane.metadata.destinationKey)
-                      setDi('destinationCode', lane.metadata.destinationKey);
-                  }
-                }}
-                clearable
-                onClear={() => {
-                  setDi('laneCode', '');
-                  setDi('sourceCode', '');
-                  setDi('destinationCode', '');
-                }}
-              />
-            </FormField>
-
-            <FormField label="Customer">
-              <SideSelect
-                label="Customer"
-                panelTitle="Select Customer"
-                placeholder="Select customer"
-                options={customerOptions}
-                value={diForm.customerId}
-                onChange={(v) => setDi('customerId', v)}
-              />
-            </FormField>
-
-            <FormField label="Source" required>
-              <SideSelect
-                label="Source"
-                panelTitle="Select Source Location"
-                placeholder={locationsLoading ? 'Loading...' : 'Select source'}
-                options={locationOptions}
-                value={diForm.sourceCode}
-                onChange={(v) => setDi('sourceCode', v)}
-                disabled={locationsLoading || !!diForm.laneCode}
-              />
-            </FormField>
-
-            <FormField label="Destination" required>
-              <SideSelect
-                label="Destination"
-                panelTitle="Select Destination"
-                placeholder={locationsLoading ? 'Loading...' : 'Select destination'}
-                options={locationOptions.filter((o) => o.value !== diForm.sourceCode)}
-                value={diForm.destinationCode}
-                onChange={(v) => setDi('destinationCode', v)}
-                disabled={locationsLoading || !!diForm.laneCode}
-              />
-            </FormField>
-
-            <FormField label="Traffic">
-              <SideSelect
-                label="Traffic"
-                panelTitle="Select Traffic Manager"
-                placeholder="Select traffic manager"
-                options={trafficOptions}
-                value={diForm.trafficController}
-                onChange={(v) => setDi('trafficController', v)}
-              />
-            </FormField>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Truck No" required>
-                <SideSelect
-                  label="Truck No"
-                  panelTitle="Select Truck"
-                  placeholder="Select truck"
-                  options={vehicleOptions}
-                  value={diForm.vehicleId}
-                  onChange={(v) => {
-                    setDi('vehicleId', v);
-                    const veh = vehicles.find((x) => x._id === v);
-                    if (veh?.truckType) setDi('truckType', veh.truckType);
-                  }}
-                />
-              </FormField>
-              <FormField label="Truck Type">
-                <SideSelect
-                  label="Truck Type"
-                  panelTitle="Select Truck Type"
-                  placeholder="Truck type"
-                  options={truckTypeOptions}
-                  value={diForm.truckType}
-                  onChange={(v) => setDi('truckType', v)}
-                />
-              </FormField>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Driver">
-                <SideSelect
-                  label="Driver"
-                  panelTitle="Select Driver"
-                  placeholder="Select driver"
-                  options={driverOptions}
-                  value={diForm.driverId}
-                  onChange={(v) => setDi('driverId', v)}
-                />
-              </FormField>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="diRatePerTon"
-                checked={diForm.ratePerTon}
-                onCheckedChange={(v) => setDi('ratePerTon', !!v)}
-              />
-              <Label htmlFor="diRatePerTon" className="text-sm cursor-pointer">
-                Rate/ton
-              </Label>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label={diForm.ratePerTon ? 'Customer Rate Per Ton' : 'Customer Price'}>
-                <Input
-                  type="number"
-                  placeholder={diForm.ratePerTon ? 'Customer Rate Per Ton' : 'Customer Price'}
-                  value={diForm.customerPrice}
-                  onChange={(e) => setDi('customerPrice', e.target.value)}
-                  className="bg-white text-sm"
-                />
-              </FormField>
-              <FormField label={diForm.ratePerTon ? 'Supplier Rate Per Ton' : 'Supplier Price'}>
-                <Input
-                  type="number"
-                  placeholder={diForm.ratePerTon ? 'Supplier Rate Per Ton' : 'Supplier Price'}
-                  value={diForm.supplierPrice}
-                  onChange={(e) => setDi('supplierPrice', e.target.value)}
-                  className="bg-white text-sm"
-                />
-              </FormField>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Customer Advance">
-                <div className="relative">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    placeholder="0"
-                    value={diForm.customerAdvancePct}
-                    onChange={(e) => setDi('customerAdvancePct', e.target.value)}
-                    className="bg-white text-sm pr-8"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-                    %
-                  </span>
-                </div>
-              </FormField>
-              <FormField label="Supplier Advance">
-                <div className="relative">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    placeholder="0"
-                    value={diForm.supplierAdvancePct}
-                    onChange={(e) => setDi('supplierAdvancePct', e.target.value)}
-                    className="bg-white text-sm pr-8"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-                    %
-                  </span>
-                </div>
-              </FormField>
-            </div>
-
-            <FormField label="Customer On-Delivery">
-              <Input
-                type="number"
-                placeholder="Customer On-Delivery"
-                value={diForm.customerOnDelivery}
-                onChange={(e) => setDi('customerOnDelivery', e.target.value)}
-                className="bg-white text-sm"
-              />
-            </FormField>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Customer Pays Supplier">
-                <Input
-                  type="number"
-                  placeholder="Customer Pays Supplier"
-                  value={diForm.customerPaysSupplier}
-                  onChange={(e) => setDi('customerPaysSupplier', e.target.value)}
-                  className="bg-white text-sm"
-                />
-              </FormField>
-              <FormField label="Supplier Pays Supplier">
-                <Input
-                  type="number"
-                  placeholder="Customer Pays Supplier"
-                  value={diForm.supplierPaysSupplier}
-                  onChange={(e) => setDi('supplierPaysSupplier', e.target.value)}
-                  className="bg-white text-sm"
-                />
-              </FormField>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Customer POD Balance">
-                <Input
-                  type="number"
-                  placeholder="Customer POD Balance"
-                  value={diForm.customerPodBalance}
-                  onChange={(e) => setDi('customerPodBalance', e.target.value)}
-                  className="bg-white text-sm"
-                />
-              </FormField>
-              <FormField label="Supplier POD Balance">
-                <Input
-                  type="number"
-                  placeholder="Supplier POD Balance"
-                  value={diForm.supplierPodBalance}
-                  onChange={(e) => setDi('supplierPodBalance', e.target.value)}
-                  className="bg-white text-sm"
-                />
-              </FormField>
-            </div>
-
-            <div className="grid grid-cols-[1fr_auto_auto] gap-2">
-              <FormField label="Invoice to">
-                <SideSelect
-                  label="Invoice to"
-                  panelTitle="Invoice to"
-                  placeholder="Invoice to"
-                  options={invoiceToOptions}
-                  value={diForm.invoiceTo}
-                  onChange={(v) => setDi('invoiceTo', v)}
-                  searchable={false}
-                />
-              </FormField>
-              <FormField label="Customer Ref">
-                <Input
-                  placeholder="Customer..."
-                  value={diForm.customerRef}
-                  onChange={(e) => setDi('customerRef', e.target.value)}
-                  className="bg-white text-sm w-28"
-                />
-              </FormField>
-              <FormField label="Supplier Ref">
-                <Input
-                  placeholder="Supplier ..."
-                  value={diForm.supplierRef}
-                  onChange={(e) => setDi('supplierRef', e.target.value)}
-                  className="bg-white text-sm w-28"
-                />
-              </FormField>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Pay to">
-                <SideSelect
-                  label="Pay to"
-                  panelTitle="Pay to"
-                  placeholder="Supplier"
-                  options={payToOptions}
-                  value={diForm.payTo}
-                  onChange={(v) => setDi('payTo', v)}
-                  searchable={false}
-                />
-              </FormField>
-              <FormField label="Account No">
-                <SideSelect
-                  label="Account No"
-                  panelTitle="Select Account"
-                  placeholder="Account No"
-                  options={[]}
-                  value={diForm.accountNo}
-                  onChange={(v) => setDi('accountNo', v)}
-                />
-              </FormField>
-            </div>
-
-            <FormField label="POD Type">
-              <SideSelect
-                label="POD Type"
-                panelTitle="Select POD Type"
-                placeholder="Hard"
-                options={podTypeOptions}
-                value={diForm.podType}
-                onChange={(v) => setDi('podType', v as 'Hard' | 'Soft')}
-                searchable={false}
-              />
-            </FormField>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Date" required>
-                <Input
-                  type="datetime-local"
-                  value={diForm.date}
-                  onChange={(e) => setDi('date', e.target.value)}
-                  className="bg-white text-sm"
-                />
-              </FormField>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Trip Count" required>
-                <Input
-                  type="number"
-                  min="1"
-                  placeholder="1"
-                  value={diForm.tripCount}
-                  onChange={(e) => setDi('tripCount', e.target.value)}
-                  className="bg-white text-sm"
-                />
-              </FormField>
-              <FormField label="Trip Km">
-                <Input
-                  type="number"
-                  placeholder="Trip Km"
-                  value={diForm.tripKm}
-                  onChange={(e) => setDi('tripKm', e.target.value)}
-                  className="bg-white text-sm"
-                />
-              </FormField>
-            </div>
-          </form>
-        )}
-
         {activeTab === 'Indent' && (
           <form
-            id="create-indent-form"
+            id="indent-form"
             onSubmit={handleSubmit}
             className="max-w-lg mx-auto px-4 py-6 space-y-3"
           >
@@ -1671,16 +1495,12 @@ export default function CreateIndentPage() {
         <div className="max-w-lg mx-auto">
           <Button
             type="submit"
-            form="create-indent-form"
+            form={activeTab === 'Indent' ? 'indent-form' : 'direct-load-form'}
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 text-sm tracking-wide"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 text-sm tracking-wide uppercase"
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {activeTab === 'Direct Load'
-              ? '+ CREATE LOAD'
-              : activeTab === 'Direct Invoice'
-                ? '+ CREATE DIRECT INVOICE'
-                : '+ CREATE INDENT'}
+            {activeTab === 'Direct Load' ? '+ CREATE LOAD' : '+ CREATE INDENT'}
           </Button>
         </div>
       </div>

@@ -26,7 +26,7 @@ export interface Booking {
   materialType: string;
   weight: {
     value: number;
-    unit: 'kg' | 'tons';
+    unit: 'kg' | 'tons' | 'quintal';
   };
   truckTypeNeeded: string;
   length?: {
@@ -107,7 +107,7 @@ export interface Booking {
   // Pricing
   supplierPrice?: number;
   customerPrice?: number;
-  weightUnit?: 'kg' | 'tons';
+  weightUnit?: 'kg' | 'tons' | 'quintal';
   ratePerTon?: boolean;
   // Indent lifecycle
   expiryTime?: string;
@@ -150,7 +150,7 @@ export interface Booking {
   actualKm?: number;
   createdByStaff?: { _id: string; name: string } | null;
   // Direct Load / Direct Invoice fields
-  bookingType?: 'indent' | 'direct-load' | 'direct-invoice';
+  bookingType?: 'indent' | 'direct-load' | 'direct-invoice' | 'direct-lr';
   customerAdvancePct?: number;
   supplierAdvancePct?: number;
   customerOnDelivery?: number;
@@ -180,7 +180,7 @@ export interface CreateBookingPayload {
   dropLng: number;
   materialType: string;
   weight: number;
-  weightUnit?: 'kg' | 'tons';
+  weightUnit?: 'kg' | 'tons' | 'quintal';
   truckType: string;
   bodyType?: string;
   numberOfTrucks?: number;
@@ -208,7 +208,7 @@ export interface CreateBookingPayload {
   // Direct Load / Direct Invoice fields
   vehicleId?: string;
   driverId?: string;
-  bookingType?: 'indent' | 'direct-load' | 'direct-invoice';
+  bookingType?: 'indent' | 'direct-load' | 'direct-invoice' | 'direct-lr';
   customerAdvancePct?: number;
   supplierAdvancePct?: number;
   customerOnDelivery?: number;
@@ -233,6 +233,7 @@ export interface BookingFilters {
   city?: string;
   customerId?: string;
   driverId?: string;
+  bookingType?: 'indent' | 'direct-load' | 'direct-invoice' | 'direct-lr';
 }
 
 export interface ChangeMetric {

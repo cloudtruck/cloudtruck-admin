@@ -15,6 +15,9 @@ import {
   Inbox,
   RefreshCw,
   Phone,
+  FileText,
+  Download,
+  Copy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +28,68 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { CreateBookingModal } from '@/components/bookings/CreateBookingModal';
 import { ManageIndentModal } from '@/components/bookings/ManageIndentModal';
+
+// ─── PDF helpers ─────────────────────────────────────────────────────────────
+
+async function handleDownloadLR(bookingId: string, lrNumber?: string) {
+  try {
+    const res = await bookingApi.downloadLR(bookingId);
+    const blob = new Blob([res.data as BlobPart], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `LR-${lrNumber || bookingId}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    alert('Failed to download LR PDF. Please try again.');
+  }
+}
+
+async function handleViewLR(bookingId: string) {
+  try {
+    const res = await bookingApi.generateLR(bookingId);
+    const url = res.data?.data?.url;
+    if (url) window.open(url, '_blank');
+    else alert('LR PDF not available yet.');
+  } catch {
+    alert('Failed to generate LR PDF. Please try again.');
+  }
+}
+
+async function handleCopyLRLink(bookingId: string) {
+  const toastId = toast.loading('Generating link...');
+  try {
+    const res = await bookingApi.generateLR(bookingId);
+    const url = res.data?.data?.url;
+    if (url) {
+      await navigator.clipboard.writeText(url);
+      toast.success('LR Link copied to clipboard!', { id: toastId });
+    } else {
+      toast.error('LR URL not found', { id: toastId });
+    }
+  } catch {
+    toast.error('Failed to copy LR link', { id: toastId });
+  }
+}
+
+async function handleShareLRWhatsApp(bookingId: string, lrNumber?: string) {
+  const toastId = toast.loading('Generating share link...');
+  try {
+    const res = await bookingApi.generateLR(bookingId);
+    const url = res.data?.data?.url;
+    if (url) {
+      toast.dismiss(toastId);
+      const text = `Hello, please find the Lorry Receipt (LR No: ${lrNumber || 'N/A'}) here: ${url}`;
+      const encodedText = encodeURIComponent(text);
+      window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+    } else {
+      toast.error('LR URL not found', { id: toastId });
+    }
+  } catch {
+    toast.error('Failed to share on WhatsApp', { id: toastId });
+  }
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -263,6 +328,8 @@ function DeleteModal({
   );
 }
 
+// ─── Manage Indent Modal ──────────────────────────────────────────────────────
+
 function timeLeftStr(expiryTime?: string): string {
   if (!expiryTime) return '';
   const diff = new Date(expiryTime).getTime() - Date.now();
@@ -272,6 +339,8 @@ function timeLeftStr(expiryTime?: string): string {
 }
 
 const EXPIRY_PRESETS = [24, 36, 48];
+
+
 
 // ─── Indent Comment Modal ──────────────────────────────────────────────────────
 
@@ -1212,18 +1281,9 @@ function BidTag({ bookingType, onClick }: { bookingType?: string; onClick?: () =
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-const STATUS_TABS = [
-  { key: 'all', label: 'All' },
-  { key: 'created,under-review', label: 'New' },
-  { key: 'assigned,driver-en-route,reached-pickup', label: 'Confirmed' },
-  { key: 'loaded,in-transit,reached-destination,unloading', label: 'In Transit' },
-  { key: 'delivered,pod-received,closed', label: 'Delivered' },
-  { key: 'cancelled', label: 'Cancelled' },
-];
-
 const PAGE_SIZE = 25;
 
-export default function IndentsPage() {
+export default function LRsPage() {
   const router = useRouter();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [unloadingCounts, setUnloadingCounts] = useState<Record<string, number>>({});
@@ -1231,7 +1291,6 @@ export default function IndentsPage() {
   const [marketCounts, setMarketCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -1273,7 +1332,7 @@ export default function IndentsPage() {
         const ALL_STATUSES_EXCEPT_CANCELLED =
           'created,under-review,assigned,driver-en-route,reached-pickup,loaded,in-transit,reached-destination,unloading,delivered,pod-received,closed';
         const status =
-          opts?.status ?? (activeTab === 'all' ? ALL_STATUSES_EXCEPT_CANCELLED : activeTab);
+          opts?.status ?? ALL_STATUSES_EXCEPT_CANCELLED;
         const res = await bookingApi.getAll({
           page: opts?.page ?? page,
           limit: PAGE_SIZE,
@@ -1290,13 +1349,13 @@ export default function IndentsPage() {
         setLoading(false);
       }
     },
-    [activeTab, page, search]
+    [page, search]
   );
 
   useEffect(() => {
     fetchBookings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, page]);
+  }, [page]);
 
   // Fetch unloading truck counts — only re-fetch when the set of pickup cities changes
   const citiesKey = [...new Set(bookings.map((b) => b.pickup?.city).filter(Boolean))]
@@ -1361,40 +1420,15 @@ export default function IndentsPage() {
     fetchBookings({ page: 1 });
   }
 
-  function handleTabChange(key: string) {
-    setActiveTab(key);
-    setPage(1);
-  }
-
-  const activeTabLabel = STATUS_TABS.find((t) => t.key === activeTab)?.label || 'All';
-
   return (
     <div className="flex flex-col h-full gap-0">
-      {/* ── Status Tabs ── */}
-      <div className="flex items-center gap-0 border-b border-gray-200 mb-0 overflow-x-auto scrollbar-none">
-        {STATUS_TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => handleTabChange(tab.key)}
-            className={cn(
-              'px-4 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-colors',
-              activeTab === tab.key
-                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       {/* ── Toolbar ── */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-white">
-        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider ml-1">
-          {activeTabLabel}
-        </span>
-
-        <div className="flex-1" />
+        <div className="flex-1 flex items-center gap-2">
+          <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+            Total LRs: {totalItems}
+          </span>
+        </div>
 
         {/* Search */}
         <form onSubmit={handleSearch} className="flex items-center gap-1">
@@ -1403,7 +1437,7 @@ export default function IndentsPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search indents..."
+              placeholder="Search LRs..."
               className="h-7 pl-7 pr-3 text-xs w-52 border-gray-200"
             />
             {search && (
@@ -1461,42 +1495,16 @@ export default function IndentsPage() {
           <table className="w-full text-xs border-collapse min-w-max">
             <thead className="sticky top-0 z-10">
               <tr>
-                <Th className="w-28">Actions</Th>
+                <Th className="w-40">Actions</Th>
                 <ThSearch label="Id" />
-                <ThSearch label="Branch" />
+                <ThSearch label="LR Number" />
                 <Th>Lane Code</Th>
-                <Th>Is Adhoc Indent</Th>
-                <Th>Indent Type</Th>
-                <ThSearch label="Traffic" />
                 <ThSearch label="Customer" />
                 <ThSearch label="Source" />
-                <ThSearch label="Source Code" />
                 <ThSearch label="Destination" />
-                <Th>Destination Code</Th>
                 <Th>Truck Type</Th>
-                <th
-                  className="bg-gray-50 border-b border-gray-200 select-none whitespace-nowrap"
-                  colSpan={3}
-                >
-                  <div className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
-                    Matched trucks
-                  </div>
-                  <div className="flex border-t border-gray-200">
-                    <div className="flex-1 px-2 py-1.5 text-[9px] font-semibold text-gray-500 uppercase tracking-wide border-r border-gray-200">
-                      Own
-                    </div>
-                    <div className="flex-1 px-2 py-1.5 text-[9px] font-semibold text-gray-500 uppercase tracking-wide border-r border-gray-200">
-                      Market
-                    </div>
-                    <div className="flex-1 px-2 py-1.5 text-[9px] font-semibold text-gray-500 uppercase tracking-wide">
-                      Bidding
-                    </div>
-                  </div>
-                </th>
+                <Th>Vehicle / Driver</Th>
                 <Th>Indent date</Th>
-                <Th>TAT(hrs)</Th>
-                <ThSearch label="Created by" />
-                <Th>Count</Th>
                 <Th>Remarks</Th>
                 <Th>Status</Th>
               </tr>
@@ -1513,14 +1521,6 @@ export default function IndentsPage() {
                   {/* Actions */}
                   <Td>
                     <div className="flex items-center gap-1.5">
-                      <button
-                        aria-label="Delete"
-                        onClick={() => setDeleteTarget(b)}
-                        className="text-red-400 hover:text-red-600 p-0.5"
-                        title="Delete indent"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
                       {(() => {
                         const isTerminal = [
                           'cancelled',
@@ -1552,9 +1552,44 @@ export default function IndentsPage() {
                       >
                         <MessageCircle className="h-3.5 w-3.5" />
                       </button>
-                      {b.status !== 'cancelled' && (
-                        <BidTag bookingType={b.bookingType} onClick={() => setBidTarget(b)} />
-                      )}
+                      {/* View LR PDF */}
+                      <button
+                        aria-label="View LR"
+                        onClick={() => handleViewLR(b._id)}
+                        className="text-emerald-500 hover:text-emerald-700 p-0.5"
+                        title="View LR PDF"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                      </button>
+                      {/* Download LR PDF */}
+                      <button
+                        aria-label="Download LR"
+                        onClick={() => handleDownloadLR(b._id, b.lrNumber || b.lrDetails?.lrNumber)}
+                        className="text-violet-500 hover:text-violet-700 p-0.5"
+                        title="Download LR PDF"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </button>
+                      {/* Copy Link */}
+                      <button
+                        aria-label="Copy Link"
+                        onClick={() => handleCopyLRLink(b._id)}
+                        className="text-slate-500 hover:text-slate-700 p-0.5"
+                        title="Copy LR PDF Link"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </button>
+                      {/* Share via WhatsApp */}
+                      <button
+                        aria-label="WhatsApp Share"
+                        onClick={() => handleShareLRWhatsApp(b._id, b.lrNumber || b.lrDetails?.lrNumber)}
+                        className="text-green-500 hover:text-green-700 p-0.5"
+                        title="Share LR on WhatsApp"
+                      >
+                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.729-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.588 2.012 14.116.993 11.997.993c-5.442 0-9.87 4.372-9.874 9.802-.002 1.942.508 3.842 1.482 5.513L2.617 21.6l5.228-1.369-.198-.122zM17.96 15.3c-.327-.164-1.938-.957-2.238-1.067-.3-.11-.518-.164-.737.164-.218.327-.847 1.066-1.038 1.285-.19.219-.383.245-.71.082-.327-.164-1.38-.508-2.63-1.623-.972-.867-1.629-1.938-1.82-2.265-.19-.327-.02-.504.143-.667.147-.146.327-.382.49-.573.164-.19.219-.327.328-.546.11-.219.055-.41-.028-.573-.082-.164-.737-1.776-1.01-2.432-.266-.641-.53-.553-.728-.563-.19-.01-.41-.01-.628-.01a1.2 1.2 0 00-.874.41c-.3.327-1.147 1.12-1.147 2.731 0 1.612 1.173 3.167 1.336 3.385.164.219 2.31 3.527 5.596 4.945.782.338 1.39.54 1.865.69.787.25 1.503.214 2.07.129.63-.095 1.938-.792 2.21-.1.558-.273.818-1.309.818-1.336 0-.027-.08-.164-.408-.327z"/>
+                        </svg>
+                      </button>
                     </div>
                   </Td>
 
@@ -1568,76 +1603,13 @@ export default function IndentsPage() {
                     </Link>
                   </Td>
 
-                  {/* Branch — using pickup city as branch */}
-                  <Td>{b.pickup?.city || '—'}</Td>
+                  {/* LR Number */}
+                  <Td className="font-semibold text-slate-700">
+                    {b.lrDetails?.lrNumber || b.lrNumber || '—'}
+                  </Td>
 
                   {/* Lane Code */}
                   <Td>{b.laneCode || '—'}</Td>
-
-                  {/* Is Adhoc Indent */}
-                  <Td>
-                    <span
-                      className={cn('font-medium', b.isAdhoc ? 'text-orange-600' : 'text-gray-500')}
-                    >
-                      {b.isAdhoc ? 'Yes' : 'No'}
-                    </span>
-                  </Td>
-
-                  {/* Load Type */}
-                  <Td>
-                    {loadTypeEditId === b._id ? (
-                      <select
-                        autoFocus
-                        defaultValue={b.loadType || ''}
-                        onChange={(e) =>
-                          updateLoadType(b._id, e.target.value as 'FTL' | 'LTL' | 'PTL')
-                        }
-                        onBlur={() => setLoadTypeEditId(null)}
-                        disabled={savingLoadType === b._id}
-                        className="text-xs font-medium text-gray-700 border border-blue-400 rounded px-1.5 py-0.5 bg-white focus:outline-none disabled:opacity-50"
-                      >
-                        <option value="">—</option>
-                        <option value="FTL">FTL</option>
-                        <option value="LTL">LTL</option>
-                        <option value="PTL">PTL</option>
-                      </select>
-                    ) : (
-                      <span className="flex items-center gap-1 group">
-                        <span className="font-medium text-gray-700">{b.loadType || '—'}</span>
-                        <button
-                          onClick={() => setLoadTypeEditId(b._id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-500"
-                          title="Edit load type"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                      </span>
-                    )}
-                  </Td>
-
-                  {/* Traffic */}
-                  <Td>
-                    {b.trafficController?.name ? (
-                      <a
-                        href={
-                          b.trafficController.phone ? `tel:${b.trafficController.phone}` : undefined
-                        }
-                        className="flex items-center gap-1 text-gray-800 hover:text-blue-600 transition-colors group"
-                        title={
-                          b.trafficController.phone
-                            ? `Call ${b.trafficController.name}`
-                            : b.trafficController.name
-                        }
-                      >
-                        <Phone
-                          className={`h-3.5 w-3.5 shrink-0 ${b.trafficController.phone ? 'text-blue-500 group-hover:text-blue-700' : 'text-gray-300'}`}
-                        />
-                        <span>{b.trafficController.name}</span>
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                  </Td>
 
                   {/* Customer */}
                   <Td>
@@ -1661,9 +1633,6 @@ export default function IndentsPage() {
                     </span>
                   </Td>
 
-                  {/* Source Code */}
-                  <Td>{b.sourceCode || '—'}</Td>
-
                   {/* Destination */}
                   <Td>
                     <span className="flex items-center gap-1">
@@ -1672,105 +1641,23 @@ export default function IndentsPage() {
                     </span>
                   </Td>
 
-                  {/* Destination Code */}
-                  <Td>{b.destinationCode || '—'}</Td>
-
                   {/* Truck Type */}
                   <Td>{b.truckTypeNeeded || '—'}</Td>
 
-                  {/* Matched trucks — Own / Market / Bidding / Unloading */}
-                  <td colSpan={3} className="px-0 py-2 border-b border-gray-100">
-                    <div className="flex divide-x divide-gray-200">
-                      {/* Own */}
-                      <button
-                        onClick={() => setTruckModalTarget({ booking: b, tab: 'own' })}
-                        className="flex-1 flex items-center gap-1.5 px-2 py-0.5 min-w-[52px] hover:bg-blue-50 transition-colors rounded-l"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-4 w-4 text-blue-500 shrink-0"
-                          fill="currentColor"
-                        >
-                          <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zm-.5 1.5 1.96 2.5H17V9.5h2.5zM6 18c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm13 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" />
-                        </svg>
-                        <span className="text-xs font-medium text-gray-700">
-                          {ownCounts[b._id] ?? 0}
-                        </span>
-                      </button>
-                      {/* Market */}
-                      <button
-                        onClick={() => setTruckModalTarget({ booking: b, tab: 'market' })}
-                        className="flex-1 flex items-center gap-1.5 px-2 py-0.5 min-w-[52px] hover:bg-orange-50 transition-colors"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-4 w-4 text-orange-500 shrink-0"
-                          fill="currentColor"
-                        >
-                          <path d="M18 2H6L2 8h20L18 2zm-8 4 1-3h2l1 3H10zm-4 0 1.5-3H9L8 6H6zm8 0-1-3h1.5L16 6h-2zM2 9v11h9v-4h2v4h9V9H2zm14 7h-3v-3h3v3z" />
-                        </svg>
-                        <span className="text-xs font-medium text-gray-700">
-                          {marketCounts[b._id] ?? 0}
-                        </span>
-                      </button>
-                      {/* Bidding */}
-                      <button
-                        onClick={() => setTruckModalTarget({ booking: b, tab: 'bidding' })}
-                        className="flex-1 flex items-center gap-1.5 px-2 py-0.5 min-w-[52px] hover:bg-blue-50 transition-colors"
-                      >
-                        <span className="inline-flex items-center justify-center h-4 w-7 rounded-full border border-blue-500 text-[8px] font-bold text-blue-600 leading-none shrink-0">
-                          BID
-                        </span>
-                        <span className="text-xs font-medium text-gray-700">
-                          {b.interestedCount ?? b.interestedDrivers?.length ?? 0}
-                        </span>
-                      </button>
-                      {/* Unloading */}
-                      <button
-                        onClick={() => setTruckModalTarget({ booking: b, tab: 'unloading' })}
-                        className="flex-1 flex items-center gap-1.5 px-2 py-0.5 min-w-[52px] hover:bg-green-50 transition-colors rounded-r"
-                        title="Trucks currently unloading near pickup city"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-4 w-4 text-green-500 shrink-0"
-                          fill="currentColor"
-                        >
-                          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L11 13.17V7h2v6.17l2.59-2.58L17 12l-5 5z" />
-                        </svg>
-                        <span className="text-xs font-medium text-gray-700">
-                          {unloadingCounts[b._id] ?? 0}
-                        </span>
-                      </button>
-                    </div>
-                  </td>
-
-                  {/* Indent date */}
-                  <Td>{fmtDate(b.createdAt)}</Td>
-
-                  {/* TAT (hrs) — time remaining until expiry, green */}
+                  {/* Vehicle / Driver */}
                   <Td>
-                    {b.expiryTime ? (
-                      <span className="font-semibold text-green-600">
-                        {Math.max(
-                          0,
-                          Math.floor((new Date(b.expiryTime).getTime() - Date.now()) / 3600000)
-                        )}
-                      </span>
+                    {b.vehicle || b.driver ? (
+                      <div>
+                        <p className="font-semibold text-gray-800">{b.vehicle?.vehicleNumber || '—'}</p>
+                        <p className="text-[10px] text-gray-500">{b.driver?.name || '—'}</p>
+                      </div>
                     ) : (
-                      <span className="text-gray-400">—</span>
+                      <span className="text-gray-400">Unassigned</span>
                     )}
                   </Td>
 
-                  {/* Created by */}
-                  <Td>{b.createdByStaff?.name || '—'}</Td>
-
-                  {/* Count — assigned of total requested */}
-                  <Td className="text-center">
-                    <span className="text-gray-700">
-                      {b.vehicle ? 1 : 0} of {b.numberOfTrucks ?? 1}
-                    </span>
-                  </Td>
+                  {/* Indent date */}
+                  <Td>{fmtDate(b.createdAt)}</Td>
 
                   {/* Remarks */}
                   <Td className="max-w-[120px] truncate" title={b.remarks}>

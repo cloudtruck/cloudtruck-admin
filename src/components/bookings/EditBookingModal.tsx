@@ -52,6 +52,7 @@ export function EditBookingModal({
     dropAddress: '',
     materialType: '',
     weight: '',
+    weightUnit: 'tons' as 'kg' | 'tons' | 'quintal',
     truckType: '',
     bodyType: '',
     additionalInstructions: '',
@@ -87,6 +88,7 @@ export function EditBookingModal({
         dropAddress: booking.drop?.address || '',
         materialType: booking.materialType || '',
         weight: booking.weight?.value?.toString() || '',
+        weightUnit: booking.weight?.unit || 'tons',
         truckType: booking.truckTypeNeeded || '',
         bodyType: booking.bodyType || '',
         additionalInstructions: booking.additionalInstructions || '',
@@ -130,7 +132,7 @@ export function EditBookingModal({
         dropAddress: formData.dropAddress,
         materialType: formData.materialType,
         weight: formData.weight
-          ? { value: parseFloat(formData.weight), unit: 'tons' as const }
+          ? { value: parseFloat(formData.weight), unit: formData.weightUnit as 'kg' | 'tons' | 'quintal' }
           : undefined,
         truckType: formData.truckType,
         bodyType: formData.bodyType,
@@ -252,15 +254,31 @@ export function EditBookingModal({
               </Select>
             </div>
             <div>
-              <Label htmlFor="weight">Weight (tons)</Label>
-              <Input
-                id="weight"
-                type="number"
-                step="0.1"
-                value={formData.weight}
-                onChange={(e) => handleInputChange('weight', e.target.value)}
-                required
-              />
+              <Label htmlFor="weight">Weight</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="weight"
+                  type="number"
+                  step="0.1"
+                  value={formData.weight}
+                  onChange={(e) => handleInputChange('weight', e.target.value)}
+                  className="flex-grow"
+                  required
+                />
+                <Select
+                  value={formData.weightUnit}
+                  onValueChange={(value) => handleInputChange('weightUnit', value)}
+                >
+                  <SelectTrigger className="w-[100px] shrink-0">
+                    <SelectValue placeholder="Unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tons">Tons</SelectItem>
+                    <SelectItem value="kg">kg</SelectItem>
+                    <SelectItem value="quintal">qtl</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 

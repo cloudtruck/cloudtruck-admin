@@ -15,16 +15,601 @@ import {
   Inbox,
   RefreshCw,
   Phone,
+  Plus,
+  FileText,
+  Download,
+  Copy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { bookingApi, staffApi, vehicleApi } from '@/lib/api';
+import { bookingApi, staffApi, vehicleApi, paymentApi } from '@/lib/api';
 import { Booking, Staff } from '@/types';
 import { AssignConfirmModal, type MatchedVehicle } from '@/components/bookings/AssignConfirmModal';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { CreateBookingModal } from '@/components/bookings/CreateBookingModal';
 import { ManageIndentModal } from '@/components/bookings/ManageIndentModal';
+
+// ─── PDF helpers ─────────────────────────────────────────────────────────────
+
+async function handleDownloadInvoice(bookingId: string, invoiceNo?: string) {
+  try {
+    const res = await bookingApi.downloadInvoicePdf(bookingId);
+    const blob = new Blob([res.data as BlobPart], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Invoice-${invoiceNo || bookingId}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    alert('Failed to download Invoice PDF. Please try again.');
+  }
+}
+
+async function handleViewInvoice(bookingId: string, invoiceNo?: string) {
+  try {
+    const res = await bookingApi.downloadInvoicePdf(bookingId);
+    const blob = new Blob([res.data as BlobPart], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    // Revoke after a short delay to allow the tab to load
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch {
+    alert('Failed to view Invoice PDF. Please try again.');
+  }
+}
+
+async function handleCopyInvoiceLink(bookingId: string) {
+  const toastId = toast.loading('Generating link...');
+  try {
+    const res = await bookingApi.generateInvoice(bookingId);
+    const url = res.data?.data?.url;
+    if (url) {
+      await navigator.clipboard.writeText(url);
+      toast.success('Invoice Link copied to clipboard!', { id: toastId });
+    } else {
+      toast.error('Invoice URL not found', { id: toastId });
+    }
+  } catch {
+    toast.error('Failed to copy Invoice link', { id: toastId });
+  }
+}
+
+async function handleShareInvoiceWhatsApp(bookingId: string, invoiceNo?: string) {
+  const toastId = toast.loading('Generating share link...');
+  try {
+    const res = await bookingApi.generateInvoice(bookingId);
+    const url = res.data?.data?.url;
+    if (url) {
+      toast.dismiss(toastId);
+      const text = `Hello, please find the Invoice (Inv No: ${invoiceNo || 'N/A'}) here: ${url}`;
+      const encodedText = encodeURIComponent(text);
+      window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+    } else {
+      toast.error('Invoice URL not found', { id: toastId });
+    }
+  } catch {
+    toast.error('Failed to share on WhatsApp', { id: toastId });
+  }
+}
+
+function PaymentStatusBadge({ status }: { status?: string }) {
+  const s = status?.toLowerCase() || 'unpaid';
+  let color = 'bg-gray-100 text-gray-700';
+  let label = 'Unpaid';
+
+  if (s === 'paid') {
+    color = 'bg-green-100 text-green-800 font-semibold';
+    label = 'Paid';
+  } else if (s === 'partial' || s === 'partially-paid') {
+    color = 'bg-yellow-100 text-yellow-800 font-semibold';
+    label = 'Partially Paid';
+  } else if (s === 'failed') {
+    color = 'bg-red-100 text-red-800 font-semibold';
+    label = 'Failed';
+  } else {
+    color = 'bg-red-50 text-red-600 font-semibold';
+    label = 'Unpaid';
+  }
+
+  return (
+    <span className={cn('px-2 py-0.5 rounded text-[10px] uppercase tracking-wider', color)}>
+      {label}
+    </span>
+  );
+}
+
+interface CreateInvoiceFromLrModalProps {
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function CreateInvoiceFromLrModal({ onClose, onSuccess }: CreateInvoiceFromLrModalProps) {
+  const [step, setStep] = useState<'select-lr' | 'form'>('select-lr');
+  const [loadingLrs, setLoadingLrs] = useState(false);
+  const [lrs, setLrs] = useState<Booking[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLr, setSelectedLr] = useState<Booking | null>(null);
+
+  // Form State
+  const [invoiceNo, setInvoiceNo] = useState('');
+  const [customerPrice, setCustomerPrice] = useState<number>(0);
+  const [poNumber, setPoNumber] = useState('');
+  const [boeNumber, setBoeNumber] = useState('');
+  const [jobNo, setJobNo] = useState('');
+  const [shipmentNo, setShipmentNo] = useState('');
+  const [containerNo, setContainerNo] = useState('');
+  const [remarks, setRemarks] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    async function fetchLrs() {
+      setLoadingLrs(true);
+      try {
+        const res = await bookingApi.getAll({
+          bookingType: 'direct-lr',
+          limit: 100
+        });
+        setLrs(res.data.data.bookings || []);
+      } catch {
+        toast.error('Failed to fetch LRs');
+      } finally {
+        setLoadingLrs(false);
+      }
+    }
+    fetchLrs();
+  }, []);
+
+  const handleSelectLr = (lr: Booking) => {
+    setSelectedLr(lr);
+    setCustomerPrice(lr.customerPrice || lr.expectedAmount || 0);
+    setInvoiceNo(lr.invoiceNo || '');
+    setPoNumber(lr.poNumber || '');
+    setBoeNumber(lr.boeNumber || '');
+    setJobNo(lr.jobNo || '');
+    setShipmentNo(lr.shipmentNo || '');
+    setContainerNo(lr.containerNo || '');
+    setRemarks(lr.remarks || '');
+    setStep('form');
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!selectedLr) return;
+    if (customerPrice <= 0) {
+      toast.error('Please enter a valid customer price (freight value)');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // 1. Update Booking to set bookingType to direct-invoice and fill invoice details
+      await bookingApi.update(selectedLr._id, {
+        bookingType: 'direct-invoice',
+        customerPrice,
+        invoiceNo: invoiceNo.trim() || undefined,
+        poNumber: poNumber.trim() || undefined,
+        boeNumber: boeNumber.trim() || undefined,
+        jobNo: jobNo.trim() || undefined,
+        shipmentNo: shipmentNo.trim() || undefined,
+        containerNo: containerNo.trim() || undefined,
+        remarks: remarks.trim() || undefined,
+      });
+
+      // 2. Trigger invoice generation API
+      await bookingApi.generateInvoice(selectedLr._id);
+
+      toast.success('Invoice generated successfully!');
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to generate invoice');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const filteredLrs = lrs.filter((lr) => {
+    const term = searchQuery.toLowerCase();
+    const idMatch = lr.bookingId?.toLowerCase().includes(term);
+    const lrNumMatch = lr.lrDetails?.lrNumber?.toLowerCase().includes(term);
+    const custMatch =
+      typeof lr.customer === 'object' &&
+      lr.customer?.companyName?.toLowerCase().includes(term);
+    const pickupMatch = lr.pickup?.city?.toLowerCase().includes(term);
+    const dropMatch = lr.drop?.city?.toLowerCase().includes(term);
+    return idMatch || lrNumMatch || custMatch || pickupMatch || dropMatch;
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4 flex flex-col max-h-[85vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+          <h3 className="text-sm font-semibold text-gray-900">
+            {step === 'select-lr' ? 'Select LR to Create Invoice' : 'Enter Invoice Details'}
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {step === 'select-lr' ? (
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by LR number, Customer, Booking ID, City..."
+                  className="text-xs h-8 pl-8 pr-3 border-gray-200"
+                />
+              </div>
+
+              {loadingLrs ? (
+                <div className="flex flex-col items-center justify-center py-10 space-y-2">
+                  <div className="h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs text-gray-500">Loading LRs...</span>
+                </div>
+              ) : filteredLrs.length === 0 ? (
+                <div className="text-center py-10 border border-dashed border-gray-200 rounded-lg bg-gray-50/50">
+                  <p className="text-xs text-gray-500">No LRs available for invoice generation.</p>
+                </div>
+              ) : (
+                <div className="border border-gray-100 rounded-lg overflow-hidden">
+                  <div className="max-h-[40vh] overflow-y-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead className="bg-gray-50 text-gray-500 font-semibold uppercase tracking-wider text-[10px] sticky top-0">
+                        <tr>
+                          <th className="px-4 py-2 border-b border-gray-100">LR No / ID</th>
+                          <th className="px-4 py-2 border-b border-gray-100">Customer</th>
+                          <th className="px-4 py-2 border-b border-gray-100">Route</th>
+                          <th className="px-4 py-2 border-b border-gray-100">Load Date</th>
+                          <th className="px-4 py-2 border-b border-gray-100 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredLrs.map((lr) => (
+                          <tr key={lr._id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-2.5 font-medium text-gray-900">
+                              <div>{lr.lrDetails?.lrNumber || '—'}</div>
+                              <div className="text-[10px] text-gray-400 font-normal">ID: {lr.bookingId}</div>
+                            </td>
+                            <td className="px-4 py-2.5 text-gray-600 font-medium">
+                              {typeof lr.customer === 'object' ? lr.customer?.companyName : '—'}
+                            </td>
+                            <td className="px-4 py-2.5 text-gray-600">
+                              {lr.pickup?.city} ➔ {lr.drop?.city}
+                            </td>
+                            <td className="px-4 py-2.5 text-gray-500">
+                              {lr.loadDateTime ? fmtDate(lr.loadDateTime) : '—'}
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              <Button
+                                size="sm"
+                                onClick={() => handleSelectLr(lr)}
+                                className="h-6 px-2 text-[10px] bg-blue-600 hover:bg-blue-700 text-white font-medium rounded"
+                              >
+                                Select
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            selectedLr && (
+              <div className="space-y-4">
+                <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100/50 text-xs">
+                  <div className="grid grid-cols-2 gap-2 text-gray-600">
+                    <div>
+                      <span className="font-semibold text-gray-700">LR Number:</span>{' '}
+                      {selectedLr.lrDetails?.lrNumber || '—'}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-700">Customer:</span>{' '}
+                      {typeof selectedLr.customer === 'object' ? selectedLr.customer?.companyName : '—'}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-700">Route:</span>{' '}
+                      {selectedLr.pickup?.city} ➔ {selectedLr.drop?.city}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-700">Booking ID:</span> {selectedLr.bookingId}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      Customer Price / Freight Value (₹) *
+                    </label>
+                    <Input
+                      type="number"
+                      value={customerPrice}
+                      onChange={(e) => setCustomerPrice(Number(e.target.value))}
+                      placeholder="e.g. 25000"
+                      className="text-xs h-8 border-gray-200 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      Invoice Number (Optional)
+                    </label>
+                    <Input
+                      type="text"
+                      value={invoiceNo}
+                      onChange={(e) => setInvoiceNo(e.target.value)}
+                      placeholder="Auto-generated if empty"
+                      className="text-xs h-8 border-gray-200 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      Purchase Order (PO) Number
+                    </label>
+                    <Input
+                      type="text"
+                      value={poNumber}
+                      onChange={(e) => setPoNumber(e.target.value)}
+                      placeholder="e.g. PO-789"
+                      className="text-xs h-8 border-gray-200 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      Bill of Entry (BOE) Number
+                    </label>
+                    <Input
+                      type="text"
+                      value={boeNumber}
+                      onChange={(e) => setBoeNumber(e.target.value)}
+                      placeholder="e.g. BOE-456"
+                      className="text-xs h-8 border-gray-200 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      Job Number
+                    </label>
+                    <Input
+                      type="text"
+                      value={jobNo}
+                      onChange={(e) => setJobNo(e.target.value)}
+                      placeholder="e.g. JOB-123"
+                      className="text-xs h-8 border-gray-200 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      Shipment Number
+                    </label>
+                    <Input
+                      type="text"
+                      value={shipmentNo}
+                      onChange={(e) => setShipmentNo(e.target.value)}
+                      placeholder="e.g. SH-890"
+                      className="text-xs h-8 border-gray-200 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      Container Number
+                    </label>
+                    <Input
+                      type="text"
+                      value={containerNo}
+                      onChange={(e) => setContainerNo(e.target.value)}
+                      placeholder="e.g. CO-123"
+                      className="text-xs h-8 border-gray-200 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      Remarks
+                    </label>
+                    <Input
+                      type="text"
+                      value={remarks}
+                      onChange={(e) => setRemarks(e.target.value)}
+                      placeholder="e.g. Freight charge including loading"
+                      className="text-xs h-8 border-gray-200 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-xl shrink-0">
+          {step === 'form' && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={submitting}
+              onClick={() => setStep('select-lr')}
+              className="h-8 text-xs font-semibold"
+            >
+              <ChevronLeft className="h-3 w-3 mr-1" />
+              Back
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={submitting}
+            onClick={onClose}
+            className="h-8 text-xs font-semibold"
+          >
+            Cancel
+          </Button>
+          {step === 'form' && (
+            <Button
+              size="sm"
+              disabled={submitting}
+              onClick={handleGenerateInvoice}
+              className="h-8 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded"
+            >
+              {submitting ? (
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                'Generate Invoice'
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface RecordPaymentModalProps {
+  booking: Booking;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function RecordPaymentModal({ booking, onClose, onSuccess }: RecordPaymentModalProps) {
+  const [amount, setAmount] = useState<number>(booking.customerPrice || 0);
+  const [paymentMethod, setPaymentMethod] = useState<string>('online');
+  const [referenceNumber, setReferenceNumber] = useState<string>('');
+  const [remarks, setRemarks] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleRecord() {
+    if (!amount || amount <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await paymentApi.recordManual({
+        bookingId: booking._id,
+        customerId: booking.customer?._id || (booking.customer as any),
+        amount,
+        paymentMethod,
+        referenceNumber,
+        remarks,
+        transactionDate: new Date().toISOString()
+      });
+      toast.success('Payment recorded successfully');
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to record payment');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+        <h3 className="text-sm font-semibold text-gray-900 mb-4">Record Customer Payment</h3>
+        <p className="text-xs text-gray-500 mb-4">
+          Invoice for <span className="font-semibold text-slate-700">{booking.customer?.companyName || 'N/A'}</span>
+          <br />
+          Booking ID: <span className="font-semibold">{booking.bookingId?.slice(-6).toUpperCase()}</span>
+        </p>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              Amount (₹)
+            </label>
+            <Input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(Number(e.target.value))}
+              placeholder="Enter amount"
+              className="text-xs h-8 border-gray-200 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              Payment Method
+            </label>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className="w-full text-xs h-8 px-2 border border-gray-200 rounded focus:outline-none focus:border-blue-500 bg-white"
+            >
+              <option value="online">Online</option>
+              <option value="neft">NEFT</option>
+              <option value="rtgs">RTGS</option>
+              <option value="cash">Cash</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              Transaction Ref / UTR / Cheque No.
+            </label>
+            <Input
+              type="text"
+              value={referenceNumber}
+              onChange={(e) => setReferenceNumber(e.target.value)}
+              placeholder="e.g. UTR12345"
+              className="text-xs h-8 border-gray-200 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              Remarks
+            </label>
+            <Input
+              type="text"
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              placeholder="Optional remarks"
+              className="text-xs h-8 border-gray-200 focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 mt-6">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onClose}
+            className="h-8 text-xs font-semibold px-4 border-gray-200"
+          >
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleRecord}
+            disabled={submitting}
+            className="bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs font-semibold px-4 rounded"
+          >
+            {submitting ? 'Recording...' : 'Record Payment'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1212,15 +1797,6 @@ function BidTag({ bookingType, onClick }: { bookingType?: string; onClick?: () =
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-const STATUS_TABS = [
-  { key: 'all', label: 'All' },
-  { key: 'created,under-review', label: 'New' },
-  { key: 'assigned,driver-en-route,reached-pickup', label: 'Confirmed' },
-  { key: 'loaded,in-transit,reached-destination,unloading', label: 'In Transit' },
-  { key: 'delivered,pod-received,closed', label: 'Delivered' },
-  { key: 'cancelled', label: 'Cancelled' },
-];
-
 const PAGE_SIZE = 25;
 
 export default function IndentsPage() {
@@ -1231,7 +1807,6 @@ export default function IndentsPage() {
   const [marketCounts, setMarketCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -1249,8 +1824,11 @@ export default function IndentsPage() {
     vehicle: MatchedVehicle;
   } | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [createInvoiceFromLrOpen, setCreateInvoiceFromLrOpen] = useState(false);
   const [loadTypeEditId, setLoadTypeEditId] = useState<string | null>(null);
   const [savingLoadType, setSavingLoadType] = useState<string | null>(null);
+  const [recordPaymentTarget, setRecordPaymentTarget] = useState<Booking | null>(null);
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'all' | 'unpaid'>('all');
 
   const updateLoadType = async (id: string, value: 'FTL' | 'LTL' | 'PTL') => {
     setSavingLoadType(id);
@@ -1267,18 +1845,22 @@ export default function IndentsPage() {
   };
 
   const fetchBookings = useCallback(
-    async (opts?: { page?: number; search?: string; status?: string }) => {
+    async (opts?: { page?: number; search?: string; status?: string; paymentStatus?: 'all' | 'unpaid' }) => {
       setLoading(true);
       try {
         const ALL_STATUSES_EXCEPT_CANCELLED =
           'created,under-review,assigned,driver-en-route,reached-pickup,loaded,in-transit,reached-destination,unloading,delivered,pod-received,closed';
         const status =
-          opts?.status ?? (activeTab === 'all' ? ALL_STATUSES_EXCEPT_CANCELLED : activeTab);
+          opts?.status ?? ALL_STATUSES_EXCEPT_CANCELLED;
+
+        const activePaymentStatus = opts?.paymentStatus ?? paymentStatusFilter;
+
         const res = await bookingApi.getAll({
           page: opts?.page ?? page,
           limit: PAGE_SIZE,
           search: (opts?.search ?? search) || undefined,
           status,
+          paymentStatus: activePaymentStatus === 'unpaid' ? 'unpaid' : undefined,
         });
         setBookings(res.data.data.bookings || []);
         const p = res.data.data.pagination;
@@ -1290,13 +1872,13 @@ export default function IndentsPage() {
         setLoading(false);
       }
     },
-    [activeTab, page, search]
+    [page, search, paymentStatusFilter]
   );
 
   useEffect(() => {
     fetchBookings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, page]);
+  }, [page, paymentStatusFilter]);
 
   // Fetch unloading truck counts — only re-fetch when the set of pickup cities changes
   const citiesKey = [...new Set(bookings.map((b) => b.pickup?.city).filter(Boolean))]
@@ -1361,40 +1943,48 @@ export default function IndentsPage() {
     fetchBookings({ page: 1 });
   }
 
-  function handleTabChange(key: string) {
-    setActiveTab(key);
-    setPage(1);
-  }
-
-  const activeTabLabel = STATUS_TABS.find((t) => t.key === activeTab)?.label || 'All';
-
   return (
     <div className="flex flex-col h-full gap-0">
-      {/* ── Status Tabs ── */}
-      <div className="flex items-center gap-0 border-b border-gray-200 mb-0 overflow-x-auto scrollbar-none">
-        {STATUS_TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => handleTabChange(tab.key)}
-            className={cn(
-              'px-4 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-colors',
-              activeTab === tab.key
-                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       {/* ── Toolbar ── */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-white">
-        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider ml-1">
-          {activeTabLabel}
-        </span>
+        <div className="flex-1 flex items-center gap-2">
+          <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+            Total Invoices: {totalItems}
+          </span>
+          <div className="flex items-center border border-gray-200 rounded overflow-hidden">
+            <button
+              onClick={() => setPaymentStatusFilter('all')}
+              className={cn(
+                'px-2.5 py-1 text-[10px] font-medium transition-colors',
+                paymentStatusFilter === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50'
+              )}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setPaymentStatusFilter('unpaid')}
+              className={cn(
+                'px-2.5 py-1 text-[10px] font-medium transition-colors border-l border-gray-200',
+                paymentStatusFilter === 'unpaid'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50'
+              )}
+            >
+              Unpaid
+            </button>
+          </div>
+        </div>
 
-        <div className="flex-1" />
+        <Button
+          size="sm"
+          onClick={() => setCreateInvoiceFromLrOpen(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white h-7 px-3 text-xs font-semibold rounded"
+        >
+          <Plus className="h-3 w-3 mr-1" />
+          Create Invoice
+        </Button>
 
         {/* Search */}
         <form onSubmit={handleSearch} className="flex items-center gap-1">
@@ -1403,7 +1993,7 @@ export default function IndentsPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search indents..."
+              placeholder="Search Invoices..."
               className="h-7 pl-7 pr-3 text-xs w-52 border-gray-200"
             />
             {search && (
@@ -1461,43 +2051,18 @@ export default function IndentsPage() {
           <table className="w-full text-xs border-collapse min-w-max">
             <thead className="sticky top-0 z-10">
               <tr>
-                <Th className="w-28">Actions</Th>
+                <Th className="w-56">Actions</Th>
                 <ThSearch label="Id" />
-                <ThSearch label="Branch" />
                 <Th>Lane Code</Th>
-                <Th>Is Adhoc Indent</Th>
-                <Th>Indent Type</Th>
-                <ThSearch label="Traffic" />
                 <ThSearch label="Customer" />
+                <Th>Invoice Value</Th>
                 <ThSearch label="Source" />
-                <ThSearch label="Source Code" />
                 <ThSearch label="Destination" />
-                <Th>Destination Code</Th>
                 <Th>Truck Type</Th>
-                <th
-                  className="bg-gray-50 border-b border-gray-200 select-none whitespace-nowrap"
-                  colSpan={3}
-                >
-                  <div className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
-                    Matched trucks
-                  </div>
-                  <div className="flex border-t border-gray-200">
-                    <div className="flex-1 px-2 py-1.5 text-[9px] font-semibold text-gray-500 uppercase tracking-wide border-r border-gray-200">
-                      Own
-                    </div>
-                    <div className="flex-1 px-2 py-1.5 text-[9px] font-semibold text-gray-500 uppercase tracking-wide border-r border-gray-200">
-                      Market
-                    </div>
-                    <div className="flex-1 px-2 py-1.5 text-[9px] font-semibold text-gray-500 uppercase tracking-wide">
-                      Bidding
-                    </div>
-                  </div>
-                </th>
+                <Th>Vehicle / Driver</Th>
                 <Th>Indent date</Th>
-                <Th>TAT(hrs)</Th>
-                <ThSearch label="Created by" />
-                <Th>Count</Th>
                 <Th>Remarks</Th>
+                <Th>Payment Status</Th>
                 <Th>Status</Th>
               </tr>
             </thead>
@@ -1513,14 +2078,6 @@ export default function IndentsPage() {
                   {/* Actions */}
                   <Td>
                     <div className="flex items-center gap-1.5">
-                      <button
-                        aria-label="Delete"
-                        onClick={() => setDeleteTarget(b)}
-                        className="text-red-400 hover:text-red-600 p-0.5"
-                        title="Delete indent"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
                       {(() => {
                         const isTerminal = [
                           'cancelled',
@@ -1538,7 +2095,7 @@ export default function IndentsPage() {
                                 ? 'text-gray-300 p-0.5 cursor-not-allowed'
                                 : 'text-blue-400 hover:text-blue-600 p-0.5'
                             }
-                            title={isTerminal ? 'Cannot edit in current status' : 'Manage Indent'}
+                            title={isTerminal ? 'Cannot edit in current status' : 'Manage Invoice'}
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
@@ -1552,8 +2109,53 @@ export default function IndentsPage() {
                       >
                         <MessageCircle className="h-3.5 w-3.5" />
                       </button>
-                      {b.status !== 'cancelled' && (
-                        <BidTag bookingType={b.bookingType} onClick={() => setBidTarget(b)} />
+                      {/* View Invoice PDF */}
+                      <button
+                        aria-label="View Invoice"
+                        onClick={() => handleViewInvoice(b._id, b.invoiceNo)}
+                        className="text-emerald-500 hover:text-emerald-700 p-0.5"
+                        title="View Invoice PDF"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                      </button>
+                      {/* Download Invoice PDF */}
+                      <button
+                        aria-label="Download Invoice"
+                        onClick={() => handleDownloadInvoice(b._id, b.invoiceNo)}
+                        className="text-violet-500 hover:text-violet-700 p-0.5"
+                        title="Download Invoice PDF"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </button>
+                      {/* Copy Link */}
+                      <button
+                        aria-label="Copy Link"
+                        onClick={() => handleCopyInvoiceLink(b._id)}
+                        className="text-slate-500 hover:text-slate-700 p-0.5"
+                        title="Copy Invoice PDF Link"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </button>
+                      {/* Share via WhatsApp */}
+                      <button
+                        aria-label="WhatsApp Share"
+                        onClick={() => handleShareInvoiceWhatsApp(b._id, b.invoiceNo)}
+                        className="text-green-500 hover:text-green-700 p-0.5"
+                        title="Share Invoice on WhatsApp"
+                      >
+                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.729-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.588 2.012 14.116.993 11.997.993c-5.442 0-9.87 4.372-9.874 9.802-.002 1.942.508 3.842 1.482 5.513L2.617 21.6l5.228-1.369-.198-.122zM17.96 15.3c-.327-.164-1.938-.957-2.238-1.067-.3-.11-.518-.164-.737.164-.218.327-.847 1.066-1.038 1.285-.19.219-.383.245-.71.082-.327-.164-1.38-.508-2.63-1.623-.972-.867-1.629-1.938-1.82-2.265-.19-.327-.02-.504.143-.667.147-.146.327-.382.49-.573.164-.19.219-.327.328-.546.11-.219.055-.41-.028-.573-.082-.164-.737-1.776-1.01-2.432-.266-.641-.53-.553-.728-.563-.19-.01-.41-.01-.628-.01a1.2 1.2 0 00-.874.41c-.3.327-1.147 1.12-1.147 2.731 0 1.612 1.173 3.167 1.336 3.385.164.219 2.31 3.527 5.596 4.945.782.338 1.39.54 1.865.69.787.25 1.503.214 2.07.129.63-.095 1.938-.792 2.21-.1.558-.273.818-1.309.818-1.336 0-.027-.08-.164-.408-.327z"/>
+                        </svg>
+                      </button>
+                      {/* Record Payment */}
+                      {b.paymentStatus !== 'paid' && (
+                        <button
+                          onClick={() => setRecordPaymentTarget(b)}
+                          className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded transition-colors whitespace-nowrap"
+                          title="Record Payment"
+                        >
+                          Record Pay
+                        </button>
                       )}
                     </div>
                   </Td>
@@ -1568,76 +2170,8 @@ export default function IndentsPage() {
                     </Link>
                   </Td>
 
-                  {/* Branch — using pickup city as branch */}
-                  <Td>{b.pickup?.city || '—'}</Td>
-
                   {/* Lane Code */}
                   <Td>{b.laneCode || '—'}</Td>
-
-                  {/* Is Adhoc Indent */}
-                  <Td>
-                    <span
-                      className={cn('font-medium', b.isAdhoc ? 'text-orange-600' : 'text-gray-500')}
-                    >
-                      {b.isAdhoc ? 'Yes' : 'No'}
-                    </span>
-                  </Td>
-
-                  {/* Load Type */}
-                  <Td>
-                    {loadTypeEditId === b._id ? (
-                      <select
-                        autoFocus
-                        defaultValue={b.loadType || ''}
-                        onChange={(e) =>
-                          updateLoadType(b._id, e.target.value as 'FTL' | 'LTL' | 'PTL')
-                        }
-                        onBlur={() => setLoadTypeEditId(null)}
-                        disabled={savingLoadType === b._id}
-                        className="text-xs font-medium text-gray-700 border border-blue-400 rounded px-1.5 py-0.5 bg-white focus:outline-none disabled:opacity-50"
-                      >
-                        <option value="">—</option>
-                        <option value="FTL">FTL</option>
-                        <option value="LTL">LTL</option>
-                        <option value="PTL">PTL</option>
-                      </select>
-                    ) : (
-                      <span className="flex items-center gap-1 group">
-                        <span className="font-medium text-gray-700">{b.loadType || '—'}</span>
-                        <button
-                          onClick={() => setLoadTypeEditId(b._id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-500"
-                          title="Edit load type"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                      </span>
-                    )}
-                  </Td>
-
-                  {/* Traffic */}
-                  <Td>
-                    {b.trafficController?.name ? (
-                      <a
-                        href={
-                          b.trafficController.phone ? `tel:${b.trafficController.phone}` : undefined
-                        }
-                        className="flex items-center gap-1 text-gray-800 hover:text-blue-600 transition-colors group"
-                        title={
-                          b.trafficController.phone
-                            ? `Call ${b.trafficController.name}`
-                            : b.trafficController.name
-                        }
-                      >
-                        <Phone
-                          className={`h-3.5 w-3.5 shrink-0 ${b.trafficController.phone ? 'text-blue-500 group-hover:text-blue-700' : 'text-gray-300'}`}
-                        />
-                        <span>{b.trafficController.name}</span>
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                  </Td>
 
                   {/* Customer */}
                   <Td>
@@ -1653,6 +2187,11 @@ export default function IndentsPage() {
                     )}
                   </Td>
 
+                  {/* Invoice Value */}
+                  <Td className="font-semibold text-gray-900">
+                    {b.customerPrice ? `₹${b.customerPrice.toLocaleString('en-IN')}` : '—'}
+                  </Td>
+
                   {/* Source */}
                   <Td>
                     <span className="flex items-center gap-1">
@@ -1660,9 +2199,6 @@ export default function IndentsPage() {
                       {b.pickup?.city || '—'}
                     </span>
                   </Td>
-
-                  {/* Source Code */}
-                  <Td>{b.sourceCode || '—'}</Td>
 
                   {/* Destination */}
                   <Td>
@@ -1672,109 +2208,32 @@ export default function IndentsPage() {
                     </span>
                   </Td>
 
-                  {/* Destination Code */}
-                  <Td>{b.destinationCode || '—'}</Td>
-
                   {/* Truck Type */}
                   <Td>{b.truckTypeNeeded || '—'}</Td>
 
-                  {/* Matched trucks — Own / Market / Bidding / Unloading */}
-                  <td colSpan={3} className="px-0 py-2 border-b border-gray-100">
-                    <div className="flex divide-x divide-gray-200">
-                      {/* Own */}
-                      <button
-                        onClick={() => setTruckModalTarget({ booking: b, tab: 'own' })}
-                        className="flex-1 flex items-center gap-1.5 px-2 py-0.5 min-w-[52px] hover:bg-blue-50 transition-colors rounded-l"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-4 w-4 text-blue-500 shrink-0"
-                          fill="currentColor"
-                        >
-                          <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zm-.5 1.5 1.96 2.5H17V9.5h2.5zM6 18c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm13 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" />
-                        </svg>
-                        <span className="text-xs font-medium text-gray-700">
-                          {ownCounts[b._id] ?? 0}
-                        </span>
-                      </button>
-                      {/* Market */}
-                      <button
-                        onClick={() => setTruckModalTarget({ booking: b, tab: 'market' })}
-                        className="flex-1 flex items-center gap-1.5 px-2 py-0.5 min-w-[52px] hover:bg-orange-50 transition-colors"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-4 w-4 text-orange-500 shrink-0"
-                          fill="currentColor"
-                        >
-                          <path d="M18 2H6L2 8h20L18 2zm-8 4 1-3h2l1 3H10zm-4 0 1.5-3H9L8 6H6zm8 0-1-3h1.5L16 6h-2zM2 9v11h9v-4h2v4h9V9H2zm14 7h-3v-3h3v3z" />
-                        </svg>
-                        <span className="text-xs font-medium text-gray-700">
-                          {marketCounts[b._id] ?? 0}
-                        </span>
-                      </button>
-                      {/* Bidding */}
-                      <button
-                        onClick={() => setTruckModalTarget({ booking: b, tab: 'bidding' })}
-                        className="flex-1 flex items-center gap-1.5 px-2 py-0.5 min-w-[52px] hover:bg-blue-50 transition-colors"
-                      >
-                        <span className="inline-flex items-center justify-center h-4 w-7 rounded-full border border-blue-500 text-[8px] font-bold text-blue-600 leading-none shrink-0">
-                          BID
-                        </span>
-                        <span className="text-xs font-medium text-gray-700">
-                          {b.interestedCount ?? b.interestedDrivers?.length ?? 0}
-                        </span>
-                      </button>
-                      {/* Unloading */}
-                      <button
-                        onClick={() => setTruckModalTarget({ booking: b, tab: 'unloading' })}
-                        className="flex-1 flex items-center gap-1.5 px-2 py-0.5 min-w-[52px] hover:bg-green-50 transition-colors rounded-r"
-                        title="Trucks currently unloading near pickup city"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-4 w-4 text-green-500 shrink-0"
-                          fill="currentColor"
-                        >
-                          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L11 13.17V7h2v6.17l2.59-2.58L17 12l-5 5z" />
-                        </svg>
-                        <span className="text-xs font-medium text-gray-700">
-                          {unloadingCounts[b._id] ?? 0}
-                        </span>
-                      </button>
-                    </div>
-                  </td>
+                  {/* Vehicle / Driver */}
+                  <Td>
+                    {b.vehicle || b.driver ? (
+                      <div>
+                        <p className="font-semibold text-gray-800">{b.vehicle?.vehicleNumber || '—'}</p>
+                        <p className="text-[10px] text-gray-500">{b.driver?.name || '—'}</p>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">Unassigned</span>
+                    )}
+                  </Td>
 
                   {/* Indent date */}
                   <Td>{fmtDate(b.createdAt)}</Td>
 
-                  {/* TAT (hrs) — time remaining until expiry, green */}
-                  <Td>
-                    {b.expiryTime ? (
-                      <span className="font-semibold text-green-600">
-                        {Math.max(
-                          0,
-                          Math.floor((new Date(b.expiryTime).getTime() - Date.now()) / 3600000)
-                        )}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </Td>
-
-                  {/* Created by */}
-                  <Td>{b.createdByStaff?.name || '—'}</Td>
-
-                  {/* Count — assigned of total requested */}
-                  <Td className="text-center">
-                    <span className="text-gray-700">
-                      {b.vehicle ? 1 : 0} of {b.numberOfTrucks ?? 1}
-                    </span>
-                  </Td>
-
                   {/* Remarks */}
                   <Td className="max-w-[120px] truncate" title={b.remarks}>
                     {b.remarks || '—'}
+                  </Td>
+
+                  {/* Payment Status */}
+                  <Td>
+                    <PaymentStatusBadge status={b.paymentStatus} />
                   </Td>
 
                   {/* Status — Active for open indents, otherwise status label */}
@@ -1862,6 +2321,14 @@ export default function IndentsPage() {
         />
       )}
 
+      {recordPaymentTarget && (
+        <RecordPaymentModal
+          booking={recordPaymentTarget}
+          onClose={() => setRecordPaymentTarget(null)}
+          onSuccess={() => fetchBookings()}
+        />
+      )}
+
       {commentTarget && (
         <CommentDrawer booking={commentTarget} onClose={() => setCommentTarget(null)} />
       )}
@@ -1910,6 +2377,13 @@ export default function IndentsPage() {
           fetchBookings();
         }}
       />
+
+      {createInvoiceFromLrOpen && (
+        <CreateInvoiceFromLrModal
+          onClose={() => setCreateInvoiceFromLrOpen(false)}
+          onSuccess={() => fetchBookings()}
+        />
+      )}
     </div>
   );
 }

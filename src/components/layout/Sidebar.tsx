@@ -41,6 +41,8 @@ const navigationItems: NavItem[] = [
       { label: 'All Indents', href: '/bookings', icon: Package },
       { label: 'New Indents', href: '/bookings/new-requests', icon: Package },
       { label: 'E-way Bills', href: '/eway-bills', icon: FileCheck },
+      { label: 'LRs', href: '/lrs', icon: FileText },
+      { label: 'Invoices', href: '/invoices', icon: FileText },
     ],
   },
   {

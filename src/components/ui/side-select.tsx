@@ -53,8 +53,8 @@ export function SideSelect({
   const filtered = query.trim().length === 0
     ? options
     : options.filter((o) =>
-        o.label.toLowerCase().includes(query.toLowerCase()) ||
-        o.sublabel?.toLowerCase().includes(query.toLowerCase())
+        (o.label || '').toLowerCase().includes(query.toLowerCase()) ||
+        (o.sublabel || '').toLowerCase().includes(query.toLowerCase())
       );
 
   useEffect(() => {
@@ -169,8 +169,8 @@ export function SideSelect({
             </div>
           ) : (
             <ul className="py-1">
-              {filtered.map((opt) => (
-                <li key={opt.value}>
+              {filtered.map((opt, i) => (
+                <li key={`${opt.value}-${i}`}>
                   <button
                     type="button"
                     onClick={() => { onChange(opt.value); setOpen(false); }}
