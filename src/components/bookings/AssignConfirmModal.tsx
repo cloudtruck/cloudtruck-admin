@@ -33,7 +33,15 @@ export interface MatchedVehicle {
   /** supplierOwner id if vehicle belongs to a supplier */
   supplierOwner?: string | null;
   /** For unloading trucks, the driver currently on the trip */
-  driver?: { _id: string; name: string; phone: string; supplierOwner?: string | null; driverRole?: string } | null;
+  driver?: {
+    _id: string;
+    name: string;
+    phone: string;
+    supplierOwner?: string | null;
+    driverRole?: string;
+  } | null;
+  /** Driver currently operating this truck (own/leased trucks, independent of legal ownership) */
+  currentDriver?: { _id: string; name: string; phone: string } | string | null;
 }
 
 interface AssignConfirmModalProps {
@@ -56,7 +64,9 @@ export function AssignConfirmModal({
   const [fetchingSupplierDrivers, setFetchingSupplierDrivers] = useState(false);
 
   // Individual driver flow
-  const [autoDriver, setAutoDriver] = useState<{ _id: string; name: string; phone: string } | null>(null);
+  const [autoDriver, setAutoDriver] = useState<{ _id: string; name: string; phone: string } | null>(
+    null
+  );
 
   // Supplier flow
   const [availableDrivers, setAvailableDrivers] = useState<SupplierAvailableDriver[]>([]);
@@ -71,9 +81,9 @@ export function AssignConfirmModal({
 
   /** The supplier id to fetch available drivers from */
   const supplierId: string | null = isSupplierOwned
-    ? (vehicle.ownerRef?.kind === 'Supplier'
-        ? vehicle.ownerRef.item
-        : vehicle.supplierOwner || vehicle.driver?.supplierOwner || null)
+    ? vehicle.ownerRef?.kind === 'Supplier'
+      ? vehicle.ownerRef.item
+      : vehicle.supplierOwner || vehicle.driver?.supplierOwner || null
     : null;
 
   useEffect(() => {
@@ -93,11 +103,17 @@ export function AssignConfirmModal({
         .catch(() => toast.error('Failed to fetch available drivers'))
         .finally(() => setFetchingSupplierDrivers(false));
     } else {
-      // Individual driver flow: resolve driver from ownerRef or unloading truck driver
+      // Individual driver flow: resolve driver from ownerRef, unloading truck driver,
+      // or currentDriver (own/leased trucks assigned to a driver without owning it)
+      const currentDriverId =
+        typeof vehicle.currentDriver === 'string'
+          ? vehicle.currentDriver
+          : vehicle.currentDriver?._id;
       const driverId =
-        vehicle.ownerRef?.kind === 'Driver'
-          ? vehicle.ownerRef.item
-          : vehicle.driver?._id || null;
+        (vehicle.ownerRef?.kind === 'Driver' ? vehicle.ownerRef.item : null) ||
+        vehicle.driver?._id ||
+        currentDriverId ||
+        null;
 
       if (driverId) {
         setFetchingDriver(true);
@@ -116,9 +132,23 @@ export function AssignConfirmModal({
           name: vehicle.driver.name,
           phone: vehicle.driver.phone,
         });
+      } else if (vehicle.currentDriver && typeof vehicle.currentDriver !== 'string') {
+        // Already have populated driver info from currentDriver
+        setAutoDriver({
+          _id: vehicle.currentDriver._id,
+          name: vehicle.currentDriver.name,
+          phone: vehicle.currentDriver.phone,
+        });
       }
     }
-  }, [isOpen, isSupplierOwned, supplierId, vehicle.ownerRef, vehicle.driver]);
+  }, [
+    isOpen,
+    isSupplierOwned,
+    supplierId,
+    vehicle.ownerRef,
+    vehicle.driver,
+    vehicle.currentDriver,
+  ]);
 
   const handleConfirm = async () => {
     const driverId = isSupplierOwned ? selectedDriverId : autoDriver?._id;
@@ -208,7 +238,9 @@ export function AssignConfirmModal({
             </div>
           ) : (
             <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm">
-              <div className="text-xs text-gray-400 mb-1 uppercase font-semibold tracking-wide">Driver</div>
+              <div className="text-xs text-gray-400 mb-1 uppercase font-semibold tracking-wide">
+                Driver
+              </div>
               {fetchingDriver ? (
                 <div className="flex items-center gap-2 text-gray-500">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />

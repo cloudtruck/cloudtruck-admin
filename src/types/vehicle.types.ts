@@ -47,6 +47,15 @@ export interface Vehicle {
         name: string;
         phone?: string;
       };
+  /** Driver currently operating this truck, independent of legal ownership (own/leased trucks) */
+  currentDriver?:
+    | string
+    | {
+        _id: string;
+        name: string;
+        phone?: string;
+      }
+    | null;
   supplierOwner?: string | { _id: string };
   ownershipType?: 'own' | 'leased' | 'attached';
   registrationCity?: string;

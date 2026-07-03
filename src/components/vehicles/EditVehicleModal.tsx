@@ -28,6 +28,7 @@ interface FormState {
   fitnessExpiry: string;
   ownerId: string;
   ownerType: 'driver' | 'supplier' | null;
+  currentDriverId: string;
   availability: string;
   status: string;
 }
@@ -89,6 +90,7 @@ export function EditVehicleModal({
     fitnessExpiry: '',
     ownerId: '',
     ownerType: null,
+    currentDriverId: '',
     availability: 'available',
     status: 'active',
   });
@@ -168,6 +170,12 @@ export function EditVehicleModal({
     setOwnerSearch('');
     setOwnerFocused(false);
 
+    const currentDriverId = vehicle.currentDriver
+      ? typeof vehicle.currentDriver === 'string'
+        ? vehicle.currentDriver
+        : vehicle.currentDriver._id
+      : '';
+
     setForm({
       truckType: vehicle.truckType || '',
       bodyType: vehicle.bodyType || '',
@@ -181,6 +189,7 @@ export function EditVehicleModal({
       fitnessExpiry,
       ownerId,
       ownerType,
+      currentDriverId,
       availability: vehicle.availability || 'available',
       status: vehicle.status || 'active',
     });
@@ -268,6 +277,11 @@ export function EditVehicleModal({
         updateData.owner = undefined;
         updateData.supplierOwner = undefined;
         updateData.ownerRef = undefined;
+      }
+
+      // Current driver only applies to own/leased trucks (not driver/supplier-owned market trucks)
+      if (form.ownershipType !== 'attached') {
+        updateData.currentDriver = form.currentDriverId || null;
       }
 
       await vehicleApi.update(vehicle._id, updateData);
@@ -376,6 +390,30 @@ export function EditVehicleModal({
                 </span>
               </div>
             </Field>
+
+            {/* Current Driver — only for Own/Leased trucks (Cloudtruck/financier owned).
+                Lets a driver without their own truck be matched to a fleet truck. */}
+            {form.ownershipType !== 'attached' && (
+              <Field label="Current Driver">
+                <div className="relative">
+                  <select
+                    className={selectCls}
+                    value={form.currentDriverId}
+                    onChange={set('currentDriverId')}
+                  >
+                    <option value="">No driver assigned</option>
+                    {drivers.map((d) => (
+                      <option key={d._id} value={d._id}>
+                        {d.name} ({d.phone})
+                      </option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    &#8964;
+                  </span>
+                </div>
+              </Field>
+            )}
 
             {/* Owner — only shown for Market (attached) trucks */}
             {form.ownershipType === 'attached' && (

@@ -62,6 +62,15 @@ const emptyForm = {
   isHazardous: false,
   isFragile: false,
   requiresTemperatureControl: false,
+  // Consignor / Consignee (for LR printing)
+  invoiceNo: '',
+  ewayBillNo: '',
+  consignorName: '',
+  consignorGst: '',
+  consignorAddress: '',
+  consigneeName: '',
+  consigneeGst: '',
+  consigneeAddress: '',
 };
 
 export function CreateBookingModal({
@@ -143,14 +152,23 @@ export function CreateBookingModal({
       return;
     }
 
-    // Derive pickup/drop city from location metadata
+    // Derive pickup/drop city + state from location metadata
     const srcLoc = locations.find((l: MasterData) => l.key === formData.sourceCode);
     const dstLoc = locations.find((l: MasterData) => l.key === formData.destinationCode);
     const pickupCity = (srcLoc?.metadata?.city as string) || formData.sourceCode || '';
     const dropCity = (dstLoc?.metadata?.city as string) || formData.destinationCode || '';
+    const pickupState = (srcLoc?.metadata?.state as string) || undefined;
+    const dropState = (dstLoc?.metadata?.state as string) || undefined;
     const pickupAddress =
-      (srcLoc?.metadata?.address as string) || srcLoc?.displayName || pickupCity;
-    const dropAddress = (dstLoc?.metadata?.address as string) || dstLoc?.displayName || dropCity;
+      formData.consignorAddress ||
+      (srcLoc?.metadata?.address as string) ||
+      srcLoc?.displayName ||
+      pickupCity;
+    const dropAddress =
+      formData.consigneeAddress ||
+      (dstLoc?.metadata?.address as string) ||
+      dstLoc?.displayName ||
+      dropCity;
 
     // Compute expiryTime
     let expiryTime: string | undefined;
@@ -167,10 +185,12 @@ export function CreateBookingModal({
       const payload: CreateBookingPayload = {
         customerId: formData.customerId,
         pickupCity,
+        pickupState,
         pickupAddress,
         pickupLat: 0,
         pickupLng: 0,
         dropCity,
+        dropState,
         dropAddress,
         dropLat: 0,
         dropLng: 0,
@@ -200,6 +220,12 @@ export function CreateBookingModal({
         expiryTime,
         postToSupplier: formData.postToSupplier,
         remarks: formData.remarks || undefined,
+        invoiceNo: formData.invoiceNo || undefined,
+        ewayBillNo: formData.ewayBillNo || undefined,
+        pickupContactName: formData.consignorName || undefined,
+        pickupContactGst: formData.consignorGst || undefined,
+        dropContactName: formData.consigneeName || undefined,
+        dropContactGst: formData.consigneeGst || undefined,
       };
 
       await bookingApi.create(payload);
@@ -497,6 +523,84 @@ export function CreateBookingModal({
             <Label htmlFor="ratePerTon" className="text-sm cursor-pointer">
               Rate / ton
             </Label>
+          </div>
+
+          {/* LR & Party Details */}
+          <div className="space-y-3 border-t pt-4">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              LR &amp; Party Details (optional)
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Invoice No</Label>
+                <Input
+                  value={formData.invoiceNo}
+                  onChange={(e) => set('invoiceNo', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">E-way Bill No</Label>
+                <Input
+                  placeholder="e.g. 141001234567"
+                  value={formData.ewayBillNo}
+                  onChange={(e) => set('ewayBillNo', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Consignor Name</Label>
+                <Input
+                  placeholder="Defaults to customer company name"
+                  value={formData.consignorName}
+                  onChange={(e) => set('consignorName', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Consignor GST No</Label>
+                <Input
+                  placeholder="e.g. 27ABCDE1234F1Z5"
+                  value={formData.consignorGst}
+                  onChange={(e) => set('consignorGst', e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Consignor Address</Label>
+              <Input
+                placeholder="Defaults to source location address"
+                value={formData.consignorAddress}
+                onChange={(e) => set('consignorAddress', e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Consignee Name</Label>
+                <Input
+                  value={formData.consigneeName}
+                  onChange={(e) => set('consigneeName', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Consignee GST No</Label>
+                <Input
+                  placeholder="e.g. 27ABCDE1234F1Z5"
+                  value={formData.consigneeGst}
+                  onChange={(e) => set('consigneeGst', e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Consignee Address</Label>
+              <Input
+                placeholder="Defaults to destination location address"
+                value={formData.consigneeAddress}
+                onChange={(e) => set('consigneeAddress', e.target.value)}
+              />
+            </div>
           </div>
 
           {/* Expiry Time */}

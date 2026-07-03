@@ -846,6 +846,7 @@ function MatchedTrucksModal({
           ownerRef: vRef ? { kind: vRef.kind, item: vRef.item?._id ?? vRef.item } : null,
           supplierOwner: row.vehicle?.supplierOwner || null,
           driver: row.driver || null,
+          currentDriver: row.vehicle?.currentDriver || null,
         };
       } else {
         // Own/market vehicle row
@@ -858,6 +859,7 @@ function MatchedTrucksModal({
           ownerRef: vRef ? { kind: vRef.kind, item: vRef.item?._id ?? vRef.item } : null,
           supplierOwner: row.supplierOwner || null,
           driver: null,
+          currentDriver: row.currentDriver || null,
         };
       }
       onAssign(vehicle);
@@ -1088,6 +1090,9 @@ function MatchedTrucksModal({
               Truck No
             </th>
             <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase">
+              Driver
+            </th>
+            <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase">
               Indent Expiry
             </th>
           </tr>
@@ -1099,6 +1104,11 @@ function MatchedTrucksModal({
                 <AssignBtn row={row} rowType="vehicle" />
               </td>
               <td className="px-4 py-2.5 text-gray-700 font-medium">{row.vehicleNumber || '—'}</td>
+              <td className="px-4 py-2.5 text-gray-600">
+                {row.currentDriver?.name || (
+                  <span className="text-gray-400 italic">Unassigned</span>
+                )}
+              </td>
               <td className="px-4 py-2.5 text-gray-600">
                 {timeLeftStr(booking.expiryTime) || '—'}
               </td>
@@ -1178,7 +1188,7 @@ function MatchedTrucksModal({
               {t.icon}
               {t.label}
               {t.count != null && t.count > 0 && (
-                <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold">
+                <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold">
                   {t.count}
                 </span>
               )}

@@ -126,3 +126,22 @@ export interface GSTVerificationResponse {
   state?: string;
   error?: string;
 }
+
+export interface ParsedEwayBillFields {
+  ewayBillNo?: string;
+  generatedDate?: string;
+  validUpto?: string;
+  approxDistanceKm?: number;
+  documentType?: string;
+  invoiceNo?: string;
+  invoiceDate?: string;
+  vehicleNumber?: string;
+  transporterId?: string;
+  transporterName?: string;
+  consignorName?: string;
+  consignorGst?: string;
+  consignorAddress?: string;
+  consigneeName?: string;
+  consigneeGst?: string;
+  consigneeAddress?: string;
+}

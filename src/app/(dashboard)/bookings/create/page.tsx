@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SideSelect } from '@/components/ui/side-select';
 import type { SideSelectOption } from '@/components/ui/side-select';
-import { bookingApi, customerApi, vehicleApi, driverApi, staffApi, supplierApi, cityApi } from '@/lib/api';
+import {
+  bookingApi,
+  customerApi,
+  vehicleApi,
+  driverApi,
+  staffApi,
+  supplierApi,
+  cityApi,
+  ewayBillApi,
+} from '@/lib/api';
 import { toast } from 'sonner';
 import type {
   Customer,
@@ -49,8 +58,12 @@ const emptyCreateLR = {
   lrDate: localDateTimeString(),
   consignorName: '',
   consignorAddress: '',
+  consignorGst: '',
   consigneeName: '',
   consigneeAddress: '',
+  consigneeGst: '',
+  invoiceNo: '',
+  ewayBillNo: '',
   customerPrice: '',
   supplierPrice: '',
   remarks: '',
@@ -144,12 +157,21 @@ const emptyForm = {
   isHazardous: false,
   isFragile: false,
   requiresTemperatureControl: false,
+  // Consignor / Consignee / E-way Bill (for LR printing)
+  ewayBillNo: '',
+  consignorName: '',
+  consignorGst: '',
+  consignorAddress: '',
+  consigneeName: '',
+  consigneeGst: '',
+  consigneeAddress: '',
 };
 
 export default function CreateIndentPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ActiveTab>('Indent');
   const [loading, setLoading] = useState(false);
+  const [parsingEwayBill, setParsingEwayBill] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -207,7 +229,11 @@ export default function CreateIndentPage() {
 
   const fetchVehicles = async () => {
     try {
-      const res = await vehicleApi.getAll({ limit: 200, verificationStatus: 'verified', status: 'active' });
+      const res = await vehicleApi.getAll({
+        limit: 200,
+        verificationStatus: 'verified',
+        status: 'active',
+      });
       setVehicles(res.data.data.vehicles);
     } catch {
       /* silent */
@@ -238,6 +264,33 @@ export default function CreateIndentPage() {
       setSupplierList(res.data.data.items || []);
     } catch {
       /* silent */
+    }
+  };
+
+  const handleEwayBillPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-uploading the same file
+    if (!file) return;
+
+    setParsingEwayBill(true);
+    try {
+      const res = await ewayBillApi.parsePdf(file);
+      const fields = res.data.data;
+
+      if (fields.ewayBillNo) set('ewayBillNo', fields.ewayBillNo);
+      if (fields.consignorName) set('consignorName', fields.consignorName);
+      if (fields.consignorGst) set('consignorGst', fields.consignorGst);
+      if (fields.consignorAddress) set('consignorAddress', fields.consignorAddress);
+      if (fields.consigneeName) set('consigneeName', fields.consigneeName);
+      if (fields.consigneeGst) set('consigneeGst', fields.consigneeGst);
+      if (fields.consigneeAddress) set('consigneeAddress', fields.consigneeAddress);
+
+      toast.success('E-way bill parsed — please review the prefilled fields');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Failed to parse e-way bill PDF');
+    } finally {
+      setParsingEwayBill(false);
     }
   };
 
@@ -282,7 +335,7 @@ export default function CreateIndentPage() {
 
     const seenCityNames = new Set(activeRegisteredCities);
     const cityOpts: SideSelectOption[] = [];
-    
+
     for (const c of cities) {
       const lowerName = c.name.toLowerCase();
       if (!seenCityNames.has(lowerName)) {
@@ -416,14 +469,29 @@ export default function CreateIndentPage() {
 
     const srcLoc = locations.find((l: MasterData) => l.key === formData.sourceCode);
     const dstLoc = locations.find((l: MasterData) => l.key === formData.destinationCode);
-    const findCity = (code: string) => cities.find(c => c.name === code);
-    const pickupCity = (srcLoc?.metadata?.city as string) || findCity(formData.sourceCode)?.name || formData.sourceCode;
-    const dropCity = (dstLoc?.metadata?.city as string) || findCity(formData.destinationCode)?.name || formData.destinationCode;
-    const pickupState = (srcLoc?.metadata?.state as string) || findCity(formData.sourceCode)?.state || undefined;
-    const dropState = (dstLoc?.metadata?.state as string) || findCity(formData.destinationCode)?.state || undefined;
+    const findCity = (code: string) => cities.find((c) => c.name === code);
+    const pickupCity =
+      (srcLoc?.metadata?.city as string) ||
+      findCity(formData.sourceCode)?.name ||
+      formData.sourceCode;
+    const dropCity =
+      (dstLoc?.metadata?.city as string) ||
+      findCity(formData.destinationCode)?.name ||
+      formData.destinationCode;
+    const pickupState =
+      (srcLoc?.metadata?.state as string) || findCity(formData.sourceCode)?.state || undefined;
+    const dropState =
+      (dstLoc?.metadata?.state as string) || findCity(formData.destinationCode)?.state || undefined;
     const pickupAddress =
-      (srcLoc?.metadata?.address as string) || srcLoc?.displayName || pickupCity;
-    const dropAddress = (dstLoc?.metadata?.address as string) || dstLoc?.displayName || dropCity;
+      formData.consignorAddress ||
+      (srcLoc?.metadata?.address as string) ||
+      srcLoc?.displayName ||
+      pickupCity;
+    const dropAddress =
+      formData.consigneeAddress ||
+      (dstLoc?.metadata?.address as string) ||
+      dstLoc?.displayName ||
+      dropCity;
 
     let expiryTime: string | undefined;
     if (formData.expiryCustom) {
@@ -480,6 +548,11 @@ export default function CreateIndentPage() {
         expiryTime,
         postToSupplier: formData.postToSupplier,
         remarks: formData.remarks || undefined,
+        ewayBillNo: formData.ewayBillNo || undefined,
+        pickupContactName: formData.consignorName || undefined,
+        pickupContactGst: formData.consignorGst || undefined,
+        dropContactName: formData.consigneeName || undefined,
+        dropContactGst: formData.consigneeGst || undefined,
       };
 
       await bookingApi.create(payload);
@@ -514,11 +587,17 @@ export default function CreateIndentPage() {
 
     const srcLoc = locations.find((l: MasterData) => l.key === dlForm.sourceCode);
     const dstLoc = locations.find((l: MasterData) => l.key === dlForm.destinationCode);
-    const findCity = (code: string) => cities.find(c => c.name === code);
-    const pickupCity = (srcLoc?.metadata?.city as string) || findCity(dlForm.sourceCode)?.name || dlForm.sourceCode;
-    const dropCity = (dstLoc?.metadata?.city as string) || findCity(dlForm.destinationCode)?.name || dlForm.destinationCode;
-    const pickupState = (srcLoc?.metadata?.state as string) || findCity(dlForm.sourceCode)?.state || undefined;
-    const dropState = (dstLoc?.metadata?.state as string) || findCity(dlForm.destinationCode)?.state || undefined;
+    const findCity = (code: string) => cities.find((c) => c.name === code);
+    const pickupCity =
+      (srcLoc?.metadata?.city as string) || findCity(dlForm.sourceCode)?.name || dlForm.sourceCode;
+    const dropCity =
+      (dstLoc?.metadata?.city as string) ||
+      findCity(dlForm.destinationCode)?.name ||
+      dlForm.destinationCode;
+    const pickupState =
+      (srcLoc?.metadata?.state as string) || findCity(dlForm.sourceCode)?.state || undefined;
+    const dropState =
+      (dstLoc?.metadata?.state as string) || findCity(dlForm.destinationCode)?.state || undefined;
     const pickupAddress =
       (srcLoc?.metadata?.address as string) || srcLoc?.displayName || pickupCity;
     const dropAddress = (dstLoc?.metadata?.address as string) || dstLoc?.displayName || dropCity;
@@ -610,11 +689,17 @@ export default function CreateIndentPage() {
 
     const srcLoc = locations.find((l: MasterData) => l.key === diForm.sourceCode);
     const dstLoc = locations.find((l: MasterData) => l.key === diForm.destinationCode);
-    const findCity = (code: string) => cities.find(c => c.name === code);
-    const pickupCity = (srcLoc?.metadata?.city as string) || findCity(diForm.sourceCode)?.name || diForm.sourceCode;
-    const dropCity = (dstLoc?.metadata?.city as string) || findCity(diForm.destinationCode)?.name || diForm.destinationCode;
-    const pickupState = (srcLoc?.metadata?.state as string) || findCity(diForm.sourceCode)?.state || undefined;
-    const dropState = (dstLoc?.metadata?.state as string) || findCity(diForm.destinationCode)?.state || undefined;
+    const findCity = (code: string) => cities.find((c) => c.name === code);
+    const pickupCity =
+      (srcLoc?.metadata?.city as string) || findCity(diForm.sourceCode)?.name || diForm.sourceCode;
+    const dropCity =
+      (dstLoc?.metadata?.city as string) ||
+      findCity(diForm.destinationCode)?.name ||
+      diForm.destinationCode;
+    const pickupState =
+      (srcLoc?.metadata?.state as string) || findCity(diForm.sourceCode)?.state || undefined;
+    const dropState =
+      (dstLoc?.metadata?.state as string) || findCity(diForm.destinationCode)?.state || undefined;
     const pickupAddress =
       (srcLoc?.metadata?.address as string) || srcLoc?.displayName || pickupCity;
     const dropAddress = (dstLoc?.metadata?.address as string) || dstLoc?.displayName || dropCity;
@@ -684,8 +769,6 @@ export default function CreateIndentPage() {
       setLoading(false);
     }
   };
-
-
 
   const handleCreateLRSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -757,6 +840,12 @@ export default function CreateIndentPage() {
         vehicleId: lrForm.vehicleId,
         driverId: lrForm.driverId || undefined,
         remarks: lrForm.remarks || undefined,
+        invoiceNo: lrForm.invoiceNo || undefined,
+        ewayBillNo: lrForm.ewayBillNo || undefined,
+        pickupContactName: lrForm.consignorName || undefined,
+        pickupContactGst: lrForm.consignorGst || undefined,
+        dropContactName: lrForm.consigneeName || undefined,
+        dropContactGst: lrForm.consigneeGst || undefined,
       };
 
       await bookingApi.create(payload);
@@ -1459,6 +1548,103 @@ export default function CreateIndentPage() {
                 className="bg-white text-sm resize-none"
               />
             </FormField>
+
+            {/* Consignor / Consignee / E-way Bill */}
+            <div className="bg-white rounded-md border border-gray-200 px-4 py-3 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                  Consignor / Consignee (for LR)
+                </p>
+                <label
+                  htmlFor="ewayBillPdfUpload"
+                  className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border cursor-pointer transition-colors ${
+                    parsingEwayBill
+                      ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'border-blue-200 text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  {parsingEwayBill ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="h-3.5 w-3.5" />
+                  )}
+                  {parsingEwayBill ? 'Parsing...' : 'Upload E-way Bill PDF'}
+                </label>
+                <input
+                  id="ewayBillPdfUpload"
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  disabled={parsingEwayBill}
+                  onChange={handleEwayBillPdfUpload}
+                />
+              </div>
+
+              <FormField label="E-way Bill No">
+                <Input
+                  placeholder="Enter e-way bill number"
+                  value={formData.ewayBillNo}
+                  onChange={(e) => set('ewayBillNo', e.target.value)}
+                  className="bg-white text-sm"
+                />
+              </FormField>
+
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Consignor Name">
+                  <Input
+                    placeholder="Consignor name"
+                    value={formData.consignorName}
+                    onChange={(e) => set('consignorName', e.target.value)}
+                    className="bg-white text-sm"
+                  />
+                </FormField>
+                <FormField label="Consignor GST No">
+                  <Input
+                    placeholder="Consignor GST"
+                    value={formData.consignorGst}
+                    onChange={(e) => set('consignorGst', e.target.value)}
+                    className="bg-white text-sm"
+                  />
+                </FormField>
+              </div>
+              <FormField label="Consignor Address">
+                <Textarea
+                  placeholder="Consignor address"
+                  value={formData.consignorAddress}
+                  onChange={(e) => set('consignorAddress', e.target.value)}
+                  rows={2}
+                  className="bg-white text-sm resize-none"
+                />
+              </FormField>
+
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Consignee Name">
+                  <Input
+                    placeholder="Consignee name"
+                    value={formData.consigneeName}
+                    onChange={(e) => set('consigneeName', e.target.value)}
+                    className="bg-white text-sm"
+                  />
+                </FormField>
+                <FormField label="Consignee GST No">
+                  <Input
+                    placeholder="Consignee GST"
+                    value={formData.consigneeGst}
+                    onChange={(e) => set('consigneeGst', e.target.value)}
+                    className="bg-white text-sm"
+                  />
+                </FormField>
+              </div>
+              <FormField label="Consignee Address">
+                <Textarea
+                  placeholder="Consignee address"
+                  value={formData.consigneeAddress}
+                  onChange={(e) => set('consigneeAddress', e.target.value)}
+                  rows={2}
+                  className="bg-white text-sm resize-none"
+                />
+              </FormField>
+            </div>
 
             {/* Post to supplier + cargo flags */}
             <div className="bg-white rounded-md border border-gray-200 px-4 py-3 flex flex-wrap gap-5">

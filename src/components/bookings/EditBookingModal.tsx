@@ -74,9 +74,15 @@ export function EditBookingModal({
     jobNo: '',
     hireChallan: '',
     invoiceNo: '',
+    ewayBillNo: '',
     shipmentNo: '',
     containerNo: '',
     poNumber: '',
+    // Consignor / Consignee (for LR printing)
+    pickupContactName: '',
+    pickupContactGst: '',
+    dropContactName: '',
+    dropContactGst: '',
   });
 
   useEffect(() => {
@@ -98,8 +104,10 @@ export function EditBookingModal({
         // Pricing & Operational
         customerPrice: booking.customerPrice != null ? String(booking.customerPrice) : '',
         supplierPrice: booking.supplierPrice != null ? String(booking.supplierPrice) : '',
-        customerAdvancePct: booking.customerAdvancePct != null ? String(booking.customerAdvancePct) : '',
-        supplierAdvancePct: booking.supplierAdvancePct != null ? String(booking.supplierAdvancePct) : '',
+        customerAdvancePct:
+          booking.customerAdvancePct != null ? String(booking.customerAdvancePct) : '',
+        supplierAdvancePct:
+          booking.supplierAdvancePct != null ? String(booking.supplierAdvancePct) : '',
         supplierTds: booking.supplierTds != null ? String(booking.supplierTds) : '',
         invoiceTo: booking.invoiceTo || '',
         tripKm: booking.tripKm != null ? String(booking.tripKm) : '',
@@ -112,9 +120,15 @@ export function EditBookingModal({
         jobNo: booking.jobNo || '',
         hireChallan: booking.hireChallan || '',
         invoiceNo: booking.invoiceNo || '',
+        ewayBillNo: booking.ewayBillNo || '',
         shipmentNo: booking.shipmentNo || '',
         containerNo: booking.containerNo || '',
         poNumber: booking.poNumber || '',
+        // Consignor / Consignee (for LR printing)
+        pickupContactName: booking.pickup?.contactPerson?.name || '',
+        pickupContactGst: booking.pickup?.contactPerson?.gstNumber || '',
+        dropContactName: booking.drop?.contactPerson?.name || '',
+        dropContactGst: booking.drop?.contactPerson?.gstNumber || '',
       });
     }
   }, [booking, open]);
@@ -132,7 +146,10 @@ export function EditBookingModal({
         dropAddress: formData.dropAddress,
         materialType: formData.materialType,
         weight: formData.weight
-          ? { value: parseFloat(formData.weight), unit: formData.weightUnit as 'kg' | 'tons' | 'quintal' }
+          ? {
+              value: parseFloat(formData.weight),
+              unit: formData.weightUnit as 'kg' | 'tons' | 'quintal',
+            }
           : undefined,
         truckType: formData.truckType,
         bodyType: formData.bodyType,
@@ -143,21 +160,33 @@ export function EditBookingModal({
         // Pricing & Operational
         ...(formData.customerPrice !== '' && { customerPrice: parseFloat(formData.customerPrice) }),
         ...(formData.supplierPrice !== '' && { supplierPrice: parseFloat(formData.supplierPrice) }),
-        ...(formData.customerAdvancePct !== '' && { customerAdvancePct: parseFloat(formData.customerAdvancePct) }),
-        ...(formData.supplierAdvancePct !== '' && { supplierAdvancePct: parseFloat(formData.supplierAdvancePct) }),
+        ...(formData.customerAdvancePct !== '' && {
+          customerAdvancePct: parseFloat(formData.customerAdvancePct),
+        }),
+        ...(formData.supplierAdvancePct !== '' && {
+          supplierAdvancePct: parseFloat(formData.supplierAdvancePct),
+        }),
         ...(formData.supplierTds !== '' && { supplierTds: parseFloat(formData.supplierTds) }),
         ...(formData.invoiceTo && { invoiceTo: formData.invoiceTo }),
         ...(formData.tripKm !== '' && { tripKm: parseFloat(formData.tripKm) }),
         ...(formData.actualKm !== '' && { actualKm: parseFloat(formData.actualKm) }),
-        ...(formData.expectedDeliveryDate && { expectedDeliveryDate: new Date(formData.expectedDeliveryDate).toISOString() }),
+        ...(formData.expectedDeliveryDate && {
+          expectedDeliveryDate: new Date(formData.expectedDeliveryDate).toISOString(),
+        }),
         // LR & Reference Numbers (send empty string to clear, omit if untouched would require dirty tracking)
         ...(formData.boeNumber !== '' && { boeNumber: formData.boeNumber }),
         ...(formData.jobNo !== '' && { jobNo: formData.jobNo }),
         ...(formData.hireChallan !== '' && { hireChallan: formData.hireChallan }),
         ...(formData.invoiceNo !== '' && { invoiceNo: formData.invoiceNo }),
+        ...(formData.ewayBillNo !== '' && { ewayBillNo: formData.ewayBillNo }),
         ...(formData.shipmentNo !== '' && { shipmentNo: formData.shipmentNo }),
         ...(formData.containerNo !== '' && { containerNo: formData.containerNo }),
         ...(formData.poNumber !== '' && { poNumber: formData.poNumber }),
+        // Consignor / Consignee (for LR printing)
+        ...(formData.pickupContactName !== '' && { pickupContactName: formData.pickupContactName }),
+        ...(formData.pickupContactGst !== '' && { pickupContactGst: formData.pickupContactGst }),
+        ...(formData.dropContactName !== '' && { dropContactName: formData.dropContactName }),
+        ...(formData.dropContactGst !== '' && { dropContactGst: formData.dropContactGst }),
       };
 
       await bookingApi.update(booking._id, updateData);
@@ -382,7 +411,9 @@ export function EditBookingModal({
 
           {/* Pricing & Operational */}
           <div className="border-t pt-4">
-            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Pricing &amp; Operational</p>
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Pricing &amp; Operational
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="customerPrice">Customer Price (₹)</Label>
@@ -481,7 +512,9 @@ export function EditBookingModal({
                 />
               </div>
               <div className="md:col-span-2">
-                <Label htmlFor="expectedDeliveryDate">Expected Delivery Date &amp; Time (ETA)</Label>
+                <Label htmlFor="expectedDeliveryDate">
+                  Expected Delivery Date &amp; Time (ETA)
+                </Label>
                 <Input
                   id="expectedDeliveryDate"
                   type="datetime-local"
@@ -494,7 +527,9 @@ export function EditBookingModal({
 
           {/* LR & Reference Numbers */}
           <div className="border-t pt-4">
-            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">LR &amp; Reference Numbers</p>
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              LR &amp; Reference Numbers
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="boeNumber">BOE / Booking No</Label>
@@ -530,6 +565,15 @@ export function EditBookingModal({
                 />
               </div>
               <div>
+                <Label htmlFor="ewayBillNo">E-way Bill No</Label>
+                <Input
+                  id="ewayBillNo"
+                  value={formData.ewayBillNo}
+                  onChange={(e) => handleInputChange('ewayBillNo', e.target.value)}
+                  placeholder="e.g. 141001234567"
+                />
+              </div>
+              <div>
                 <Label htmlFor="shipmentNo">Shipment No</Label>
                 <Input
                   id="shipmentNo"
@@ -551,6 +595,50 @@ export function EditBookingModal({
                   id="poNumber"
                   value={formData.poNumber}
                   onChange={(e) => handleInputChange('poNumber', e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Consignor / Consignee (for LR printing) */}
+          <div className="border-t pt-4">
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Consignor / Consignee
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="pickupContactName">Consignor Name</Label>
+                <Input
+                  id="pickupContactName"
+                  value={formData.pickupContactName}
+                  onChange={(e) => handleInputChange('pickupContactName', e.target.value)}
+                  placeholder="Defaults to customer company name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="pickupContactGst">Consignor GST No</Label>
+                <Input
+                  id="pickupContactGst"
+                  value={formData.pickupContactGst}
+                  onChange={(e) => handleInputChange('pickupContactGst', e.target.value)}
+                  placeholder="e.g. 27ABCDE1234F1Z5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="dropContactName">Consignee Name</Label>
+                <Input
+                  id="dropContactName"
+                  value={formData.dropContactName}
+                  onChange={(e) => handleInputChange('dropContactName', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="dropContactGst">Consignee GST No</Label>
+                <Input
+                  id="dropContactGst"
+                  value={formData.dropContactGst}
+                  onChange={(e) => handleInputChange('dropContactGst', e.target.value)}
+                  placeholder="e.g. 27ABCDE1234F1Z5"
                 />
               </div>
             </div>

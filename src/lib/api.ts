@@ -25,6 +25,7 @@ import type {
   CreateEwayBillRequest,
   UpdatePartBRequest,
   GSTVerificationResponse,
+  ParsedEwayBillFields,
   PartBHistoryEntry,
   Staff,
   RoleTemplate,
@@ -144,11 +145,12 @@ export const bookingApi = {
 
   /** Generate LR PDF and upload to Cloudinary; returns { url, bookingId, lrNumber } */
   generateLR: (id: string) =>
-    api.get<ApiResponse<{ url: string; bookingId: string; lrNumber?: string }>>(`/bookings/${id}/generate-lr`),
+    api.get<ApiResponse<{ url: string; bookingId: string; lrNumber?: string }>>(
+      `/bookings/${id}/generate-lr`
+    ),
 
   /** Download LR PDF as a binary blob */
-  downloadLR: (id: string) =>
-    api.get(`/bookings/${id}/download-lr`, { responseType: 'blob' }),
+  downloadLR: (id: string) => api.get(`/bookings/${id}/download-lr`, { responseType: 'blob' }),
 
   /** Download booking-level invoice PDF as a binary blob */
   downloadInvoicePdf: (id: string) =>
@@ -156,7 +158,9 @@ export const bookingApi = {
 
   /** Generate customer Invoice PDF and upload to Cloudinary; returns { url, bookingId, invoiceNo } */
   generateInvoice: (id: string) =>
-    api.get<ApiResponse<{ url: string; bookingId: string; invoiceNo?: string }>>(`/bookings/${id}/generate-invoice`),
+    api.get<ApiResponse<{ url: string; bookingId: string; invoiceNo?: string }>>(
+      `/bookings/${id}/generate-invoice`
+    ),
 };
 
 // ============================================================================
@@ -520,6 +524,14 @@ export const ewayBillApi = {
 
   verifyGSTIN: (gstin: string) =>
     api.post<ApiResponse<GSTVerificationResponse>>('/eway-bills/verify-gstin', { gstin }),
+
+  parsePdf: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post<ApiResponse<ParsedEwayBillFields>>('/eway-bills/parse-pdf', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // ============================================================================

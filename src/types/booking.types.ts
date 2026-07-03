@@ -14,6 +14,7 @@ export interface Booking {
       type: 'Point';
       coordinates: [number, number];
     };
+    contactPerson?: { name?: string; phone?: string; gstNumber?: string };
   };
   drop: {
     city: string;
@@ -22,6 +23,7 @@ export interface Booking {
       type: 'Point';
       coordinates: [number, number];
     };
+    contactPerson?: { name?: string; phone?: string; gstNumber?: string };
   };
   materialType: string;
   weight: {
@@ -133,6 +135,7 @@ export interface Booking {
   jobNo?: string;
   hireChallan?: string;
   invoiceNo?: string;
+  ewayBillNo?: string;
   shipmentNo?: string;
   containerNo?: string;
   poNumber?: string;
@@ -171,10 +174,12 @@ export interface Booking {
 export interface CreateBookingPayload {
   customerId: string;
   pickupCity: string;
+  pickupState?: string;
   pickupAddress: string;
   pickupLat: number;
   pickupLng: number;
   dropCity: string;
+  dropState?: string;
   dropAddress: string;
   dropLat: number;
   dropLng: number;
@@ -221,6 +226,15 @@ export interface CreateBookingPayload {
   accountNo?: string;
   podType?: 'Hard' | 'Soft';
   tripKm?: number;
+  // LR reference fields
+  invoiceNo?: string;
+  ewayBillNo?: string;
+  pickupContactName?: string;
+  pickupContactPhone?: string;
+  pickupContactGst?: string;
+  dropContactName?: string;
+  dropContactPhone?: string;
+  dropContactGst?: string;
 }
 
 export interface BookingFilters {
@@ -261,11 +275,7 @@ export interface BookingStats {
 export interface Activity {
   _id: string;
   type:
-    | 'booking_created'
-    | 'driver_assigned'
-    | 'status_update'
-    | 'pod_uploaded'
-    | 'payment_received';
+    'booking_created' | 'driver_assigned' | 'status_update' | 'pod_uploaded' | 'payment_received';
   message: string;
   bookingId?: string;
   timestamp: string;
