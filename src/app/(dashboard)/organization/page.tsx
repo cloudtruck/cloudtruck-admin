@@ -13,6 +13,7 @@ import { EditLaneModal } from '@/components/organization/EditLaneModal';
 import { EditAddressModal } from '@/components/organization/EditAddressModal';
 import { EditBranchModal } from '@/components/organization/EditBranchModal';
 import { AddMasterDataModal } from '@/components/organization/AddMasterDataModal';
+import { EditMasterDataModal } from '@/components/organization/EditMasterDataModal';
 import { useBranches } from '@/hooks/useBranches';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useAccounts } from '@/hooks/useAccounts';
@@ -545,15 +546,29 @@ const ROLE_CHIPS = [
   'Operations',
 ];
 
-function TagChips({ items, onAdd }: { items: string[]; onAdd?: () => void }) {
+function TagChips({
+  items,
+  onAdd,
+  onEdit,
+}: {
+  items: MasterData[];
+  onAdd?: () => void;
+  onEdit?: (item: MasterData) => void;
+}) {
   return (
     <div className="flex flex-wrap gap-1.5 items-center">
       {items.map((item) => (
         <span
-          key={item}
-          className="border border-gray-300 rounded px-2 py-0.5 text-xs text-gray-700 bg-white"
+          key={item._id}
+          onClick={() => onEdit && onEdit(item)}
+          className={`group flex items-center gap-1.5 border border-gray-300 rounded px-2 py-0.5 text-xs text-gray-700 bg-white ${
+            onEdit ? 'cursor-pointer hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors' : ''
+          }`}
         >
-          {item}
+          {item.displayName.toUpperCase()}
+          {onEdit && (
+            <Pencil className="h-2.5 w-2.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+          )}
         </span>
       ))}
       {onAdd && (
@@ -668,6 +683,7 @@ function MasterTab({
 
   // Add master data modal
   const [addMasterCategory, setAddMasterCategory] = useState<MasterData['category'] | null>(null);
+  const [editingItem, setEditingItem] = useState<MasterData | null>(null);
 
   // ── Sync local state from settings ───────────────────────────────────────
   // Runs whenever updatedAt changes (initial load or successful save).
@@ -746,22 +762,25 @@ function MasterTab({
 
       <SettingRow label="Material Type">
         <TagChips
-          items={materialTypes.filter((t) => t.isActive).map((t) => t.displayName.toUpperCase())}
+          items={materialTypes.filter((t) => t.isActive)}
           onAdd={() => setAddMasterCategory('material-type')}
+          onEdit={setEditingItem}
         />
       </SettingRow>
 
       <SettingRow label="Truck Type">
         <TagChips
-          items={truckTypes.filter((t) => t.isActive).map((t) => t.displayName.toUpperCase())}
+          items={truckTypes.filter((t) => t.isActive)}
           onAdd={() => setAddMasterCategory('truck-type')}
+          onEdit={setEditingItem}
         />
       </SettingRow>
 
       <SettingRow label="Charge Type">
         <TagChips
-          items={chargeTypes.filter((t) => t.isActive).map((t) => t.displayName.toUpperCase())}
+          items={chargeTypes.filter((t) => t.isActive)}
           onAdd={() => setAddMasterCategory('charge-type')}
+          onEdit={setEditingItem}
         />
       </SettingRow>
 
@@ -1168,6 +1187,17 @@ function MasterTab({
           }}
           onSuccess={() => {
             setAddMasterCategory(null);
+            onRefreshMaster();
+          }}
+        />
+      )}
+
+      {editingItem && (
+        <EditMasterDataModal
+          item={editingItem}
+          open={!!editingItem}
+          onCloseAction={() => {
+            setEditingItem(null);
             onRefreshMaster();
           }}
         />
