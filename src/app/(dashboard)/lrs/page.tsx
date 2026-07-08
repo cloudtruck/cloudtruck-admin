@@ -48,12 +48,12 @@ async function handleDownloadLR(bookingId: string, lrNumber?: string) {
 
 async function handleViewLR(bookingId: string) {
   try {
-    const res = await bookingApi.generateLR(bookingId);
-    const url = res.data?.data?.url;
-    if (url) window.open(url, '_blank');
-    else alert('LR PDF not available yet.');
+    const res = await bookingApi.downloadLR(bookingId);
+    const blob = new Blob([res.data as BlobPart], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
   } catch {
-    alert('Failed to generate LR PDF. Please try again.');
+    alert('Failed to view LR PDF. Please try again.');
   }
 }
 
