@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { bookingApi, staffApi } from '@/lib/api';
+import { bookingApi, staffApi, masterDataApi } from '@/lib/api';
 import { Booking, Staff } from '@/types';
 import { toast } from 'sonner';
 
@@ -57,10 +57,16 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
   const [pickupContactName, setPickupContactName] = useState(
     booking.pickup?.contactPerson?.name || ''
   );
+  const [pickupContactPhone, setPickupContactPhone] = useState(
+    booking.pickup?.contactPerson?.phone || ''
+  );
   const [pickupContactGst, setPickupContactGst] = useState(
     booking.pickup?.contactPerson?.gstNumber || ''
   );
   const [dropContactName, setDropContactName] = useState(booking.drop?.contactPerson?.name || '');
+  const [dropContactPhone, setDropContactPhone] = useState(
+    booking.drop?.contactPerson?.phone || ''
+  );
   const [dropContactGst, setDropContactGst] = useState(
     booking.drop?.contactPerson?.gstNumber || ''
   );
@@ -90,7 +96,6 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
       'other',
     ]);
     // Truck types from master data API
-    const { masterDataApi } = require('@/lib/api');
     masterDataApi
       .getByCategory('truck-type', false)
       .then((res: any) =>
@@ -127,13 +132,15 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
         truckTypeNeeded: truckTypeNeeded !== 'none' ? truckTypeNeeded : undefined,
         expiryTime: expiryTime || undefined,
         postToSupplier,
-        ...(invoiceNo !== '' && { invoiceNo }),
-        ...(ewayBillNo !== '' && { ewayBillNo }),
-        ...(pickupContactName !== '' && { pickupContactName }),
-        ...(pickupContactGst !== '' && { pickupContactGst }),
+        invoiceNo,
+        ewayBillNo,
+        pickupContactName,
+        pickupContactPhone,
+        pickupContactGst,
+        dropContactName,
+        dropContactPhone,
+        dropContactGst,
         ...(pickupAddress !== '' && { pickupAddress }),
-        ...(dropContactName !== '' && { dropContactName }),
-        ...(dropContactGst !== '' && { dropContactGst }),
         ...(dropAddress !== '' && { dropAddress }),
       } as Partial<Booking>);
       toast.success('Indent updated successfully');
@@ -418,16 +425,28 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="pickupContactGst" className="text-xs font-semibold">
-                  Consignor GST No
+                <Label htmlFor="pickupContactPhone" className="text-xs font-semibold">
+                  Consignor Phone
                 </Label>
                 <Input
-                  id="pickupContactGst"
-                  value={pickupContactGst}
-                  onChange={(e) => setPickupContactGst(e.target.value)}
-                  placeholder="e.g. 27ABCDE1234F1Z5"
+                  id="pickupContactPhone"
+                  value={pickupContactPhone}
+                  onChange={(e) => setPickupContactPhone(e.target.value)}
+                  placeholder="e.g. +91 9876543210"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="pickupContactGst" className="text-xs font-semibold">
+                Consignor GST No
+              </Label>
+              <Input
+                id="pickupContactGst"
+                value={pickupContactGst}
+                onChange={(e) => setPickupContactGst(e.target.value)}
+                placeholder="e.g. 27ABCDE1234F1Z5"
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -454,16 +473,28 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="dropContactGst" className="text-xs font-semibold">
-                  Consignee GST No
+                <Label htmlFor="dropContactPhone" className="text-xs font-semibold">
+                  Consignee Phone
                 </Label>
                 <Input
-                  id="dropContactGst"
-                  value={dropContactGst}
-                  onChange={(e) => setDropContactGst(e.target.value)}
-                  placeholder="e.g. 27ABCDE1234F1Z5"
+                  id="dropContactPhone"
+                  value={dropContactPhone}
+                  onChange={(e) => setDropContactPhone(e.target.value)}
+                  placeholder="e.g. +91 9876543210"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="dropContactGst" className="text-xs font-semibold">
+                Consignee GST No
+              </Label>
+              <Input
+                id="dropContactGst"
+                value={dropContactGst}
+                onChange={(e) => setDropContactGst(e.target.value)}
+                placeholder="e.g. 27ABCDE1234F1Z5"
+              />
             </div>
 
             <div className="space-y-1.5">
