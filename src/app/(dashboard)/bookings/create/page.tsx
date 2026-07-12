@@ -142,6 +142,7 @@ const emptyForm = {
   weight: '',
   ratePerTon: false,
   materialType: '',
+  customMaterialType: '',
   numberOfTrucks: '1',
   bodyType: '',
   supplierEntity: '',
@@ -514,7 +515,7 @@ export default function CreateIndentPage() {
         dropAddress,
         dropLat: 0,
         dropLng: 0,
-        materialType: formData.materialType || 'general-cargo',
+        materialType: formData.materialType === 'other' ? (formData.customMaterialType || 'other') : (formData.materialType || 'general-cargo'),
         weight: formData.weight ? parseFloat(formData.weight) : 1,
         weightUnit: formData.weightUnit,
         truckType: formData.truckType,
@@ -1383,16 +1384,30 @@ export default function CreateIndentPage() {
 
             {/* Material Type + No. of Vehicles */}
             <div className="grid grid-cols-2 gap-3">
-              <FormField label="Material type">
-                <SideSelect
-                  label="Material type"
-                  panelTitle="Select Material"
-                  placeholder="Select material"
-                  options={materialOptions}
-                  value={formData.materialType}
-                  onChange={(v) => set('materialType', v)}
-                />
-              </FormField>
+              <div className="space-y-3">
+                <FormField label="Material type">
+                  <SideSelect
+                    label="Material type"
+                    panelTitle="Select Material"
+                    placeholder="Select material"
+                    options={materialOptions}
+                    value={formData.materialType}
+                    onChange={(v) => set('materialType', v)}
+                  />
+                </FormField>
+                {formData.materialType === 'other' && (
+                  <FormField label="Enter Material Type" required>
+                    <Input
+                      type="text"
+                      placeholder="Enter custom material type"
+                      value={formData.customMaterialType || ''}
+                      onChange={(e) => set('customMaterialType', e.target.value)}
+                      className="bg-white text-sm"
+                      required
+                    />
+                  </FormField>
+                )}
+              </div>
               <FormField label="No of Vehicle">
                 <Input
                   type="number"

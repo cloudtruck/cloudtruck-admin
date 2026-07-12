@@ -33,6 +33,26 @@ interface EditBookingModalProps {
   onSuccessAction: () => void;
 }
 
+const PRESET_MATERIAL_TYPES = [
+  'FMCG',
+  'electronics',
+  'furniture',
+  'steel',
+  'cement',
+  'tiles',
+  'chemicals',
+  'textiles',
+  'agriculture',
+  'automobile-parts',
+  'machinery',
+  'paper',
+  'pharma',
+  'plastic',
+  'food-grains',
+  'vegetables-fruits',
+  'general-cargo',
+];
+
 export function EditBookingModal({
   booking,
   open,
@@ -51,6 +71,7 @@ export function EditBookingModal({
     dropCity: '',
     dropAddress: '',
     materialType: '',
+    customMaterialType: '',
     weight: '',
     weightUnit: 'tons' as 'kg' | 'tons' | 'quintal',
     truckType: '',
@@ -92,7 +113,12 @@ export function EditBookingModal({
         pickupAddress: booking.pickup?.address || '',
         dropCity: booking.drop?.city || '',
         dropAddress: booking.drop?.address || '',
-        materialType: booking.materialType || '',
+        materialType: booking.materialType && booking.materialType !== 'none' && !PRESET_MATERIAL_TYPES.includes(booking.materialType)
+          ? 'other'
+          : (booking.materialType || ''),
+        customMaterialType: booking.materialType && booking.materialType !== 'none' && !PRESET_MATERIAL_TYPES.includes(booking.materialType)
+          ? booking.materialType
+          : '',
         weight: booking.weight?.value?.toString() || '',
         weightUnit: booking.weight?.unit || 'tons',
         truckType: booking.truckTypeNeeded || '',
@@ -144,7 +170,7 @@ export function EditBookingModal({
         pickupAddress: formData.pickupAddress,
         dropCity: formData.dropCity,
         dropAddress: formData.dropAddress,
-        materialType: formData.materialType,
+        materialType: formData.materialType === 'other' ? formData.customMaterialType : formData.materialType,
         weight: formData.weight
           ? {
               value: parseFloat(formData.weight),
@@ -281,6 +307,17 @@ export function EditBookingModal({
                     ))}
                 </SelectContent>
               </Select>
+              {formData.materialType === 'other' && (
+                <div className="pt-1.5">
+                  <Input
+                    type="text"
+                    placeholder="Enter custom material type"
+                    value={formData.customMaterialType || ''}
+                    onChange={(e) => handleInputChange('customMaterialType', e.target.value)}
+                    required
+                  />
+                </div>
+              )}
             </div>
             <div>
               <Label htmlFor="weight">Weight</Label>

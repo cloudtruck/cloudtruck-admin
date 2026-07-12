@@ -31,6 +31,26 @@ interface ManageIndentModalProps {
 
 const EXPIRY_PRESETS = [24, 36, 48];
 
+const PRESET_MATERIAL_TYPES = [
+  'FMCG',
+  'electronics',
+  'furniture',
+  'steel',
+  'cement',
+  'tiles',
+  'chemicals',
+  'textiles',
+  'agriculture',
+  'automobile-parts',
+  'machinery',
+  'paper',
+  'pharma',
+  'plastic',
+  'food-grains',
+  'vegetables-fruits',
+  'general-cargo',
+];
+
 export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentModalProps) {
   const [saving, setSaving] = useState(false);
   const [materialTypes, setMaterialTypes] = useState<string[]>([]);
@@ -46,7 +66,9 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
   const [weightUnit, setWeightUnit] = useState(
     booking.weight?.unit || booking.weightUnit || 'tons'
   );
-  const [materialType, setMaterialType] = useState(booking.materialType || 'none');
+  const isCustomMaterial = !!(booking.materialType && booking.materialType !== 'none' && !PRESET_MATERIAL_TYPES.includes(booking.materialType));
+  const [materialType, setMaterialType] = useState(isCustomMaterial ? 'other' : (booking.materialType || 'none'));
+  const [customMaterialType, setCustomMaterialType] = useState(isCustomMaterial ? booking.materialType : '');
   const [customerPrice, setCustomerPrice] = useState(String(booking.customerPrice ?? 0));
   const [supplierPrice, setSupplierPrice] = useState(String(booking.supplierPrice ?? 0));
   const [truckTypeNeeded, setTruckTypeNeeded] = useState(booking.truckTypeNeeded || 'none');
@@ -126,7 +148,7 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
         trafficController: trafficController !== 'none' ? trafficController : undefined,
         numberOfTrucks: Number(numberOfTrucks) || 1,
         weight: weight ? { value: Number(weight), unit: weightUnit } : undefined,
-        materialType: materialType !== 'none' ? materialType : undefined,
+        materialType: materialType === 'other' ? (customMaterialType || undefined) : (materialType !== 'none' ? materialType : undefined),
         customerPrice: customerPrice !== '' ? Number(customerPrice) : undefined,
         supplierPrice: supplierPrice !== '' ? Number(supplierPrice) : undefined,
         truckTypeNeeded: truckTypeNeeded !== 'none' ? truckTypeNeeded : undefined,
@@ -307,6 +329,18 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
                   ))}
                 </SelectContent>
               </Select>
+              {materialType === 'other' && (
+                <div className="pt-1">
+                  <Input
+                    type="text"
+                    placeholder="Enter custom material type"
+                    value={customMaterialType}
+                    onChange={(e) => setCustomMaterialType(e.target.value)}
+                    className="w-full"
+                    required
+                  />
+                </div>
+              )}
             </div>
           </div>
 

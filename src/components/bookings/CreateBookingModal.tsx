@@ -43,6 +43,7 @@ const emptyForm = {
   weight: '',
   ratePerTon: false,
   materialType: '',
+  customMaterialType: '',
   numberOfTrucks: '1',
   bodyType: '',
   // Staff
@@ -194,7 +195,7 @@ export function CreateBookingModal({
         dropAddress,
         dropLat: 0,
         dropLng: 0,
-        materialType: formData.materialType || 'general-cargo',
+        materialType: formData.materialType === 'other' ? (formData.customMaterialType || 'other') : (formData.materialType || 'general-cargo'),
         weight: formData.weight ? parseFloat(formData.weight) : 1,
         weightUnit: formData.weightUnit,
         truckType: formData.truckType,
@@ -444,6 +445,17 @@ export function CreateBookingModal({
                     ))}
                 </SelectContent>
               </Select>
+              {formData.materialType === 'other' && (
+                <div className="pt-1.5">
+                  <Input
+                    type="text"
+                    placeholder="Enter custom material type"
+                    value={formData.customMaterialType || ''}
+                    onChange={(e) => set('customMaterialType', e.target.value)}
+                    required
+                  />
+                </div>
+              )}
             </div>
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">No. of Vehicles</Label>
