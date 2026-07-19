@@ -48,14 +48,25 @@ async function handleDownloadInvoice(bookingId: string, invoiceNo?: string) {
 }
 
 async function handleViewInvoice(bookingId: string, invoiceNo?: string) {
+  const newWindow = window.open('', '_blank');
+  if (newWindow) {
+    newWindow.document.write('<p>Loading Invoice PDF...</p>');
+  }
   try {
     const res = await bookingApi.downloadInvoicePdf(bookingId);
     const blob = new Blob([res.data as BlobPart], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    // Revoke after a short delay to allow the tab to load
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    if (newWindow) {
+      newWindow.location.href = url;
+      // Revoke after a short delay to allow the tab to load
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } else {
+      window.location.href = url;
+    }
   } catch {
+    if (newWindow) {
+      newWindow.close();
+    }
     alert('Failed to view Invoice PDF. Please try again.');
   }
 }
@@ -78,6 +89,10 @@ async function handleCopyInvoiceLink(bookingId: string) {
 
 async function handleShareInvoiceWhatsApp(bookingId: string, invoiceNo?: string) {
   const toastId = toast.loading('Generating share link...');
+  const newWindow = window.open('', '_blank');
+  if (newWindow) {
+    newWindow.document.write('<p>Opening WhatsApp...</p>');
+  }
   try {
     const res = await bookingApi.generateInvoice(bookingId);
     const url = res.data?.data?.url;
@@ -85,11 +100,21 @@ async function handleShareInvoiceWhatsApp(bookingId: string, invoiceNo?: string)
       toast.dismiss(toastId);
       const text = `Hello, please find the Invoice (Inv No: ${invoiceNo || 'N/A'}) here: ${url}`;
       const encodedText = encodeURIComponent(text);
-      window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+      if (newWindow) {
+        newWindow.location.href = `https://wa.me/?text=${encodedText}`;
+      } else {
+        window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+      }
     } else {
+      if (newWindow) {
+        newWindow.close();
+      }
       toast.error('Invoice URL not found', { id: toastId });
     }
   } catch {
+    if (newWindow) {
+      newWindow.close();
+    }
     toast.error('Failed to share on WhatsApp', { id: toastId });
   }
 }

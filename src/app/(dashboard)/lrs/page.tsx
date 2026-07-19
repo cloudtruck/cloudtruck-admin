@@ -47,12 +47,25 @@ async function handleDownloadLR(bookingId: string, lrNumber?: string) {
 }
 
 async function handleViewLR(bookingId: string) {
+  const newWindow = window.open('', '_blank');
+  if (newWindow) {
+    newWindow.document.write('<p>Loading LR PDF...</p>');
+  }
   try {
     const res = await bookingApi.downloadLR(bookingId);
     const blob = new Blob([res.data as BlobPart], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
+    if (newWindow) {
+      newWindow.location.href = url;
+      // Revoke after a short delay to allow the tab to load
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } else {
+      window.location.href = url;
+    }
   } catch {
+    if (newWindow) {
+      newWindow.close();
+    }
     alert('Failed to view LR PDF. Please try again.');
   }
 }
@@ -75,6 +88,10 @@ async function handleCopyLRLink(bookingId: string) {
 
 async function handleShareLRWhatsApp(bookingId: string, lrNumber?: string) {
   const toastId = toast.loading('Generating share link...');
+  const newWindow = window.open('', '_blank');
+  if (newWindow) {
+    newWindow.document.write('<p>Opening WhatsApp...</p>');
+  }
   try {
     const res = await bookingApi.generateLR(bookingId);
     const url = res.data?.data?.url;
@@ -82,11 +99,21 @@ async function handleShareLRWhatsApp(bookingId: string, lrNumber?: string) {
       toast.dismiss(toastId);
       const text = `Hello, please find the Lorry Receipt (LR No: ${lrNumber || 'N/A'}) here: ${url}`;
       const encodedText = encodeURIComponent(text);
-      window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+      if (newWindow) {
+        newWindow.location.href = `https://wa.me/?text=${encodedText}`;
+      } else {
+        window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+      }
     } else {
+      if (newWindow) {
+        newWindow.close();
+      }
       toast.error('LR URL not found', { id: toastId });
     }
   } catch {
+    if (newWindow) {
+      newWindow.close();
+    }
     toast.error('Failed to share on WhatsApp', { id: toastId });
   }
 }
