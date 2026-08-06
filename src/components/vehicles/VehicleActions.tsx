@@ -29,17 +29,35 @@ import { toast } from 'sonner';
 import type { Vehicle } from '@/types';
 import { EditVehicleModal } from './EditVehicleModal';
 
+export function VerificationStatusBadge({ status }: { status?: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    verified: { label: 'Verified', cls: 'bg-green-100 text-green-700 border-green-200' },
+    pending: { label: 'Pending Verification', cls: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+    rejected: { label: 'Rejected', cls: 'bg-red-100 text-red-700 border-red-200' },
+    expired: { label: 'Expired', cls: 'bg-orange-100 text-orange-700 border-orange-200' },
+    'documents-submitted': { label: 'Docs Submitted', cls: 'bg-blue-100 text-blue-700 border-blue-200' },
+  };
+  const { label, cls } = map[status ?? ''] ?? {
+    label: status ?? '—',
+    cls: 'bg-gray-100 text-gray-600 border-gray-200',
+  };
+  return <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${cls}`}>{label}</span>;
+}
+
 interface VehicleActionsProps {
   vehicle: Vehicle;
   onSuccessAction?: () => void;
+  variant?: 'dropdown' | 'inline';
 }
 
-export function VehicleActions({ vehicle, onSuccessAction }: VehicleActionsProps) {
+export function VehicleActions({ vehicle, onSuccessAction, variant = 'dropdown' }: VehicleActionsProps) {
   const [loading, setLoading] = useState(false);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [reason, setReason] = useState('');
+
+  const isNotVerified = vehicle.verificationStatus !== 'verified' && !vehicle.isVerified;
 
   const handleApprove = async () => {
     setLoading(true);
@@ -81,35 +99,71 @@ export function VehicleActions({ vehicle, onSuccessAction }: VehicleActionsProps
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm">
-            <MoreVertical className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-
-          {!vehicle.isVerified && (
+      {variant === 'inline' ? (
+        <div className="flex items-center gap-2">
+          {isNotVerified && (
             <>
-              <DropdownMenuItem onClick={() => setApproveDialogOpen(true)}>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Approve Vehicle
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setRejectDialogOpen(true)}>
-                <XCircle className="h-4 w-4 mr-2" />
-                Reject Vehicle
-              </DropdownMenuItem>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-green-700 bg-green-50 hover:bg-green-100 hover:text-green-800 border-green-300"
+                onClick={() => setApproveDialogOpen(true)}
+              >
+                <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                Approve
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-red-700 bg-red-50 hover:bg-red-100 hover:text-red-800 border-red-300"
+                onClick={() => setRejectDialogOpen(true)}
+              >
+                <XCircle className="h-3.5 w-3.5 mr-1" />
+                Reject
+              </Button>
             </>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => setIsEditModalOpen(true)}
+            title="Edit details"
+          >
+            <Pencil className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        </div>
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuSeparator />
 
-          <DropdownMenuItem onClick={() => setIsEditModalOpen(true)}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit Details
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            {isNotVerified && (
+              <>
+                <DropdownMenuItem onClick={() => setApproveDialogOpen(true)}>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Approve Vehicle
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setRejectDialogOpen(true)}>
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Reject Vehicle
+                </DropdownMenuItem>
+              </>
+            )}
+
+            <DropdownMenuItem onClick={() => setIsEditModalOpen(true)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit Details
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       <EditVehicleModal
         vehicle={vehicle}

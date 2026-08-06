@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Truck, Plus, Trash2, Loader2, CalendarIcon } from 'lucide-react';
+import Link from 'next/link';
+import { Truck, Plus, Trash2, Loader2, CalendarIcon, ExternalLink } from 'lucide-react';
+import { VerificationStatusBadge, VehicleActions } from '@/components/vehicles/VehicleActions';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -208,12 +210,17 @@ export function SupplierVehicleList({ supplierId, onSuccess }: SupplierVehicleLi
                   key={vehicle._id}
                   className="p-4 border rounded-lg hover:bg-accent/50 transition-colors"
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <p className="font-semibold text-lg">{vehicle.vehicleNumber}</p>
-                      <p className="text-sm text-muted-foreground">{vehicle.truckType}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Link
+                        href={`/vehicles/${vehicle._id}`}
+                        className="font-semibold text-lg hover:underline flex items-center gap-1.5"
+                      >
+                        {vehicle.vehicleNumber}
+                        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Link>
+                      <span className="text-sm text-muted-foreground">({vehicle.truckType})</span>
+                      <VerificationStatusBadge status={vehicle.verificationStatus} />
                       <Badge
                         variant="outline"
                         className={
@@ -226,12 +233,16 @@ export function SupplierVehicleList({ supplierId, onSuccess }: SupplierVehicleLi
                       >
                         {vehicle.availability}
                       </Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <VehicleActions vehicle={vehicle} onSuccessAction={fetchVehicles} variant="inline" />
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                         disabled={removingId === vehicle._id}
                         onClick={() => handleRemoveVehicle(vehicle._id)}
+                        title="Remove vehicle from fleet"
                       >
                         {removingId === vehicle._id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -241,7 +252,7 @@ export function SupplierVehicleList({ supplierId, onSuccess }: SupplierVehicleLi
                       </Button>
                     </div>
                   </div>
-                  <div className="flex gap-4 text-sm text-muted-foreground">
+                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                     <span>
                       Length: {vehicle.length?.value} {vehicle.length?.unit}
                     </span>

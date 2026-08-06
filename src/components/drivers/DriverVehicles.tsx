@@ -9,6 +9,9 @@ import type { Vehicle } from '@/types';
 import { vehicleApi } from '@/lib/api';
 import { toast } from 'sonner';
 
+import Link from 'next/link';
+import { ExternalLink } from 'lucide-react';
+import { VerificationStatusBadge, VehicleActions } from '@/components/vehicles/VehicleActions';
 interface DriverVehiclesProps {
   driverId: string;
 }
@@ -69,25 +72,33 @@ export function DriverVehicles({ driverId }: DriverVehiclesProps) {
                 key={vehicle._id}
                 className="p-4 border rounded-lg hover:bg-accent/50 transition-colors"
               >
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <p className="font-semibold text-lg">{vehicle.vehicleNumber}</p>
-                    <p className="text-sm text-muted-foreground">{vehicle.truckType}</p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Link
+                      href={`/vehicles/${vehicle._id}`}
+                      className="font-semibold text-lg hover:underline flex items-center gap-1.5"
+                    >
+                      {vehicle.vehicleNumber}
+                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Link>
+                    <span className="text-sm text-muted-foreground">({vehicle.truckType})</span>
+                    <VerificationStatusBadge status={vehicle.verificationStatus} />
+                    <Badge
+                      variant="outline"
+                      className={
+                        vehicle.availability === 'available'
+                          ? 'bg-green-100 text-green-800 border-green-200'
+                          : vehicle.availability === 'on-trip'
+                            ? 'bg-blue-100 text-blue-800 border-blue-200'
+                            : 'bg-gray-100 text-gray-800 border-gray-200'
+                      }
+                    >
+                      {vehicle.availability}
+                    </Badge>
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      vehicle.availability === 'available'
-                        ? 'bg-green-100 text-green-800 border-green-200'
-                        : vehicle.availability === 'on-trip'
-                          ? 'bg-blue-100 text-blue-800 border-blue-200'
-                          : 'bg-gray-100 text-gray-800 border-gray-200'
-                    }
-                  >
-                    {vehicle.availability}
-                  </Badge>
+                  <VehicleActions vehicle={vehicle} onSuccessAction={fetchVehicles} variant="inline" />
                 </div>
-                <div className="flex gap-4 text-sm text-muted-foreground">
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                   <span>
                     Length: {vehicle.length.value} {vehicle.length.unit}
                   </span>
