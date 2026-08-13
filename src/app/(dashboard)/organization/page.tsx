@@ -61,10 +61,11 @@ import {
 import { DeleteRequestQueue } from '@/components/organization/DeleteRequestQueue';
 import { DeleteRequestModal } from '@/components/organization/DeleteRequestModal';
 import { EditSettingModal } from '@/components/organization/EditSettingModal';
+import SettingsTab from './settings/page';
 
 // ─── Tab definition ───────────────────────────────────────────────────────────
 
-type Tab = 'branches' | 'employees' | 'accounts' | 'address' | 'lane' | 'master';
+type Tab = 'branches' | 'employees' | 'accounts' | 'address' | 'lane' | 'master' | 'settings';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'branches', label: 'Branches' },
@@ -73,6 +74,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'address', label: 'Address' },
   { key: 'lane', label: 'Lane' },
   { key: 'master', label: 'Master' },
+  { key: 'settings', label: 'Settings' },
 ];
 
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
@@ -2025,6 +2027,7 @@ export default function OrganisationPage() {
           }}
         />
       )}
+      {activeTab === 'settings' && <SettingsTab />}
 
       {/* ── Modals ──────────────────────────────────────────────────────── */}
       {editingBranch && (
