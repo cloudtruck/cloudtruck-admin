@@ -669,7 +669,7 @@ export const organizationSettingsApi = {
   updateNotificationSettings: (data: Partial<OrganizationSettings>) =>
     api.patch<ApiResponse<OrganizationSettings>>('/organization/settings/notifications', data),
 
-  updateTaxSettings: (data: Partial<OrganizationSettings>) =>
+  updateTaxSettings: (data: { gstEnabled?: boolean; cgstRate?: number; sgstRate?: number; igstRate?: number }) =>
     api.patch<ApiResponse<OrganizationSettings>>('/organization/settings/tax', data),
 
   getNextBookingNumber: () =>

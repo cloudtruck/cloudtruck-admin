@@ -111,7 +111,7 @@ export function useOrganizationSettings() {
     }
   };
 
-  const updateTaxSettings = async (data: Partial<OrganizationSettings>) => {
+  const updateTaxSettings = async (data: { gstEnabled?: boolean; cgstRate?: number; sgstRate?: number; igstRate?: number }) => {
     try {
       const response = await organizationSettingsApi.updateTaxSettings(data);
 

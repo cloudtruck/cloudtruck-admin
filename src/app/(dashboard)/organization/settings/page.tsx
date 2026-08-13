@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Building, FileText, Settings as SettingsIcon, Save, Loader2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Building, FileText, Settings as SettingsIcon, Save, Loader2, Receipt } from 'lucide-react';
 import { useOrganizationSettings } from '@/hooks/useOrganizationSettings';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -17,6 +18,10 @@ type SettingsFormState = {
   bookingSeriesPrefix: string;
   advancePaymentPercentage: number;
   podMandatory: boolean;
+  gstEnabled: boolean;
+  cgstRate: number;
+  sgstRate: number;
+  igstRate: number;
 };
 
 export default function OrganizationSettingsPage() {
@@ -25,32 +30,42 @@ export default function OrganizationSettingsPage() {
     loading, 
     updateCompanyInfo, 
     updateBookingConfig, 
-    updateOperationalSettings 
+    updateOperationalSettings,
+    updateTaxSettings
   } = useOrganizationSettings();
 
   const [savingCompany, setSavingCompany] = useState(false);
   const [savingBooking, setSavingBooking] = useState(false);
   const [savingOperational, setSavingOperational] = useState(false);
+  const [savingTax, setSavingTax] = useState(false);
   const [localSettings, setLocalSettings] = useState<SettingsFormState>({
     companyName: '',
     gstNumber: '',
     bookingSeriesPrefix: '',
     advancePaymentPercentage: 30,
     podMandatory: false,
+    gstEnabled: true,
+    cgstRate: 9,
+    sgstRate: 9,
+    igstRate: 18,
   });
   const [lastSavedSettings, setLastSavedSettings] = useState<SettingsFormState | null>(null);
 
   // Update local settings when API data loads
   useEffect(() => {
     if (settings) {
-      const newSettings = {
+      const tax = settings.taxSettings || {};
+      const newSettings: SettingsFormState = {
         companyName: settings.companyName || '',
         gstNumber: settings.gstNumber || '',
         bookingSeriesPrefix: settings.bookingSeriesPrefix || '',
         advancePaymentPercentage: settings.advancePaymentPercentage || 30,
         podMandatory: settings.podMandatory || false,
+        gstEnabled: tax.gstEnabled ?? true,
+        cgstRate: tax.cgstRate ?? 9,
+        sgstRate: tax.sgstRate ?? 9,
+        igstRate: tax.igstRate ?? 18,
       };
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalSettings(newSettings);
       setLastSavedSettings(newSettings);
     }
@@ -114,6 +129,30 @@ export default function OrganizationSettingsPage() {
     setSavingOperational(false);
   };
 
+  const handleSaveTax = async () => {
+    setSavingTax(true);
+    const success = await updateTaxSettings({
+      gstEnabled: localSettings.gstEnabled,
+      cgstRate: localSettings.cgstRate,
+      sgstRate: localSettings.sgstRate,
+      igstRate: localSettings.igstRate,
+    });
+    if (success) {
+      setLastSavedSettings((prev) =>
+        prev
+          ? {
+              ...prev,
+              gstEnabled: localSettings.gstEnabled,
+              cgstRate: localSettings.cgstRate,
+              sgstRate: localSettings.sgstRate,
+              igstRate: localSettings.igstRate,
+            }
+          : prev
+      );
+    }
+    setSavingTax(false);
+  };
+
   const isCompanyDirty = Boolean(
     lastSavedSettings &&
       (localSettings.companyName !== lastSavedSettings.companyName ||
@@ -126,6 +165,13 @@ export default function OrganizationSettingsPage() {
   );
   const isOperationalDirty = Boolean(
     lastSavedSettings && localSettings.podMandatory !== lastSavedSettings.podMandatory
+  );
+  const isTaxDirty = Boolean(
+    lastSavedSettings &&
+      (localSettings.gstEnabled !== lastSavedSettings.gstEnabled ||
+        localSettings.cgstRate !== lastSavedSettings.cgstRate ||
+        localSettings.sgstRate !== lastSavedSettings.sgstRate ||
+        localSettings.igstRate !== lastSavedSettings.igstRate)
   );
 
   if (loading) {
@@ -211,6 +257,84 @@ export default function OrganizationSettingsPage() {
                 {savingCompany && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 <Save className="h-4 w-4 mr-2" />
                 Save Company Info
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tax Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5" />
+              Tax Configuration (GST)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between border-b pb-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="enableGst" className="text-base font-semibold cursor-pointer">
+                  Enable GST on Invoices
+                </Label>
+                <p className="text-sm text-gray-500">
+                  When enabled, tax rates (CGST/SGST/IGST) will automatically be calculated on generated invoices.
+                </p>
+              </div>
+              <Switch
+                id="enableGst"
+                checked={localSettings.gstEnabled}
+                onCheckedChange={(checked) =>
+                  setLocalSettings({ ...localSettings, gstEnabled: checked })
+                }
+              />
+            </div>
+
+            {localSettings.gstEnabled && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                <div className="space-y-2">
+                  <Label htmlFor="cgstRate">CGST Rate (%)</Label>
+                  <Input
+                    id="cgstRate"
+                    type="number"
+                    step="0.1"
+                    value={localSettings.cgstRate}
+                    onChange={(e) =>
+                      setLocalSettings({ ...localSettings, cgstRate: parseFloat(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sgstRate">SGST Rate (%)</Label>
+                  <Input
+                    id="sgstRate"
+                    type="number"
+                    step="0.1"
+                    value={localSettings.sgstRate}
+                    onChange={(e) =>
+                      setLocalSettings({ ...localSettings, sgstRate: parseFloat(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="igstRate">IGST Rate (%)</Label>
+                  <Input
+                    id="igstRate"
+                    type="number"
+                    step="0.1"
+                    value={localSettings.igstRate}
+                    onChange={(e) =>
+                      setLocalSettings({ ...localSettings, igstRate: parseFloat(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <Button onClick={handleSaveTax} disabled={!isTaxDirty || savingTax}>
+                {savingTax && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <Save className="h-4 w-4 mr-2" />
+                Save Tax Settings
               </Button>
             </div>
           </CardContent>

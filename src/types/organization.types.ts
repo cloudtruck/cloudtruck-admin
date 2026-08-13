@@ -137,6 +137,12 @@ export interface OrganizationSettings {
   deleteLrRoles?: string[];
   kycDocsMandatoryEnabled?: boolean;
   kycDocsMandatoryFor?: string[];
+  taxSettings?: {
+    gstEnabled?: boolean;
+    cgstRate?: number;
+    sgstRate?: number;
+    igstRate?: number;
+  };
 }
 
 export interface Branch {
