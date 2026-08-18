@@ -74,6 +74,9 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
   const [truckTypeNeeded, setTruckTypeNeeded] = useState(booking.truckTypeNeeded || 'none');
   const [expiryTime, setExpiryTime] = useState(booking.expiryTime || '');
   const [postToSupplier, setPostToSupplier] = useState(booking.postToSupplier !== false);
+  const [invoiceParty, setInvoiceParty] = useState<'consignor' | 'consignee' | 'customer'>(
+    booking.invoiceParty || 'consignor'
+  );
   const [invoiceNo, setInvoiceNo] = useState(booking.invoiceNo || '');
   const [ewayBillNo, setEwayBillNo] = useState(booking.ewayBillNo || '');
   const [pickupContactName, setPickupContactName] = useState(
@@ -154,6 +157,7 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
         truckTypeNeeded: truckTypeNeeded !== 'none' ? truckTypeNeeded : undefined,
         expiryTime: expiryTime || undefined,
         postToSupplier,
+        invoiceParty,
         invoiceNo,
         ewayBillNo,
         pickupContactName,
@@ -418,9 +422,105 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
 
           {/* LR & Party Details */}
           <div className="space-y-4 border-t pt-4">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              LR &amp; Party Details
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                LR &amp; Party Details
+              </p>
+            </div>
+
+            {/* Bill To Party Selector */}
+            <div className="space-y-1.5 bg-blue-50/60 p-3 rounded-lg border border-blue-100">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-blue-900 uppercase tracking-wider">
+                  Bill / Invoice To Party
+                </Label>
+                <span className="text-[10px] text-blue-700 bg-blue-100/80 px-1.5 py-0.5 rounded font-medium">
+                  Used on Invoice PDF
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-500 mb-2">
+                Select who will be billed on the invoice PDF. Saving will automatically update future invoice downloads/views.
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {/* Consignor */}
+                <div
+                  onClick={() => setInvoiceParty('consignor')}
+                  className={`flex flex-col p-2.5 rounded-md border cursor-pointer transition-all ${
+                    invoiceParty === 'consignor'
+                      ? 'border-blue-600 bg-white shadow-xs ring-1 ring-blue-600/30'
+                      : 'border-gray-200 bg-white/70 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1">
+                      <span className={`w-2 h-2 rounded-full ${invoiceParty === 'consignor' ? 'bg-blue-600' : 'bg-gray-300'}`} />
+                      Consignor
+                    </span>
+                    <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${invoiceParty === 'consignor' ? 'border-blue-600 bg-blue-600' : 'border-gray-300'}`}>
+                      {invoiceParty === 'consignor' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold text-gray-900 truncate" title={pickupContactName || (typeof booking.customer === 'object' ? booking.customer?.companyName : 'Consignor')}>
+                    {pickupContactName || (typeof booking.customer === 'object' ? booking.customer?.companyName : 'Consignor')}
+                  </span>
+                  <span className="text-[10px] text-gray-500 truncate mt-0.5">
+                    {pickupContactGst ? `GST: ${pickupContactGst}` : (booking.pickup?.city ? `City: ${booking.pickup.city}` : 'Pickup Party')}
+                  </span>
+                </div>
+
+                {/* Consignee */}
+                <div
+                  onClick={() => setInvoiceParty('consignee')}
+                  className={`flex flex-col p-2.5 rounded-md border cursor-pointer transition-all ${
+                    invoiceParty === 'consignee'
+                      ? 'border-blue-600 bg-white shadow-xs ring-1 ring-blue-600/30'
+                      : 'border-gray-200 bg-white/70 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider flex items-center gap-1">
+                      <span className={`w-2 h-2 rounded-full ${invoiceParty === 'consignee' ? 'bg-indigo-600' : 'bg-gray-300'}`} />
+                      Consignee
+                    </span>
+                    <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${invoiceParty === 'consignee' ? 'border-blue-600 bg-blue-600' : 'border-gray-300'}`}>
+                      {invoiceParty === 'consignee' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold text-gray-900 truncate" title={dropContactName || 'Consignee'}>
+                    {dropContactName || 'Consignee'}
+                  </span>
+                  <span className="text-[10px] text-gray-500 truncate mt-0.5">
+                    {dropContactGst ? `GST: ${dropContactGst}` : (booking.drop?.city ? `City: ${booking.drop.city}` : 'Drop Party')}
+                  </span>
+                </div>
+
+                {/* Customer */}
+                <div
+                  onClick={() => setInvoiceParty('customer')}
+                  className={`flex flex-col p-2.5 rounded-md border cursor-pointer transition-all ${
+                    invoiceParty === 'customer'
+                      ? 'border-blue-600 bg-white shadow-xs ring-1 ring-blue-600/30'
+                      : 'border-gray-200 bg-white/70 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wider flex items-center gap-1">
+                      <span className={`w-2 h-2 rounded-full ${invoiceParty === 'customer' ? 'bg-purple-600' : 'bg-gray-300'}`} />
+                      Customer
+                    </span>
+                    <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${invoiceParty === 'customer' ? 'border-blue-600 bg-blue-600' : 'border-gray-300'}`}>
+                      {invoiceParty === 'customer' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold text-gray-900 truncate" title={typeof booking.customer === 'object' ? booking.customer?.companyName : 'Customer'}>
+                    {typeof booking.customer === 'object' ? booking.customer?.companyName : 'Customer'}
+                  </span>
+                  <span className="text-[10px] text-gray-500 truncate mt-0.5">
+                    {typeof booking.customer === 'object' && booking.customer?.gst ? `GST: ${booking.customer.gst}` : 'Account'}
+                  </span>
+                </div>
+              </div>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">

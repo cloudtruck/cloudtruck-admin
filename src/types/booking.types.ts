@@ -6,10 +6,16 @@ export interface Booking {
     companyName: string;
     contactPerson?: string;
     phone?: string;
+    gst?: string;
+    pan?: string;
+    address?: { street?: string; city?: string; state?: string; pincode?: string; country?: string };
+    billingAddress?: { street?: string; city?: string; state?: string; pincode?: string; country?: string };
   };
   pickup: {
     city: string;
+    state?: string;
     address: string;
+    pincode?: string;
     latLng: {
       type: 'Point';
       coordinates: [number, number];
@@ -18,7 +24,9 @@ export interface Booking {
   };
   drop: {
     city: string;
+    state?: string;
     address: string;
+    pincode?: string;
     latLng: {
       type: 'Point';
       coordinates: [number, number];
@@ -162,6 +170,7 @@ export interface Booking {
   customerPodBalance?: number;
   supplierPodBalance?: number;
   invoiceTo?: 'Customer' | 'Supplier' | 'Both';
+  invoiceParty?: 'consignor' | 'consignee' | 'customer';
   payTo?: 'Supplier' | 'Driver' | 'Customer';
   accountNo?: string;
   podType?: 'Hard' | 'Soft';
@@ -222,6 +231,7 @@ export interface CreateBookingPayload {
   customerPodBalance?: number;
   supplierPodBalance?: number;
   invoiceTo?: 'Customer' | 'Supplier' | 'Both';
+  invoiceParty?: 'consignor' | 'consignee' | 'customer';
   payTo?: 'Supplier' | 'Driver' | 'Customer';
   accountNo?: string;
   podType?: 'Hard' | 'Soft';

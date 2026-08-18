@@ -89,6 +89,7 @@ const emptyDirectInvoice = {
   customerPodBalance: '',
   supplierPodBalance: '',
   invoiceTo: '',
+  invoiceParty: 'consignor' as 'consignor' | 'consignee' | 'customer',
   customerRef: '',
   supplierRef: '',
   payTo: 'Supplier',
@@ -119,6 +120,7 @@ const emptyDirectLoad = {
   customerPodBalance: '',
   supplierPodBalance: '',
   invoiceTo: '',
+  invoiceParty: 'consignor' as 'consignor' | 'consignee' | 'customer',
   customerRef: '',
   supplierRef: '',
   payTo: 'Supplier',
@@ -412,6 +414,12 @@ export default function CreateIndentPage() {
     { value: 'Both', label: 'Both' },
   ];
 
+  const invoicePartyOptions: SideSelectOption[] = [
+    { value: 'consignor', label: 'Consignor (Sender)' },
+    { value: 'consignee', label: 'Consignee (Receiver)' },
+    { value: 'customer', label: 'Customer (Account)' },
+  ];
+
   const weightUnitOptions: SideSelectOption[] = [
     { value: 'tons', label: 'Ton' },
     { value: 'kg', label: 'KG' },
@@ -648,6 +656,7 @@ export default function CreateIndentPage() {
         customerPodBalance: dlForm.customerPodBalance ? parseFloat(dlForm.customerPodBalance) : 0,
         supplierPodBalance: dlForm.supplierPodBalance ? parseFloat(dlForm.supplierPodBalance) : 0,
         invoiceTo: (dlForm.invoiceTo as 'Customer' | 'Supplier' | 'Both') || undefined,
+        invoiceParty: (dlForm.invoiceParty as 'consignor' | 'consignee' | 'customer') || undefined,
         payTo: (dlForm.payTo as 'Supplier' | 'Driver' | 'Customer') || undefined,
         accountNo: dlForm.accountNo || undefined,
         podType: (dlForm.podType as 'Hard' | 'Soft') || undefined,
@@ -750,6 +759,7 @@ export default function CreateIndentPage() {
         customerPodBalance: diForm.customerPodBalance ? parseFloat(diForm.customerPodBalance) : 0,
         supplierPodBalance: diForm.supplierPodBalance ? parseFloat(diForm.supplierPodBalance) : 0,
         invoiceTo: (diForm.invoiceTo as 'Customer' | 'Supplier' | 'Both') || undefined,
+        invoiceParty: (diForm.invoiceParty as 'consignor' | 'consignee' | 'customer') || undefined,
         payTo: (diForm.payTo as 'Supplier' | 'Driver' | 'Customer') || undefined,
         accountNo: diForm.accountNo || undefined,
         podType: (diForm.podType as 'Hard' | 'Soft') || undefined,
@@ -1155,9 +1165,9 @@ export default function CreateIndentPage() {
               </FormField>
             </div>
 
-            {/* Invoice to + Customer ref + Supplier ref */}
-            <div className="grid grid-cols-[1fr_auto_auto] gap-2">
-              <FormField label="Invoice to">
+            {/* Invoice to + Bill To Party */}
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Invoice to (Who Pays)">
                 <SideSelect
                   label="Invoice to"
                   panelTitle="Invoice to"
@@ -1168,20 +1178,35 @@ export default function CreateIndentPage() {
                   searchable={false}
                 />
               </FormField>
+              <FormField label="Bill To Party (On Invoice)">
+                <SideSelect
+                  label="Bill To Party"
+                  panelTitle="Select Bill To Party"
+                  placeholder="Consignor (Sender)"
+                  options={invoicePartyOptions}
+                  value={dlForm.invoiceParty}
+                  onChange={(v) => setDl('invoiceParty', v)}
+                  searchable={false}
+                />
+              </FormField>
+            </div>
+
+            {/* Customer ref + Supplier ref */}
+            <div className="grid grid-cols-2 gap-3">
               <FormField label="Customer Ref">
                 <Input
-                  placeholder="Customer..."
+                  placeholder="Customer Ref..."
                   value={dlForm.customerRef}
                   onChange={(e) => setDl('customerRef', e.target.value)}
-                  className="bg-white text-sm w-28"
+                  className="bg-white text-sm"
                 />
               </FormField>
               <FormField label="Supplier Ref">
                 <Input
-                  placeholder="Supplier ..."
+                  placeholder="Supplier Ref..."
                   value={dlForm.supplierRef}
                   onChange={(e) => setDl('supplierRef', e.target.value)}
-                  className="bg-white text-sm w-28"
+                  className="bg-white text-sm"
                 />
               </FormField>
             </div>

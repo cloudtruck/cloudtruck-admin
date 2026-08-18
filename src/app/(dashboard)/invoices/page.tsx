@@ -158,6 +158,7 @@ function CreateInvoiceFromLrModal({ onClose, onSuccess }: CreateInvoiceFromLrMod
   const [selectedLr, setSelectedLr] = useState<Booking | null>(null);
 
   // Form State
+  const [invoiceParty, setInvoiceParty] = useState<'consignor' | 'consignee' | 'customer'>('consignor');
   const [invoiceNo, setInvoiceNo] = useState('');
   const [customerPrice, setCustomerPrice] = useState<number>(0);
   const [poNumber, setPoNumber] = useState('');
@@ -188,6 +189,7 @@ function CreateInvoiceFromLrModal({ onClose, onSuccess }: CreateInvoiceFromLrMod
 
   const handleSelectLr = (lr: Booking) => {
     setSelectedLr(lr);
+    setInvoiceParty(lr.invoiceParty || 'consignor');
     setCustomerPrice(lr.customerPrice || lr.expectedAmount || 0);
     setInvoiceNo(lr.invoiceNo || '');
     setPoNumber(lr.poNumber || '');
@@ -211,6 +213,7 @@ function CreateInvoiceFromLrModal({ onClose, onSuccess }: CreateInvoiceFromLrMod
       // 1. Update Booking to set bookingType to direct-invoice and fill invoice details
       await bookingApi.update(selectedLr._id, {
         bookingType: 'direct-invoice',
+        invoiceParty,
         customerPrice,
         invoiceNo: invoiceNo.trim() || undefined,
         poNumber: poNumber.trim() || undefined,
@@ -348,6 +351,92 @@ function CreateInvoiceFromLrModal({ onClose, onSuccess }: CreateInvoiceFromLrMod
                     </div>
                     <div>
                       <span className="font-semibold text-gray-700">Booking ID:</span> {selectedLr.bookingId}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bill To Party Selector */}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">
+                    Bill / Invoice To Party *
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Consignor */}
+                    <div
+                      onClick={() => setInvoiceParty('consignor')}
+                      className={`relative flex flex-col p-2.5 rounded-lg border cursor-pointer transition-all ${
+                        invoiceParty === 'consignor'
+                          ? 'border-blue-600 bg-blue-50/60 shadow-xs ring-1 ring-blue-600/30'
+                          : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1">
+                          <span className={`w-2 h-2 rounded-full ${invoiceParty === 'consignor' ? 'bg-blue-600' : 'bg-gray-300'}`} />
+                          Consignor
+                        </span>
+                        <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${invoiceParty === 'consignor' ? 'border-blue-600 bg-blue-600' : 'border-gray-300'}`}>
+                          {invoiceParty === 'consignor' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </span>
+                      </div>
+                      <div className="font-semibold text-xs text-gray-900 truncate" title={selectedLr.pickup?.contactPerson?.name || (typeof selectedLr.customer === 'object' ? selectedLr.customer?.companyName : 'Consignor')}>
+                        {selectedLr.pickup?.contactPerson?.name || (typeof selectedLr.customer === 'object' ? selectedLr.customer?.companyName : 'Consignor')}
+                      </div>
+                      <div className="text-[10px] text-gray-500 truncate mt-0.5">
+                        {selectedLr.pickup?.contactPerson?.gstNumber ? `GST: ${selectedLr.pickup.contactPerson.gstNumber}` : ([selectedLr.pickup?.city, selectedLr.pickup?.state].filter(Boolean).join(', ') || 'Pickup Party')}
+                      </div>
+                    </div>
+
+                    {/* Consignee */}
+                    <div
+                      onClick={() => setInvoiceParty('consignee')}
+                      className={`relative flex flex-col p-2.5 rounded-lg border cursor-pointer transition-all ${
+                        invoiceParty === 'consignee'
+                          ? 'border-blue-600 bg-blue-50/60 shadow-xs ring-1 ring-blue-600/30'
+                          : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1">
+                          <span className={`w-2 h-2 rounded-full ${invoiceParty === 'consignee' ? 'bg-indigo-600' : 'bg-gray-300'}`} />
+                          Consignee
+                        </span>
+                        <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${invoiceParty === 'consignee' ? 'border-blue-600 bg-blue-600' : 'border-gray-300'}`}>
+                          {invoiceParty === 'consignee' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </span>
+                      </div>
+                      <div className="font-semibold text-xs text-gray-900 truncate" title={selectedLr.drop?.contactPerson?.name || 'Consignee'}>
+                        {selectedLr.drop?.contactPerson?.name || 'Consignee'}
+                      </div>
+                      <div className="text-[10px] text-gray-500 truncate mt-0.5">
+                        {selectedLr.drop?.contactPerson?.gstNumber ? `GST: ${selectedLr.drop.contactPerson.gstNumber}` : ([selectedLr.drop?.city, selectedLr.drop?.state].filter(Boolean).join(', ') || 'Drop Party')}
+                      </div>
+                    </div>
+
+                    {/* Customer */}
+                    <div
+                      onClick={() => setInvoiceParty('customer')}
+                      className={`relative flex flex-col p-2.5 rounded-lg border cursor-pointer transition-all ${
+                        invoiceParty === 'customer'
+                          ? 'border-blue-600 bg-blue-50/60 shadow-xs ring-1 ring-blue-600/30'
+                          : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 flex items-center gap-1">
+                          <span className={`w-2 h-2 rounded-full ${invoiceParty === 'customer' ? 'bg-purple-600' : 'bg-gray-300'}`} />
+                          Customer
+                        </span>
+                        <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${invoiceParty === 'customer' ? 'border-blue-600 bg-blue-600' : 'border-gray-300'}`}>
+                          {invoiceParty === 'customer' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </span>
+                      </div>
+                      <div className="font-semibold text-xs text-gray-900 truncate" title={typeof selectedLr.customer === 'object' ? selectedLr.customer?.companyName : 'Customer'}>
+                        {typeof selectedLr.customer === 'object' ? selectedLr.customer?.companyName : 'Customer'}
+                      </div>
+                      <div className="text-[10px] text-gray-500 truncate mt-0.5">
+                        {typeof selectedLr.customer === 'object' && selectedLr.customer?.gst ? `GST: ${selectedLr.customer.gst}` : 'Account'}
+                      </div>
                     </div>
                   </div>
                 </div>
