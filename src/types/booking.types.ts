@@ -143,6 +143,8 @@ export interface Booking {
   jobNo?: string;
   hireChallan?: string;
   invoiceNo?: string;
+  invoiceDate?: string;
+  invoiceDueDate?: string;
   ewayBillNo?: string;
   shipmentNo?: string;
   containerNo?: string;

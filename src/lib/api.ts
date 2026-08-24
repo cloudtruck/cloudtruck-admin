@@ -157,9 +157,10 @@ export const bookingApi = {
     api.get(`/bookings/${id}/download-invoice`, { responseType: 'blob' }),
 
   /** Generate customer Invoice PDF and upload to Cloudinary; returns { url, bookingId, invoiceNo } */
-  generateInvoice: (id: string) =>
+  generateInvoice: (id: string, params?: { regenerate?: boolean }) =>
     api.get<ApiResponse<{ url: string; bookingId: string; invoiceNo?: string }>>(
-      `/bookings/${id}/generate-invoice`
+      `/bookings/${id}/generate-invoice`,
+      { params }
     ),
 };
 

@@ -160,6 +160,12 @@ function CreateInvoiceFromLrModal({ onClose, onSuccess }: CreateInvoiceFromLrMod
   // Form State
   const [invoiceParty, setInvoiceParty] = useState<'consignor' | 'consignee' | 'customer'>('consignor');
   const [invoiceNo, setInvoiceNo] = useState('');
+  const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [dueDate, setDueDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().split('T')[0];
+  });
   const [customerPrice, setCustomerPrice] = useState<number>(0);
   const [poNumber, setPoNumber] = useState('');
   const [boeNumber, setBoeNumber] = useState('');
@@ -192,6 +198,18 @@ function CreateInvoiceFromLrModal({ onClose, onSuccess }: CreateInvoiceFromLrMod
     setInvoiceParty(lr.invoiceParty || 'consignor');
     setCustomerPrice(lr.customerPrice || lr.expectedAmount || 0);
     setInvoiceNo(lr.invoiceNo || '');
+    if (lr.invoiceDate) {
+      setInvoiceDate(new Date(lr.invoiceDate).toISOString().split('T')[0]);
+    } else {
+      setInvoiceDate(new Date().toISOString().split('T')[0]);
+    }
+    if (lr.invoiceDueDate) {
+      setDueDate(new Date(lr.invoiceDueDate).toISOString().split('T')[0]);
+    } else {
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      setDueDate(d.toISOString().split('T')[0]);
+    }
     setPoNumber(lr.poNumber || '');
     setBoeNumber(lr.boeNumber || '');
     setJobNo(lr.jobNo || '');
@@ -216,6 +234,8 @@ function CreateInvoiceFromLrModal({ onClose, onSuccess }: CreateInvoiceFromLrMod
         invoiceParty,
         customerPrice,
         invoiceNo: invoiceNo.trim() || undefined,
+        invoiceDate: invoiceDate ? new Date(invoiceDate).toISOString() : undefined,
+        invoiceDueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
         poNumber: poNumber.trim() || undefined,
         boeNumber: boeNumber.trim() || undefined,
         jobNo: jobNo.trim() || undefined,
@@ -224,8 +244,8 @@ function CreateInvoiceFromLrModal({ onClose, onSuccess }: CreateInvoiceFromLrMod
         remarks: remarks.trim() || undefined,
       });
 
-      // 2. Trigger invoice generation API
-      await bookingApi.generateInvoice(selectedLr._id);
+      // 2. Trigger invoice generation API with force regenerate
+      await bookingApi.generateInvoice(selectedLr._id, { regenerate: true });
 
       toast.success('Invoice generated successfully!');
       onSuccess();
@@ -442,6 +462,30 @@ function CreateInvoiceFromLrModal({ onClose, onSuccess }: CreateInvoiceFromLrMod
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      Invoice Date *
+                    </label>
+                    <Input
+                      type="date"
+                      value={invoiceDate}
+                      onChange={(e) => setInvoiceDate(e.target.value)}
+                      className="text-xs h-8 border-gray-200 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      Due Date (Optional)
+                    </label>
+                    <Input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      className="text-xs h-8 border-gray-200 focus:border-blue-500"
+                    />
+                  </div>
+
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
                       Customer Price / Freight Value (₹) *
