@@ -240,6 +240,8 @@ export interface CreateBookingPayload {
   tripKm?: number;
   // LR reference fields
   invoiceNo?: string;
+  invoiceDate?: string;
+  invoiceDueDate?: string;
   ewayBillNo?: string;
   pickupContactName?: string;
   pickupContactPhone?: string;

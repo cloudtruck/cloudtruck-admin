@@ -95,6 +95,8 @@ export function EditBookingModal({
     jobNo: '',
     hireChallan: '',
     invoiceNo: '',
+    invoiceDate: '',
+    invoiceDueDate: '',
     ewayBillNo: '',
     shipmentNo: '',
     containerNo: '',
@@ -146,6 +148,12 @@ export function EditBookingModal({
         jobNo: booking.jobNo || '',
         hireChallan: booking.hireChallan || '',
         invoiceNo: booking.invoiceNo || '',
+        invoiceDate: booking.invoiceDate
+          ? new Date(booking.invoiceDate).toISOString().split('T')[0]
+          : '',
+        invoiceDueDate: booking.invoiceDueDate
+          ? new Date(booking.invoiceDueDate).toISOString().split('T')[0]
+          : '',
         ewayBillNo: booking.ewayBillNo || '',
         shipmentNo: booking.shipmentNo || '',
         containerNo: booking.containerNo || '',
@@ -204,6 +212,8 @@ export function EditBookingModal({
         ...(formData.jobNo !== '' && { jobNo: formData.jobNo }),
         ...(formData.hireChallan !== '' && { hireChallan: formData.hireChallan }),
         ...(formData.invoiceNo !== '' && { invoiceNo: formData.invoiceNo }),
+        invoiceDate: formData.invoiceDate ? new Date(formData.invoiceDate).toISOString() : null,
+        invoiceDueDate: formData.invoiceDueDate ? new Date(formData.invoiceDueDate).toISOString() : null,
         ...(formData.ewayBillNo !== '' && { ewayBillNo: formData.ewayBillNo }),
         ...(formData.shipmentNo !== '' && { shipmentNo: formData.shipmentNo }),
         ...(formData.containerNo !== '' && { containerNo: formData.containerNo }),
@@ -599,6 +609,24 @@ export function EditBookingModal({
                   id="invoiceNo"
                   value={formData.invoiceNo}
                   onChange={(e) => handleInputChange('invoiceNo', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="invoiceDate">Invoice Date</Label>
+                <Input
+                  id="invoiceDate"
+                  type="date"
+                  value={formData.invoiceDate}
+                  onChange={(e) => handleInputChange('invoiceDate', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="invoiceDueDate">Invoice Due Date</Label>
+                <Input
+                  id="invoiceDueDate"
+                  type="date"
+                  value={formData.invoiceDueDate}
+                  onChange={(e) => handleInputChange('invoiceDueDate', e.target.value)}
                 />
               </div>
               <div>

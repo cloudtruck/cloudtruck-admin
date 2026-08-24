@@ -65,6 +65,8 @@ const emptyForm = {
   requiresTemperatureControl: false,
   // Consignor / Consignee (for LR printing)
   invoiceNo: '',
+  invoiceDate: '',
+  invoiceDueDate: '',
   ewayBillNo: '',
   consignorName: '',
   consignorGst: '',
@@ -222,6 +224,8 @@ export function CreateBookingModal({
         postToSupplier: formData.postToSupplier,
         remarks: formData.remarks || undefined,
         invoiceNo: formData.invoiceNo || undefined,
+        invoiceDate: formData.invoiceDate ? new Date(formData.invoiceDate).toISOString() : undefined,
+        invoiceDueDate: formData.invoiceDueDate ? new Date(formData.invoiceDueDate).toISOString() : undefined,
         ewayBillNo: formData.ewayBillNo || undefined,
         pickupContactName: formData.consignorName || undefined,
         pickupContactGst: formData.consignorGst || undefined,
@@ -549,6 +553,7 @@ export function CreateBookingModal({
                 <Input
                   value={formData.invoiceNo}
                   onChange={(e) => set('invoiceNo', e.target.value)}
+                  placeholder="Auto-generated if empty"
                 />
               </div>
               <div>
@@ -557,6 +562,25 @@ export function CreateBookingModal({
                   placeholder="e.g. 141001234567"
                   value={formData.ewayBillNo}
                   onChange={(e) => set('ewayBillNo', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Invoice Date</Label>
+                <Input
+                  type="date"
+                  value={formData.invoiceDate}
+                  onChange={(e) => set('invoiceDate', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">Invoice Due Date</Label>
+                <Input
+                  type="date"
+                  value={formData.invoiceDueDate}
+                  onChange={(e) => set('invoiceDueDate', e.target.value)}
                 />
               </div>
             </div>

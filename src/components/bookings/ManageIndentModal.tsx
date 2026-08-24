@@ -78,6 +78,26 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
     booking.invoiceParty || 'consignor'
   );
   const [invoiceNo, setInvoiceNo] = useState(booking.invoiceNo || '');
+  const [invoiceDate, setInvoiceDate] = useState(() => {
+    if (booking.invoiceDate) {
+      try {
+        return new Date(booking.invoiceDate).toISOString().split('T')[0];
+      } catch {
+        return '';
+      }
+    }
+    return '';
+  });
+  const [invoiceDueDate, setInvoiceDueDate] = useState(() => {
+    if (booking.invoiceDueDate) {
+      try {
+        return new Date(booking.invoiceDueDate).toISOString().split('T')[0];
+      } catch {
+        return '';
+      }
+    }
+    return '';
+  });
   const [ewayBillNo, setEwayBillNo] = useState(booking.ewayBillNo || '');
   const [pickupContactName, setPickupContactName] = useState(
     booking.pickup?.contactPerson?.name || ''
@@ -159,6 +179,8 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
         postToSupplier,
         invoiceParty,
         invoiceNo,
+        invoiceDate: invoiceDate ? new Date(invoiceDate).toISOString() : null,
+        invoiceDueDate: invoiceDueDate ? new Date(invoiceDueDate).toISOString() : null,
         ewayBillNo,
         pickupContactName,
         pickupContactPhone,
@@ -531,6 +553,7 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
                   id="invoiceNo"
                   value={invoiceNo}
                   onChange={(e) => setInvoiceNo(e.target.value)}
+                  placeholder="e.g. INV-001"
                 />
               </div>
               <div className="space-y-1.5">
@@ -542,6 +565,31 @@ export function ManageIndentModal({ booking, onClose, onSuccess }: ManageIndentM
                   value={ewayBillNo}
                   onChange={(e) => setEwayBillNo(e.target.value)}
                   placeholder="e.g. 141001234567"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="invoiceDate" className="text-xs font-semibold">
+                  Invoice Date
+                </Label>
+                <Input
+                  id="invoiceDate"
+                  type="date"
+                  value={invoiceDate}
+                  onChange={(e) => setInvoiceDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="invoiceDueDate" className="text-xs font-semibold">
+                  Due Date
+                </Label>
+                <Input
+                  id="invoiceDueDate"
+                  type="date"
+                  value={invoiceDueDate}
+                  onChange={(e) => setInvoiceDueDate(e.target.value)}
                 />
               </div>
             </div>
